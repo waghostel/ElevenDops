@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Add dependencies and extend backend schemas
+- [x] 1. Add dependencies and extend backend schemas
 
   - [x] 1.1 Add elevenlabs SDK to pyproject.toml
 
