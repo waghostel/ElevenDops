@@ -50,3 +50,35 @@ class KnowledgeDocument:
     elevenlabs_document_id: Optional[str]
     structured_sections: Optional[Dict[str, str]]
     created_at: datetime
+
+
+@dataclass
+class ScriptResponse:
+    """Script generation response data class."""
+
+    script: str
+    knowledge_id: str
+    generated_at: datetime
+
+
+@dataclass
+class AudioResponse:
+    """Audio generation response data class."""
+
+    audio_id: str
+    audio_url: str
+    knowledge_id: str
+    voice_id: str
+    duration_seconds: Optional[float]
+    script: str
+    created_at: datetime
+
+
+@dataclass
+class VoiceOption:
+    """Voice option data class."""
+
+    voice_id: str
+    name: str
+    description: Optional[str] = None
+    preview_url: Optional[str] = None

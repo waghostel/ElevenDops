@@ -1,4 +1,0 @@
-# file: C:\Users\Cheney\Documents\Github\ElevenDops\backend\config.py
-# hypothesis_version: 6.148.7
-
-[1.0, 10.0, 60.0, 1024, 8000, 8501, 65535, ',', '.env', '0.1.0', 'Application version', 'Backend API base URL', 'ELEVENLABS_API_KEY', 'ElevenLabs API key', 'Enable debug mode', 'FastAPI server port', 'GOOGLE_CLOUD_PROJECT', 'cors_origins', 'development', 'ignore', 'production', 'staging', 'utf-8']

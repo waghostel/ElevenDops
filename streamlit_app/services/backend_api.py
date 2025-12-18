@@ -15,7 +15,13 @@ from streamlit_app.services.exceptions import (
     APIError,
     APITimeoutError,
 )
-from streamlit_app.services.models import DashboardStats, KnowledgeDocument
+from streamlit_app.services.models import (
+    DashboardStats,
+    KnowledgeDocument,
+    ScriptResponse,
+    AudioResponse,
+    VoiceOption,
+)
 
 # Default configuration
 DEFAULT_BACKEND_URL = "http://localhost:8000"
@@ -249,6 +255,134 @@ class BackendAPIClient:
         except httpx.HTTPStatusError as e:
             raise APIError(
                 message=f"Retry sync failed: {e.response.text}",
+                status_code=e.response.status_code,
+            ) from e
+
+    async def generate_script(self, knowledge_id: str) -> ScriptResponse:
+        """Generate a script from a knowledge document.
+
+        Args:
+            knowledge_id: ID of the knowledge document.
+
+        Returns:
+            ScriptResponse object.
+        """
+        try:
+            payload = {"knowledge_id": knowledge_id}
+            async with self._get_client() as client:
+                response = await client.post("/api/audio/generate-script", json=payload)
+                response.raise_for_status()
+                data = response.json()
+                return ScriptResponse(
+                    script=data["script"],
+                    knowledge_id=data["knowledge_id"],
+                    generated_at=datetime.fromisoformat(data["generated_at"]),
+                )
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Script generation failed: {e.response.text}",
+                status_code=e.response.status_code,
+            ) from e
+
+    async def generate_audio(self, knowledge_id: str, script: str, voice_id: str) -> AudioResponse:
+        """Generate audio from a script.
+
+        Args:
+            knowledge_id: Source document ID.
+            script: The script content.
+            voice_id: The ElevenLabs voice ID.
+
+        Returns:
+            AudioResponse object.
+        """
+        try:
+            payload = {
+                "knowledge_id": knowledge_id,
+                "script": script,
+                "voice_id": voice_id,
+            }
+            async with self._get_client() as client:
+                response = await client.post("/api/audio/generate", json=payload)
+                response.raise_for_status()
+                data = response.json()
+                return AudioResponse(
+                    audio_id=data["audio_id"],
+                    audio_url=data["audio_url"],
+                    knowledge_id=data["knowledge_id"],
+                    voice_id=data["voice_id"],
+                    duration_seconds=data.get("duration_seconds"),
+                    script=data["script"],
+                    created_at=datetime.fromisoformat(data["created_at"]),
+                )
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Audio generation failed: {e.response.text}",
+                status_code=e.response.status_code,
+            ) from e
+
+    async def get_audio_files(self, knowledge_id: str) -> List[AudioResponse]:
+        """Get audio files for a knowledge document.
+
+        Args:
+            knowledge_id: ID of the knowledge document.
+
+        Returns:
+            List of AudioResponse objects.
+        """
+        try:
+            async with self._get_client() as client:
+                response = await client.get(f"/api/audio/{knowledge_id}")
+                response.raise_for_status()
+                data = response.json()
+                return [
+                    AudioResponse(
+                        audio_id=d["audio_id"],
+                        audio_url=d["audio_url"],
+                        knowledge_id=d["knowledge_id"],
+                        voice_id=d["voice_id"],
+                        duration_seconds=d.get("duration_seconds"),
+                        script=d["script"],
+                        created_at=datetime.fromisoformat(d["created_at"]),
+                    )
+                    for d in data["audio_files"]
+                ]
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Failed to fetch audio history: {e.response.text}",
+                status_code=e.response.status_code,
+            ) from e
+
+    async def get_available_voices(self) -> List[VoiceOption]:
+        """Get available voices.
+
+        Returns:
+            List of VoiceOption objects.
+        """
+        try:
+            async with self._get_client() as client:
+                response = await client.get("/api/audio/voices/list")
+                response.raise_for_status()
+                data = response.json()
+                return [
+                    VoiceOption(
+                        voice_id=v["voice_id"],
+                        name=v["name"],
+                        description=v.get("description"),
+                        preview_url=v.get("preview_url"),
+                    )
+                    for v in data
+                ]
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Failed to fetch voices: {e.response.text}",
                 status_code=e.response.status_code,
             ) from e
 

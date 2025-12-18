@@ -20,8 +20,16 @@ class ElevenLabsSyncError(ElevenLabsServiceError):
     pass
 
 
+
+
 class ElevenLabsDeleteError(ElevenLabsServiceError):
     """Raised when document deletion from ElevenLabs fails."""
+
+    pass
+
+
+class ElevenLabsTTSError(ElevenLabsServiceError):
+    """Raised when text-to-speech conversion fails."""
 
     pass
 
@@ -92,6 +100,64 @@ class ElevenLabsService:
         except Exception as e:
             logging.error(f"Failed to delete ElevenLabs document: {e}")
             raise ElevenLabsDeleteError(f"Failed to delete from ElevenLabs: {str(e)}")
+
+    def text_to_speech(self, text: str, voice_id: str) -> bytes:
+        """Convert text to speech using ElevenLabs API.
+
+        Args:
+            text: The text to convert.
+            voice_id: The ID of the voice to use.
+
+        Returns:
+            bytes: The audio data.
+
+        Raises:
+            ElevenLabsTTSError: If conversion fails.
+        """
+        try:
+            # Using the text_to_speech.convert method from the Python SDK
+            # convert returns a generator of bytes, so we need to consume it
+            audio_generator = self.client.text_to_speech.convert(
+                voice_id=voice_id,
+                text=text,
+                model_id="eleven_multilingual_v2"
+            )
+            
+            # Consume the generator to get the full audio bytes
+            audio_data = b"".join(chunk for chunk in audio_generator)
+            return audio_data
+            
+        except Exception as e:
+            logging.error(f"Failed to generate audio: {e}")
+            raise ElevenLabsTTSError(f"Failed to generate audio: {str(e)}")
+
+    def get_voices(self) -> list[dict]:
+        """Get available voices from ElevenLabs.
+
+        Returns:
+            list[dict]: List of voice dictionaries containing id, name, etc.
+            
+        Raises:
+            ElevenLabsTTSError: If fetching voices fails.
+        """
+        try:
+            response = self.client.voices.get_all()
+            # response.voices is a list of Voice objects
+            return [
+                {
+                    "voice_id": voice.voice_id,
+                    "name": voice.name,
+                    "preview_url": voice.preview_url,
+                    # Add generic description if not present, or extract labels/description if available
+                    # 'description' isn't always directly on the Voice object in simplified views, 
+                    # but we can pass what we have.
+                    "description": getattr(voice, "description", None) or f"{voice.category} voice"
+                }
+                for voice in response.voices
+            ]
+        except Exception as e:
+            logging.error(f"Failed to fetch voices: {e}")
+            raise ElevenLabsTTSError(f"Failed to fetch voices: {str(e)}")
 
 
 # Default service instance

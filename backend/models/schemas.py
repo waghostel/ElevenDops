@@ -88,3 +88,65 @@ class KnowledgeDocumentListResponse(BaseModel):
 
     documents: List[KnowledgeDocumentResponse] = Field(..., description="List of documents")
     total_count: int = Field(..., ge=0, description="Total number of documents")
+
+
+class ScriptGenerateRequest(BaseModel):
+    """Request model for script generation."""
+
+    knowledge_id: str = Field(..., description="ID of the knowledge document")
+
+
+class ScriptGenerateResponse(BaseModel):
+    """Response model for script generation."""
+
+    script: str = Field(..., description="Generated script text")
+    knowledge_id: str = Field(..., description="Source document ID")
+    generated_at: datetime = Field(..., description="Generation timestamp")
+
+
+class AudioGenerateRequest(BaseModel):
+    """Request model for audio generation."""
+
+    knowledge_id: str = Field(..., description="Source document ID")
+    script: str = Field(..., min_length=1, max_length=50000, description="Script to convert")
+    voice_id: str = Field(..., description="ElevenLabs voice ID")
+
+
+class AudioGenerateResponse(BaseModel):
+    """Response model for audio generation."""
+
+    audio_id: str = Field(..., description="Unique audio file ID")
+    audio_url: str = Field(..., description="URL to access the audio")
+    knowledge_id: str = Field(..., description="Source document ID")
+    voice_id: str = Field(..., description="Voice used for generation")
+    duration_seconds: Optional[float] = Field(None, description="Audio duration")
+    script: str = Field(..., description="Script used for generation")
+    created_at: datetime = Field(..., description="Creation timestamp")
+
+
+class AudioMetadata(BaseModel):
+    """Metadata for an audio file."""
+
+    audio_id: str
+    audio_url: str
+    knowledge_id: str
+    voice_id: str
+    duration_seconds: Optional[float]
+    script: str
+    created_at: datetime
+
+
+class AudioListResponse(BaseModel):
+    """Response model for listing audio files."""
+
+    audio_files: List[AudioMetadata]
+    total_count: int
+
+
+class VoiceOption(BaseModel):
+    """Model for a voice option."""
+
+    voice_id: str = Field(..., description="ElevenLabs voice ID")
+    name: str = Field(..., description="Display name")
+    description: Optional[str] = Field(None, description="Voice description")
+    preview_url: Optional[str] = Field(None, description="Voice preview audio URL")

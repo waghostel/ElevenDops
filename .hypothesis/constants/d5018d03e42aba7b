@@ -1,4 +1,0 @@
-# file: C:\Users\Cheney\Documents\Github\ElevenDops\streamlit_app\services\backend_api.py
-# hypothesis_version: 6.148.7
-
-[10.0, '/api/dashboard/stats', '/api/health', 'BACKEND_API_URL', 'agent_count', 'audio_count', 'document_count', 'last_activity']
