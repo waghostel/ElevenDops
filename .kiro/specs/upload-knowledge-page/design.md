@@ -12,18 +12,18 @@ flowchart TB
         UI[2_Upload_Knowledge.py]
         API_Client[BackendAPIClient]
     end
-    
+
     subgraph Backend["FastAPI Backend"]
         Router[/api/knowledge Router]
         DataService[DataService]
         ElevenLabsService[ElevenLabsService]
     end
-    
+
     subgraph External["External Services"]
         Firestore[(Firestore DB)]
         ElevenLabs[ElevenLabs Knowledge Base]
     end
-    
+
     UI --> API_Client
     API_Client -->|HTTP| Router
     Router --> DataService
@@ -41,7 +41,7 @@ sequenceDiagram
     participant Backend
     participant Firestore
     participant ElevenLabs
-    
+
     Doctor->>Streamlit: Upload file + metadata
     Streamlit->>Streamlit: Validate file (type, size)
     Streamlit->>Backend: POST /api/knowledge
@@ -80,18 +80,18 @@ POST   /api/knowledge/{id}/retry-sync  # Retry failed sync
 ```python
 class ElevenLabsService:
     """Service for ElevenLabs Knowledge Base operations."""
-    
+
     async def create_document(self, text: str, name: str) -> str:
         """Create document in ElevenLabs Knowledge Base.
-        
-        Uses: client.conversational_ai.knowledge_base.documents.create_from_text()
+
+        Uses: client.conversational_ai.add_to_knowledge_base()
         Returns: ElevenLabs document ID
         """
-        
+
     async def delete_document(self, document_id: str) -> bool:
         """Delete document from ElevenLabs Knowledge Base.
-        
-        Uses: client.conversational_ai.knowledge_base.documents.delete()
+
+        Uses: client.conversational_ai.delete_knowledge_base_document()
         """
 ```
 
@@ -111,6 +111,7 @@ class DataServiceProtocol(Protocol):
 #### 1. Streamlit Page (`streamlit_app/pages/2_Upload_Knowledge.py`)
 
 **UI Sections:**
+
 - File uploader (accepts .md, .txt, max 300KB)
 - Metadata form (disease name, document type)
 - Content preview area
@@ -123,16 +124,16 @@ class DataServiceProtocol(Protocol):
 ```python
 class BackendAPIClient:
     async def upload_knowledge(
-        self, 
-        content: str, 
-        disease_name: str, 
+        self,
+        content: str,
+        disease_name: str,
         document_type: str
     ) -> KnowledgeDocument: ...
-    
+
     async def get_knowledge_documents(self) -> list[KnowledgeDocument]: ...
-    
+
     async def delete_knowledge_document(self, knowledge_id: str) -> bool: ...
-    
+
     async def retry_knowledge_sync(self, knowledge_id: str) -> KnowledgeDocument: ...
 ```
 
@@ -172,6 +173,7 @@ class KnowledgeDocumentResponse(BaseModel):
     raw_content: str
     sync_status: SyncStatus
     elevenlabs_document_id: str | None
+    structured_sections: dict | None
     created_at: datetime
 
 class KnowledgeDocumentListResponse(BaseModel):
@@ -193,55 +195,67 @@ class KnowledgeDocument:
     raw_content: str
     sync_status: str
     elevenlabs_document_id: str | None
+    structured_sections: dict[str, str] | None
     created_at: datetime
 ```
 
 ## Correctness Properties
 
-*A property is a characteristic or behavior that should hold true across all valid executions of a system-essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
+_A property is a characteristic or behavior that should hold true across all valid executions of a system-essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees._
 
 ### Property 1: File Type Validation
-*For any* uploaded file, the system SHALL accept the file if and only if its extension is `.md` or `.txt`
+
+_For any_ uploaded file, the system SHALL accept the file if and only if its extension is `.md` or `.txt`
 **Validates: Requirements 1.1**
 
 ### Property 2: File Size Validation
-*For any* uploaded file, the system SHALL reject the file if and only if its size exceeds 300KB (307,200 bytes)
+
+_For any_ uploaded file, the system SHALL reject the file if and only if its size exceeds 300KB (307,200 bytes)
 **Validates: Requirements 1.2**
 
 ### Property 3: Required Field Validation
-*For any* document submission, the system SHALL reject the submission if the disease_name field is empty or contains only whitespace
+
+_For any_ document submission, the system SHALL reject the submission if the disease_name field is empty or contains only whitespace
 **Validates: Requirements 1.4**
 
 ### Property 4: Document Metadata Persistence
-*For any* successfully saved document, querying the document by its knowledge_id SHALL return the same disease_name and document_type that were submitted
+
+_For any_ successfully saved document, querying the document by its knowledge_id SHALL return the same disease_name and document_type that were submitted
 **Validates: Requirements 2.3**
 
 ### Property 5: Sync Workflow Integrity
-*For any* document where Firestore storage succeeds and ElevenLabs sync succeeds, the document SHALL have sync_status "completed" and a non-null elevenlabs_document_id
+
+_For any_ document where Firestore storage succeeds and ElevenLabs sync succeeds, the document SHALL have sync_status "completed" and a non-null elevenlabs_document_id
 **Validates: Requirements 3.2, 3.3**
 
 ### Property 6: Sync Failure Handling
-*For any* document where Firestore storage succeeds but ElevenLabs sync fails, the document SHALL exist in Firestore with sync_status "failed" and elevenlabs_document_id as null
+
+_For any_ document where Firestore storage succeeds but ElevenLabs sync fails, the document SHALL exist in Firestore with sync_status "failed" and elevenlabs_document_id as null
 **Validates: Requirements 3.4**
 
 ### Property 7: Document List Completeness
-*For any* set of stored documents, the document list endpoint SHALL return all documents with their disease_name, document_type, sync_status, and created_at fields populated
+
+_For any_ set of stored documents, the document list endpoint SHALL return all documents with their disease_name, document_type, sync_status, and created_at fields populated
 **Validates: Requirements 4.1, 4.2**
 
 ### Property 8: Unique Knowledge ID Generation
-*For any* set of created documents, all knowledge_id values SHALL be unique
+
+_For any_ set of created documents, all knowledge_id values SHALL be unique
 **Validates: Requirements 6.3**
 
 ### Property 9: Document Schema Completeness
-*For any* stored document, the document SHALL contain all required fields: knowledge_id, doctor_id, disease_name, document_type, raw_content, sync_status, created_at
+
+_For any_ stored document, the document SHALL contain all required fields: knowledge_id, doctor_id, disease_name, document_type, raw_content, sync_status, created_at
 **Validates: Requirements 6.4**
 
 ### Property 10: Deletion Cascade
-*For any* document with a non-null elevenlabs_document_id, deleting the document SHALL attempt to delete from both Firestore and ElevenLabs Knowledge Base
+
+_For any_ document with a non-null elevenlabs_document_id, deleting the document SHALL attempt to delete from both Firestore and ElevenLabs Knowledge Base
 **Validates: Requirements 5.2, 5.3**
 
 ### Property 11: Firestore Deletion Priority
-*For any* document deletion where ElevenLabs deletion fails, the Firestore document SHALL still be deleted
+
+_For any_ document deletion where ElevenLabs deletion fails, the Firestore document SHALL still be deleted
 **Validates: Requirements 5.4**
 
 ## Error Handling
@@ -264,13 +278,15 @@ class ElevenLabsDeleteError(ElevenLabsServiceError):
 
 ### Error Handling Strategy
 
-1. **Sync Failures**: 
+1. **Sync Failures**:
+
    - Log error details
    - Set sync_status to "failed"
    - Return success to user (document saved in Firestore)
    - Provide retry option
 
 2. **Delete Failures (ElevenLabs)**:
+
    - Log error details
    - Continue with Firestore deletion
    - Return success to user
@@ -282,10 +298,12 @@ class ElevenLabsDeleteError(ElevenLabsServiceError):
 ## Testing Strategy
 
 ### Property-Based Testing Framework
+
 - **Library**: Hypothesis (already in pyproject.toml)
 - **Minimum iterations**: 100 per property test
 
 ### Unit Tests
+
 - File validation functions
 - API endpoint responses
 - Data model serialization/deserialization
@@ -295,26 +313,32 @@ class ElevenLabsDeleteError(ElevenLabsServiceError):
 Each correctness property will be implemented as a property-based test:
 
 1. **File Type Validation Property Test**
+
    - Generate random file extensions
    - Verify only .md and .txt are accepted
 
 2. **File Size Validation Property Test**
+
    - Generate files of various sizes around 300KB boundary
    - Verify correct acceptance/rejection
 
 3. **Required Field Validation Property Test**
+
    - Generate strings including empty and whitespace-only
    - Verify rejection of invalid disease names
 
 4. **Document Metadata Persistence Property Test**
+
    - Generate random valid documents
    - Verify round-trip persistence of metadata
 
 5. **Sync Workflow Property Tests**
+
    - Mock ElevenLabs responses (success/failure)
    - Verify correct status updates
 
 6. **Unique ID Property Test**
+
    - Create multiple documents
    - Verify all IDs are unique
 
@@ -335,6 +359,7 @@ tests/
 ### Test Annotations
 
 Each property-based test MUST include:
+
 ```python
 # **Feature: upload-knowledge-page, Property {N}: {property_text}**
 # **Validates: Requirements X.Y**

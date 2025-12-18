@@ -5,9 +5,17 @@ with a Firestore client for production use.
 """
 
 from datetime import datetime
-from typing import Protocol
+from typing import List, Optional, Protocol
+import uuid
+import re
 
-from backend.models.schemas import DashboardStatsResponse
+from backend.models.schemas import (
+    DashboardStatsResponse,
+    KnowledgeDocumentCreate,
+    KnowledgeDocumentResponse,
+    SyncStatus,
+    DocumentType,
+)
 
 
 class DataServiceProtocol(Protocol):
@@ -17,37 +25,187 @@ class DataServiceProtocol(Protocol):
         """Get dashboard statistics."""
         ...
 
+    async def create_knowledge_document(
+        self, doc: KnowledgeDocumentCreate
+    ) -> KnowledgeDocumentResponse:
+        """Create a new knowledge document."""
+        ...
+
+    async def get_knowledge_documents(self) -> List[KnowledgeDocumentResponse]:
+        """Get all knowledge documents."""
+        ...
+
+    async def get_knowledge_document(
+        self, knowledge_id: str
+    ) -> Optional[KnowledgeDocumentResponse]:
+        """Get a specific knowledge document by ID."""
+        ...
+
+    async def update_knowledge_sync_status(
+        self, knowledge_id: str, status: SyncStatus, elevenlabs_id: Optional[str] = None
+    ) -> bool:
+        """Update the sync status of a knowledge document."""
+        ...
+
+    async def delete_knowledge_document(self, knowledge_id: str) -> bool:
+        """Delete a knowledge document."""
+        ...
+
 
 class MockDataService:
     """Mock data service for development and testing.
 
-    This service returns mock data and can be replaced with
-    FirestoreDataService for production use.
+    This service returns mock data and stores state in memory.
     """
+
+    def __init__(self):
+        """Initialize with empty in-memory storage."""
+        self._documents: dict[str, KnowledgeDocumentResponse] = {}
+
+    def _parse_structured_sections(self, content: str) -> dict:
+        """Parse markdown content into structured sections based on headers.
+        
+        Args:
+            content: Raw markdown content.
+            
+        Returns:
+            Dict mapping headers to section content.
+        """
+        sections = {}
+        # improved regex to capture headers and content
+        # splitting by headers (# or ##, etc)
+        # simplistic MVP parser
+        headers = re.split(r'(^|\n)(#{1,6}\s.*)', content)
+        
+        if not headers:
+            return {"raw": content}
+
+        current_header = "Introduction"
+        # First chunk is usually content before first header
+        if headers[0].strip():
+            sections[current_header] = headers[0].strip()
+
+        # Iterate through captured groups
+        # split output structure: [text, newline, header, text, newline, header, text...]
+        # We need to process from index 1 safely
+        
+        # Simpler approach: find all occurrences, allowing for indentation
+        matches = list(re.finditer(r'(^|\n)(?P<level>\s*#{1,6})\s(?P<title>.*)', content))
+        if not matches:
+             # Just put everything under Introduction if no headers found? Or "raw"?
+             # Let's keep existing logic or just return raw content as 'content'
+             if content.strip():
+                 sections["content"] = content
+             return sections
+
+        last_pos = 0
+        for i, match in enumerate(matches):
+            current_start = match.start()  # This might include the newline
+            
+            # If this is the first match, capture intro text before it
+            if i == 0:
+                intro = content[0:current_start].strip()
+                if intro:
+                    sections["Introduction"] = intro
+
+            header_title = match.group("title").strip()
+            
+            # Content starts after this match
+            match_end = match.end()
+            
+            # Content ends at start of next match or EOF
+            if i + 1 < len(matches):
+                next_start = matches[i+1].start()
+                section_content = content[match_end:next_start].strip()
+            else:
+                section_content = content[match_end:].strip()
+            
+            if section_content:
+                sections[header_title] = section_content
+        
+        return sections
 
     async def get_dashboard_stats(self) -> DashboardStatsResponse:
         """Get mock dashboard statistics.
 
-        Returns:
-            DashboardStatsResponse with mock data:
-            - document_count: 5
-            - agent_count: 2
-            - audio_count: 10
-            - last_activity: current timestamp
+        Returns stats based on in-memory data for documents.
         """
+        doc_count = len(self._documents)
         return DashboardStatsResponse(
-            document_count=5,
-            agent_count=2,
-            audio_count=10,
+            document_count=doc_count,
+            agent_count=2,  # Mock constant
+            audio_count=10,  # Mock constant
             last_activity=datetime.now(),
         )
 
+    async def create_knowledge_document(
+        self, doc: KnowledgeDocumentCreate
+    ) -> KnowledgeDocumentResponse:
+        """Create a new knowledge document in memory."""
+        knowledge_id = str(uuid.uuid4())
+        now = datetime.now()
+        
+        structured = self._parse_structured_sections(doc.raw_content)
+        
+        new_doc = KnowledgeDocumentResponse(
+            knowledge_id=knowledge_id,
+            doctor_id=doc.doctor_id,
+            disease_name=doc.disease_name,
+            document_type=doc.document_type,
+            raw_content=doc.raw_content,
+            sync_status=SyncStatus.PENDING,
+            elevenlabs_document_id=None,
+            structured_sections=structured,
+            created_at=now,
+        )
+        
+        self._documents[knowledge_id] = new_doc
+        return new_doc
 
-# Default data service instance for dependency injection
+    async def get_knowledge_documents(self) -> List[KnowledgeDocumentResponse]:
+        """Get all knowledge documents from memory."""
+        return list(self._documents.values())
+
+    async def get_knowledge_document(
+        self, knowledge_id: str
+    ) -> Optional[KnowledgeDocumentResponse]:
+        """Get a specific knowledge document by ID."""
+        return self._documents.get(knowledge_id)
+
+    async def update_knowledge_sync_status(
+        self, knowledge_id: str, status: SyncStatus, elevenlabs_id: Optional[str] = None
+    ) -> bool:
+        """Update the sync status of a knowledge document."""
+        if knowledge_id not in self._documents:
+            return False
+        
+        doc = self._documents[knowledge_id]
+        
+        updated_doc = KnowledgeDocumentResponse(
+            knowledge_id=doc.knowledge_id,
+            doctor_id=doc.doctor_id,
+            disease_name=doc.disease_name,
+            document_type=doc.document_type,
+            raw_content=doc.raw_content,
+            sync_status=status,
+            elevenlabs_document_id=elevenlabs_id if elevenlabs_id is not None else doc.elevenlabs_document_id,
+            structured_sections=doc.structured_sections,
+            created_at=doc.created_at,
+        )
+        self._documents[knowledge_id] = updated_doc
+        return True
+
+    async def delete_knowledge_document(self, knowledge_id: str) -> bool:
+        """Delete a knowledge document from memory."""
+        if knowledge_id in self._documents:
+            del self._documents[knowledge_id]
+            return True
+        return False
+
+
+# Singleton instance to persist state across requests in mock mode
+_mock_instance = MockDataService()
+
 def get_data_service() -> MockDataService:
-    """Get the data service instance.
-
-    This function serves as a dependency injection point.
-    Replace with FirestoreDataService for production.
-    """
-    return MockDataService()
+    """Get the data service instance."""
+    return _mock_instance
