@@ -1,0 +1,4 @@
+# file: C:\Users\Cheney\Documents\Github\ElevenDops\backend\api\health.py
+# hypothesis_version: 6.148.7
+
+['/api', '/health', '0.1.0', 'health', 'healthy']
