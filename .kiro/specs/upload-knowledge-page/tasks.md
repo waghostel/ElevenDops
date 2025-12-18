@@ -95,7 +95,7 @@
     - Add retry_knowledge_sync() method
     - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-  - [x] 6.3 Update streamlit_app/services/**init**.py exports
+  - [x] 6.3 Update streamlit_app/services/__init__.py exports
     - Export KnowledgeDocument model
     - _Requirements: 6.4_
 

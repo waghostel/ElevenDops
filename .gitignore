@@ -50,10 +50,17 @@ htmlcov/
 Thumbs.db
 
 # Poetry
-poetry.lock
+# poetry.lock - Keep this commented out for now as it should be committed for reproducible builds
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Hypothesis testing
+.hypothesis/
+
+# Test outputs
+test_output.txt
+*.test.log
 
 # Logs
 *.log
@@ -62,3 +69,11 @@ logs/
 # Temporary files
 tmp/
 temp/
+
+# Cloud/Docker
+.dockerignore
+docker-compose.override.yml
+
+# Editor/IDE specific
+*.sublime-project
+*.sublime-workspace

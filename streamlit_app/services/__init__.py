@@ -6,7 +6,7 @@ from streamlit_app.services.exceptions import (
     APIError,
     APITimeoutError,
 )
-from streamlit_app.services.models import DashboardStats
+from streamlit_app.services.models import DashboardStats, KnowledgeDocument
 
 __all__ = [
     "BackendAPIClient",
@@ -15,4 +15,5 @@ __all__ = [
     "APIConnectionError",
     "APITimeoutError",
     "DashboardStats",
+    "KnowledgeDocument",
 ]
