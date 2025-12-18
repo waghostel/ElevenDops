@@ -1,128 +1,128 @@
 # Implementation Plan
 
-- [ ] 1. Create backend data models and schemas
-  - [ ] 1.1 Add audio-related Pydantic models to `backend/models/schemas.py`
+- [x] 1. Create backend data models and schemas
+  - [x] 1.1 Add audio-related Pydantic models to `backend/models/schemas.py`
     - Add `ScriptGenerateRequest`, `ScriptGenerateResponse` models
     - Add `AudioGenerateRequest`, `AudioGenerateResponse` models
     - Add `AudioMetadata`, `AudioListResponse` models
     - Add `VoiceOption` model
     - _Requirements: 2.1, 5.1, 6.2, 4.1_
-  - [ ] 1.2 Write property test for audio schema validation
+  - [x] 1.2 Write property test for audio schema validation
     - **Property 4: Successful Response Display** - Test that valid API responses can be parsed into models
     - **Validates: Requirements 2.3, 5.3, 5.4**
 
-- [ ] 2. Extend ElevenLabs service for TTS functionality
-  - [ ] 2.1 Add TTS methods to `backend/services/elevenlabs_service.py`
+- [x] 2. Extend ElevenLabs service for TTS functionality
+  - [x] 2.1 Add TTS methods to `backend/services/elevenlabs_service.py`
     - Implement `text_to_speech(text: str, voice_id: str) -> bytes` method
     - Implement `get_voices() -> List[dict]` method
     - Add error handling with `ElevenLabsTTSError` exception
     - _Requirements: 5.1, 4.1_
-  - [ ] 2.2 Write property test for TTS service
+  - [x] 2.2 Write property test for TTS service
     - **Property 8: Voice Selection Propagation** - Test that voice_id is correctly passed to ElevenLabs API
     - **Validates: Requirements 4.1, 4.2**
 
-- [ ] 3. Create audio service for business logic
-  - [ ] 3.1 Create `backend/services/audio_service.py`
+- [x] 3. Create audio service for business logic
+  - [x] 3.1 Create `backend/services/audio_service.py`
     - Implement `generate_script(knowledge_id: str) -> str` method with LLM integration placeholder
     - Implement `generate_audio(script: str, voice_id: str, knowledge_id: str) -> AudioMetadata` method
     - Implement `get_audio_files(knowledge_id: str) -> List[AudioMetadata]` method
     - Implement `get_available_voices() -> List[VoiceOption]` method
     - Add in-memory storage for MVP (Firestore integration in future)
     - _Requirements: 2.1, 5.1, 6.2, 4.1_
-  - [ ] 3.2 Write property test for script generation
+  - [x] 3.2 Write property test for script generation
     - **Property 3: Script Generation API Call Correctness** - Test that knowledge_id is correctly used
     - **Validates: Requirements 2.1**
-  - [ ] 3.3 Write property test for audio metadata storage
+  - [x] 3.3 Write property test for audio metadata storage
     - **Property 9: Audio History Display** - Test that stored audio files are correctly retrieved
     - **Validates: Requirements 6.2**
 
-- [ ] 4. Create backend API routes for audio
-  - [ ] 4.1 Create `backend/api/routes/audio.py`
+- [x] 4. Create backend API routes for audio
+  - [x] 4.1 Create `backend/api/routes/audio.py`
     - Implement `POST /api/audio/generate-script` endpoint
     - Implement `POST /api/audio/generate` endpoint
     - Implement `GET /api/audio/{knowledge_id}` endpoint
     - Implement `GET /api/audio/voices` endpoint
     - _Requirements: 7.1, 7.2, 7.3_
-  - [ ] 4.2 Register audio routes in `backend/main.py`
+  - [x] 4.2 Register audio routes in `backend/main.py`
     - Import and include audio router
     - _Requirements: 7.1, 7.2, 7.3_
-  - [ ] 4.3 Write property test for API endpoints
+  - [x] 4.3 Write property test for API endpoints
     - **Property 5: Error Response Display** - Test that API errors return proper error responses
     - **Validates: Requirements 2.4, 5.5**
 
-- [ ] 5. Checkpoint - Ensure all backend tests pass
+- [x] 5. Checkpoint - Ensure all backend tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Add frontend data models
-  - [ ] 6.1 Add audio models to `streamlit_app/services/models.py`
+- [x] 6. Add frontend data models
+  - [x] 6.1 Add audio models to `streamlit_app/services/models.py`
     - Add `ScriptResponse` dataclass
     - Add `AudioResponse` dataclass
     - Add `VoiceOption` dataclass
     - _Requirements: 2.3, 5.3, 4.1_
 
-- [ ] 7. Extend BackendAPIClient for audio operations
-  - [ ] 7.1 Add audio methods to `streamlit_app/services/backend_api.py`
+- [x] 7. Extend BackendAPIClient for audio operations
+  - [x] 7.1 Add audio methods to `streamlit_app/services/backend_api.py`
     - Implement `generate_script(knowledge_id: str) -> ScriptResponse` method
     - Implement `generate_audio(request: dict) -> AudioResponse` method
     - Implement `get_audio_files(knowledge_id: str) -> List[AudioResponse]` method
     - Implement `get_available_voices() -> List[VoiceOption]` method
     - _Requirements: 7.1, 7.2, 7.3_
-  - [ ] 7.2 Write property test for API client
+  - [x] 7.2 Write property test for API client
     - **Property 6: Script Edit Preservation** - Test that edited script is correctly sent to API
     - **Validates: Requirements 3.2**
 
-- [ ] 8. Create Education Audio Streamlit page
-  - [ ] 8.1 Create `streamlit_app/pages/3_Education_Audio.py` with document selection
+- [x] 8. Create Education Audio Streamlit page
+  - [x] 8.1 Create `streamlit_app/pages/3_Education_Audio.py` with document selection
     - Add page configuration and title
     - Implement knowledge document dropdown with disease names and types
     - Implement document content preview area
     - Handle empty document list case
     - _Requirements: 1.1, 1.2, 1.3_
-  - [ ] 8.2 Add script generation section
+  - [x] 8.2 Add script generation section
     - Add "Generate Script Preview" button
     - Implement loading state during generation
     - Display generated script in editable text area
     - Add "Reset Script" button functionality
     - Handle generation errors
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 3.1, 3.2, 3.3_
-  - [ ] 8.3 Add confirmation and voice selection section
+  - [x] 8.3 Add confirmation and voice selection section
     - Add doctor confirmation checkbox
     - Implement confirmation state management
     - Add voice selection dropdown
     - Reset confirmation on script edit
     - _Requirements: 4.1, 4.2, 8.1, 8.2, 8.3_
-  - [ ] 8.4 Add audio generation section
+  - [x] 8.4 Add audio generation section
     - Add "Generate Audio" button (disabled until confirmed)
     - Implement loading state during generation
     - Display audio player on success
     - Display audio URL
     - Handle generation errors
     - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
-  - [ ] 8.5 Add audio history section
+  - [x] 8.5 Add audio history section
     - Display list of previously generated audio files
     - Implement audio selection to load into player
     - _Requirements: 6.1, 6.2, 6.3_
 
-- [ ] 9. Checkpoint - Ensure all tests pass
+- [x] 9. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 10. Write integration property tests
-  - [ ] 10.1 Write property test for document selection
+- [x] 10. Write integration property tests
+  - [x] 10.1 Write property test for document selection
     - **Property 1: Document Selection Displays All Available Documents**
     - **Validates: Requirements 1.1**
-  - [ ] 10.2 Write property test for content display
+  - [x] 10.2 Write property test for content display
     - **Property 2: Selected Document Content Display**
     - **Validates: Requirements 1.2**
-  - [ ] 10.3 Write property test for script reset
+  - [x] 10.3 Write property test for script reset
     - **Property 7: Script Reset Restoration**
     - **Validates: Requirements 3.3**
-  - [ ] 10.4 Write property test for audio selection
+  - [x] 10.4 Write property test for audio selection
     - **Property 10: Audio Selection Loads Player**
     - **Validates: Requirements 6.3**
-  - [ ] 10.5 Write property test for confirmation workflow
+  - [x] 10.5 Write property test for confirmation workflow
     - **Property 11: Confirmation Required for Audio Generation**
     - **Property 12: Edit Invalidates Confirmation**
     - **Validates: Requirements 8.1, 8.2, 8.3**
 
-- [ ] 11. Final Checkpoint - Ensure all tests pass
+- [x] 11. Final Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
