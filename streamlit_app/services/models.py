@@ -107,3 +107,33 @@ class AgentConfig:
     elevenlabs_agent_id: str
     doctor_id: str
     created_at: datetime
+
+
+@dataclass
+class PatientSession:
+    """Patient session data class."""
+
+    session_id: str
+    patient_id: str
+    agent_id: str
+    signed_url: str
+    created_at: datetime
+
+
+@dataclass
+class ConversationMessage:
+    """Conversation message data class."""
+
+    role: str  # 'patient' or 'agent'
+    content: str
+    timestamp: datetime
+    audio_data: Optional[str] = None  # Base64 encoded audio for agent responses
+
+
+@dataclass
+class ConversationResponse:
+    """Conversation response data class."""
+
+    response_text: str
+    audio_data: Optional[str]
+    timestamp: datetime

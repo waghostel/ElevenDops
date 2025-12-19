@@ -196,3 +196,41 @@ class AgentListResponse(BaseModel):
 
     agents: List[AgentResponse] = Field(..., description="List of agents")
     total_count: int = Field(..., ge=0, description="Total number of agents")
+
+
+class PatientSessionCreate(BaseModel):
+    """Request to create a patient session."""
+
+    patient_id: str = Field(..., pattern=r'^[a-zA-Z0-9]+$', description="Patient ID (alphanumeric only)")
+    agent_id: str = Field(..., description="ID of the agent to converse with")
+
+
+class PatientSessionResponse(BaseModel):
+    """Response after creating a session."""
+
+    session_id: str = Field(..., description="Unique session ID")
+    patient_id: str = Field(..., description="Patient ID")
+    agent_id: str = Field(..., description="Agent ID")
+    signed_url: str = Field(..., description="Signed URL for WebSocket connection")
+    created_at: datetime = Field(..., description="Creation timestamp")
+
+
+class PatientMessageRequest(BaseModel):
+    """Request to send a message."""
+
+    message: str = Field(..., min_length=1, max_length=2000, description="Message content")
+
+
+class PatientMessageResponse(BaseModel):
+    """Response after sending a message."""
+
+    response_text: str = Field(..., description="Text response from agent")
+    audio_data: Optional[str] = Field(None, description="Base64 encoded audio data")
+    timestamp: datetime = Field(..., description="Response timestamp")
+
+
+class SessionEndResponse(BaseModel):
+    """Response after ending a session."""
+
+    success: bool = Field(..., description="Whether the session ended successfully")
+    conversation_summary: Optional[dict] = Field(None, description="Summary of the conversation")

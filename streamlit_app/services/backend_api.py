@@ -22,6 +22,8 @@ from streamlit_app.services.models import (
     AudioResponse,
     VoiceOption,
     AgentConfig,
+    PatientSession,
+    ConversationResponse,
 )
 
 # Default configuration
@@ -488,6 +490,92 @@ class BackendAPIClient:
         except httpx.HTTPStatusError as e:
             raise APIError(
                 message=f"Failed to delete agent: {e.response.text}",
+                status_code=e.response.status_code,
+            ) from e
+
+    async def create_patient_session(self, patient_id: str, agent_id: str) -> PatientSession:
+        """Create a new patient conversation session.
+
+        Args:
+            patient_id: Patient ID.
+            agent_id: Valid Agent ID.
+
+        Returns:
+            PatientSession object with signed URL.
+        """
+        try:
+            payload = {"patient_id": patient_id, "agent_id": agent_id}
+            async with self._get_client() as client:
+                response = await client.post("/api/patient/session", json=payload)
+                response.raise_for_status()
+                data = response.json()
+                return PatientSession(
+                    session_id=data["session_id"],
+                    patient_id=data["patient_id"],
+                    agent_id=data["agent_id"],
+                    signed_url=data["signed_url"],
+                    created_at=datetime.fromisoformat(data["created_at"]),
+                )
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Failed to create session: {e.response.text}",
+                status_code=e.response.status_code,
+            ) from e
+
+    async def send_patient_message(
+        self, session_id: str, message: str
+    ) -> ConversationResponse:
+        """Send a message to the agent.
+
+        Args:
+            session_id: Active session ID.
+            message: Message content.
+
+        Returns:
+            ConversationResponse with text and audio.
+        """
+        try:
+            payload = {"message": message}
+            async with self._get_client() as client:
+                response = await client.post(
+                    f"/api/patient/session/{session_id}/message", json=payload
+                )
+                response.raise_for_status()
+                data = response.json()
+                return ConversationResponse(
+                    response_text=data["response_text"],
+                    audio_data=data.get("audio_data"),
+                    timestamp=datetime.fromisoformat(data["timestamp"]),
+                )
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Failed to send message: {e.response.text}",
+                status_code=e.response.status_code,
+            ) from e
+
+    async def end_patient_session(self, session_id: str) -> bool:
+        """End a patient session.
+
+        Args:
+            session_id: Session ID to end.
+
+        Returns:
+            True if successful.
+        """
+        try:
+            async with self._get_client() as client:
+                response = await client.post(f"/api/patient/session/{session_id}/end")
+                response.raise_for_status()
+                return response.json()["success"]
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Failed to end session: {e.response.text}",
                 status_code=e.response.status_code,
             ) from e
 

@@ -13,6 +13,8 @@ from backend.models.schemas import (
     DashboardStatsResponse,
     KnowledgeDocumentCreate,
     KnowledgeDocumentResponse,
+    PatientSessionCreate,
+    PatientSessionResponse,
     SyncStatus,
     DocumentType,
 )
@@ -51,6 +53,23 @@ class DataServiceProtocol(Protocol):
         """Delete a knowledge document."""
         ...
 
+    async def create_patient_session(
+        self, session: PatientSessionResponse
+    ) -> PatientSessionResponse:
+        """Create a new patient session."""
+        ...
+
+    async def get_patient_session(
+        self, session_id: str
+    ) -> Optional[PatientSessionResponse]:
+        """Get a patient session by ID."""
+        ...
+
+    # Optional: Update session if we need to store state (e.g. ended status)
+    # For now, maybe just 'end_session'? 
+    # Let's keep it simple.
+
+
 
 class MockDataService:
     """Mock data service for development and testing.
@@ -61,6 +80,7 @@ class MockDataService:
     def __init__(self):
         """Initialize with empty in-memory storage."""
         self._documents: dict[str, KnowledgeDocumentResponse] = {}
+        self._sessions: dict[str, PatientSessionResponse] = {}
 
     def _parse_structured_sections(self, content: str) -> dict:
         """Parse markdown content into structured sections based on headers.
@@ -201,6 +221,19 @@ class MockDataService:
             del self._documents[knowledge_id]
             return True
         return False
+
+    async def create_patient_session(
+        self, session: PatientSessionResponse
+    ) -> PatientSessionResponse:
+        """Create a new patient session in memory."""
+        self._sessions[session.session_id] = session
+        return session
+
+    async def get_patient_session(
+        self, session_id: str
+    ) -> Optional[PatientSessionResponse]:
+        """Get a patient session by ID."""
+        return self._sessions.get(session_id)
 
 
 # Singleton instance to persist state across requests in mock mode
