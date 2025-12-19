@@ -10,9 +10,12 @@ from backend.models.schemas import (
     PatientSessionResponse,
     PatientMessageResponse,
     SessionEndResponse,
+    ConversationMessageSchema,
+    ConversationDetailSchema,
 )
 from backend.services.data_service import get_data_service
 from backend.services.elevenlabs_service import get_elevenlabs_service, ElevenLabsServiceError
+from backend.services.conversation_service import ConversationService
 from backend.services.data_service import DataServiceProtocol
 
 class PatientService:
@@ -21,16 +24,19 @@ class PatientService:
     def __init__(
         self,
         data_service: Optional[DataServiceProtocol] = None,
-        elevenlabs_service=None
+        elevenlabs_service=None,
+        conversation_service: Optional[ConversationService] = None,
     ):
         """Initialize the service.
         
         Args:
             data_service: Optional data service injection for testing.
             elevenlabs_service: Optional ElevenLabs service injection.
+            conversation_service: Optional conversation service injection.
         """
         self.data_service = data_service or get_data_service()
         self.elevenlabs_service = elevenlabs_service or get_elevenlabs_service()
+        self.conversation_service = conversation_service or ConversationService()
 
     async def create_session(self, request: PatientSessionCreate) -> PatientSessionResponse:
         """Create a new patient conversation session.
@@ -88,9 +94,26 @@ class PatientService:
             raise ValueError(f"Session {session_id} not found")
 
         # Send to ElevenLabs (or simulated agent)
+        
+        # Log patient message
+        patient_msg_obj = ConversationMessageSchema(
+            role="patient",
+            content=message,
+            timestamp=datetime.now()
+        )
+        await self.data_service.add_session_message(session_id, patient_msg_obj)
+        
         response_text, audio_bytes = self.elevenlabs_service.send_text_message(
             session.agent_id, message
         )
+        
+        # Log agent message
+        agent_msg_obj = ConversationMessageSchema(
+            role="agent",
+            content=response_text,
+            timestamp=datetime.now(),
+        )
+        await self.data_service.add_session_message(session_id, agent_msg_obj)
         
         # Convert audio bytes to base64 if needed by Schema?
         # Schema says `audio_data: Optional[str] = Field(None, description="Base64 encoded audio data")`
@@ -125,12 +148,54 @@ class PatientService:
         # Perform any cleanup or final stats update
         # await self.data_service.update_patient_session(session_id, ended=True)
         
+        messages = await self.data_service.get_session_messages(session_id)
+        
+        # Analyze conversation
+        answered = []
+        unanswered = []
+        
+        for i, msg in enumerate(messages):
+            if msg.role == 'patient' and '?' in msg.content:
+                # Check if next message is from agent
+                if i + 1 < len(messages) and messages[i+1].role == 'agent':
+                    answered.append(msg.content)
+                    msg.is_answered = True
+                else:
+                    unanswered.append(msg.content)
+                    msg.is_answered = False
+
+        requires_attention = len(unanswered) > 0
+        
+        # Duration calculation
+        duration = 0
+        if messages:
+            start = messages[0].timestamp
+            end = messages[-1].timestamp
+            duration = int((end - start).total_seconds())
+
+        # Save conversation log
+        if messages:
+            detail = ConversationDetailSchema(
+                conversation_id=session_id,
+                patient_id=session.patient_id,
+                agent_id=session.agent_id,
+                agent_name="Medical Assistant",
+                requires_attention=requires_attention,
+                main_concerns=[],
+                messages=messages,
+                answered_questions=answered,
+                unanswered_questions=unanswered,
+                duration_seconds=duration,
+                created_at=messages[0].timestamp
+            )
+            await self.conversation_service.save_conversation(detail)
+
         return SessionEndResponse(
             success=True,
             conversation_summary={
                 "session_id": session_id,
                 "patient_id": session.patient_id,
-                "duration": "N/A", # Placeholder
-                "message_count": 0 # Placeholder
+                "duration": f"{duration}s",
+                "message_count": len(messages)
             }
         )

@@ -23,7 +23,11 @@ from streamlit_app.services.models import (
     VoiceOption,
     AgentConfig,
     PatientSession,
+    PatientSession,
     ConversationResponse,
+    ConversationSummary,
+    ConversationDetail,
+    ConversationMessage,
 )
 
 # Default configuration
@@ -576,6 +580,121 @@ class BackendAPIClient:
         except httpx.HTTPStatusError as e:
             raise APIError(
                 message=f"Failed to end session: {e.response.text}",
+                status_code=e.response.status_code,
+            ) from e
+
+    async def get_conversation_logs(
+        self,
+        patient_id: Optional[str] = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        requires_attention_only: bool = False,
+    ) -> List[ConversationSummary]:
+        """Get conversation logs with filters.
+
+        Args:
+            patient_id: Optional patient ID filter.
+            start_date: Optional start date filter.
+            end_date: Optional end date filter.
+            requires_attention_only: Filter for attention required property.
+
+        Returns:
+            List of ConversationSummary objects.
+        """
+        try:
+            params = {}
+            if patient_id:
+                params["patient_id"] = patient_id
+            if start_date:
+                params["start_date"] = start_date.isoformat()
+            if end_date:
+                params["end_date"] = end_date.isoformat()
+            if requires_attention_only:
+                params["requires_attention_only"] = str(requires_attention_only).lower()
+
+            async with self._get_client() as client:
+                response = await client.get("/api/conversations/logs", params=params)
+                response.raise_for_status()
+                data = response.json()
+                
+                # Based on Schema: response is ConversationLogsResponseSchema { conversations: [...], stats: ... }
+                # We return the list of summaries for now, maybe in future we return the full response object
+                # But requirement says "List of ConversationSummary"
+                
+                conversations = []
+                for d in data["conversations"]:
+                    conversations.append(ConversationSummary(
+                        conversation_id=d["conversation_id"],
+                        patient_id=d["patient_id"],
+                        agent_id=d["agent_id"],
+                        agent_name=d["agent_name"],
+                        requires_attention=d["requires_attention"],
+                        main_concerns=d["main_concerns"],
+                        total_messages=d["total_messages"],
+                        answered_count=d["answered_count"],
+                        unanswered_count=d["unanswered_count"],
+                        duration_seconds=d["duration_seconds"],
+                        created_at=datetime.fromisoformat(d["created_at"])
+                    ))
+                return conversations
+                
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Failed to get conversation logs: {e.response.text}",
+                status_code=e.response.status_code,
+            ) from e
+
+    async def get_conversation_detail(self, conversation_id: str) -> ConversationDetail:
+        """Get conversation details.
+
+        Args:
+            conversation_id: ID of the conversation.
+
+        Returns:
+            ConversationDetail object.
+        """
+        try:
+            async with self._get_client() as client:
+                response = await client.get(f"/api/conversations/{conversation_id}")
+                response.raise_for_status()
+                d = response.json()
+                
+                messages = [
+                    ConversationMessage(
+                        role=m["role"],
+                        content=m["content"],
+                        timestamp=datetime.fromisoformat(m["timestamp"]), 
+                        # is_answered is not in ConversationMessage dataclass yet?
+                        # backend Schema has it. frontend generic dataclass ConversationMessage 
+                        # currently only has role, content, timestamp, audio_data.
+                        # We might need to map it or extend frontend dataclass if needed.
+                        # For now, map compatible fields.
+                    ) for m in d["messages"]
+                ]
+                
+                return ConversationDetail(
+                    conversation_id=d["conversation_id"],
+                    patient_id=d["patient_id"],
+                    agent_id=d["agent_id"],
+                    agent_name=d["agent_name"],
+                    requires_attention=d["requires_attention"],
+                    main_concerns=d["main_concerns"],
+                    total_messages=d["total_messages"],
+                    answered_count=d["answered_count"],
+                    unanswered_count=d["unanswered_count"],
+                    duration_seconds=d["duration_seconds"],
+                    created_at=datetime.fromisoformat(d["created_at"]),
+                    messages=messages,
+                    answered_questions=d["answered_questions"],
+                    unanswered_questions=d["unanswered_questions"]
+                )
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Failed to get conversation detail: {e.response.text}",
                 status_code=e.response.status_code,
             ) from e
 

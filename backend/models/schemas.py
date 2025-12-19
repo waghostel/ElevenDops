@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -234,3 +234,63 @@ class SessionEndResponse(BaseModel):
 
     success: bool = Field(..., description="Whether the session ended successfully")
     conversation_summary: Optional[dict] = Field(None, description="Summary of the conversation")
+
+
+class ConversationMessageSchema(BaseModel):
+    """Schema for a conversation message."""
+
+    role: Literal["patient", "agent"]
+    content: str
+    timestamp: datetime
+    is_answered: Optional[bool] = None
+
+
+class ConversationSummarySchema(BaseModel):
+    """Schema for conversation summary."""
+
+    conversation_id: str
+    patient_id: str
+    agent_id: str
+    agent_name: str
+    requires_attention: bool = False
+    main_concerns: List[str] = Field(default_factory=list)
+    total_messages: int = 0
+    answered_count: int = 0
+    unanswered_count: int = 0
+    duration_seconds: int = 0
+    created_at: datetime
+
+
+class ConversationDetailSchema(BaseModel):
+    """Schema for detailed conversation view."""
+
+    conversation_id: str
+    patient_id: str
+    agent_id: str
+    agent_name: str
+    requires_attention: bool = False
+    main_concerns: List[str] = Field(default_factory=list)
+    messages: List[ConversationMessageSchema] = Field(default_factory=list)
+    answered_questions: List[str] = Field(default_factory=list)
+    unanswered_questions: List[str] = Field(default_factory=list)
+    duration_seconds: int = 0
+    created_at: datetime
+
+
+class ConversationLogsResponseSchema(BaseModel):
+    """Schema for conversation logs response."""
+
+    conversations: List[ConversationSummarySchema]
+    total_count: int
+    attention_required_count: int
+    total_answered: int
+    total_unanswered: int
+
+
+class ConversationLogsQueryParams(BaseModel):
+    """Query parameters for filtering conversation logs."""
+
+    patient_id: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    requires_attention_only: bool = False

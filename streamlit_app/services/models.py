@@ -2,7 +2,8 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional, Dict
+from datetime import datetime
+from typing import Optional, Dict, List
 
 
 @dataclass
@@ -137,3 +138,29 @@ class ConversationResponse:
     response_text: str
     audio_data: Optional[str]
     timestamp: datetime
+
+
+@dataclass
+class ConversationSummary:
+    """Summary of a conversation log."""
+    
+    conversation_id: str
+    patient_id: str
+    agent_id: str
+    agent_name: str
+    requires_attention: bool
+    main_concerns: List[str]
+    total_messages: int
+    answered_count: int
+    unanswered_count: int
+    duration_seconds: int
+    created_at: datetime
+
+
+@dataclass
+class ConversationDetail(ConversationSummary):
+    """Detailed view of a conversation log."""
+    
+    messages: List[ConversationMessage]
+    answered_questions: List[str]
+    unanswered_questions: List[str]

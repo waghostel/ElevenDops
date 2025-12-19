@@ -11,6 +11,7 @@ from backend.api.routes.knowledge import router as knowledge_router
 from backend.api.routes.audio import router as audio_router
 from backend.api.routes.agent import router as agent_router
 from backend.api.routes.patient import router as patient_router
+from backend.api.routes.conversation import router as conversation_router
 
 # Application configuration
 APP_TITLE = "ElevenDops Backend API"
@@ -43,6 +44,7 @@ app.include_router(knowledge_router)
 app.include_router(audio_router)
 app.include_router(agent_router)
 app.include_router(patient_router, prefix="/api/patient", tags=["patient"])
+app.include_router(conversation_router, prefix="/api/conversations", tags=["conversations"])
 
 
 @app.get("/")

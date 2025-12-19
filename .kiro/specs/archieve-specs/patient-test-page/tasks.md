@@ -1,141 +1,141 @@
 # Implementation Plan
 
-- [ ] 1. Create backend data models for patient sessions
-  - [ ] 1.1 Add patient session schemas to backend/models/schemas.py
+- [x] 1. Create backend data models for patient sessions
+  - [x] 1.1 Add patient session schemas to backend/models/schemas.py
     - Add PatientSessionCreate, PatientSessionResponse, PatientMessageRequest, PatientMessageResponse, SessionEndResponse models
     - Include Patient_ID validation pattern (alphanumeric only)
     - _Requirements: 1.2, 4.4, 6.2_
-  - [ ] 1.2 Write property test for Patient_ID validation
+  - [x] 1.2 Write property test for Patient_ID validation
     - **Property 1: Patient ID Validation and Storage**
     - **Validates: Requirements 1.2, 1.4**
 
-- [ ] 2. Create patient service in backend
-  - [ ] 2.1 Create backend/services/patient_service.py
+- [x] 2. Create patient service in backend
+  - [x] 2.1 Create backend/services/patient_service.py
     - Implement PatientService class with session management
     - Add create_session method to get signed URL from ElevenLabs
     - Add send_message method to handle text-to-agent communication
     - Add end_session method to close session and collect data
     - _Requirements: 4.1, 4.2, 4.4, 6.2_
-  - [ ] 2.2 Write property test for message round trip
+  - [x] 2.2 Write property test for message round trip
     - **Property 5: Message Round Trip**
     - **Validates: Requirements 4.4**
 
-- [ ] 3. Add ElevenLabs conversation methods to elevenlabs_service.py
-  - [ ] 3.1 Add get_signed_url method for secure WebSocket URL
+- [x] 3. Add ElevenLabs conversation methods to elevenlabs_service.py
+  - [x] 3.1 Add get_signed_url method for secure WebSocket URL
     - Implement signed URL retrieval for agent conversations
     - _Requirements: 4.1_
-  - [ ] 3.2 Add send_text_message method for text-based conversation
+  - [x] 3.2 Add send_text_message method for text-based conversation
     - Implement text input to agent with audio response
     - Return both text transcript and audio bytes
     - _Requirements: 4.4, 4.5_
 
-- [ ] 4. Create patient API routes
-  - [ ] 4.1 Create backend/api/routes/patient.py
+- [x] 4. Create patient API routes
+  - [x] 4.1 Create backend/api/routes/patient.py
     - POST /api/patient/session - Create new session
     - POST /api/patient/session/{session_id}/message - Send message
     - POST /api/patient/session/{session_id}/end - End session
     - _Requirements: 4.1, 4.4, 6.2_
-  - [ ] 4.2 Register patient routes in backend/main.py
+  - [x] 4.2 Register patient routes in backend/main.py
     - Add patient router to FastAPI app
     - _Requirements: 4.1_
 
-- [ ] 5. Checkpoint - Ensure all backend tests pass
+- [x] 5. Checkpoint - Ensure all backend tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Create frontend data models
-  - [ ] 6.1 Add patient models to streamlit_app/services/models.py
+- [x] 6. Create frontend data models
+  - [x] 6.1 Add patient models to streamlit_app/services/models.py
     - Add ConversationMessage, PatientSession, ConversationResponse dataclasses
     - _Requirements: 5.2, 5.3_
-  - [ ] 6.2 Write property test for conversation history integrity
+  - [x] 6.2 Write property test for conversation history integrity
     - **Property 6: Conversation History Integrity**
     - **Validates: Requirements 5.2, 5.3**
 
-- [ ] 7. Add patient API methods to backend_api.py
-  - [ ] 7.1 Add create_patient_session method
+- [x] 7. Add patient API methods to backend_api.py
+  - [x] 7.1 Add create_patient_session method
     - Call POST /api/patient/session
     - Return PatientSession object
     - _Requirements: 4.1, 4.2_
-  - [ ] 7.2 Add send_patient_message method
+  - [x] 7.2 Add send_patient_message method
     - Call POST /api/patient/session/{session_id}/message
     - Return ConversationResponse with text and audio
     - _Requirements: 4.4_
-  - [ ] 7.3 Add end_patient_session method
+  - [x] 7.3 Add end_patient_session method
     - Call POST /api/patient/session/{session_id}/end
     - Return success status
     - _Requirements: 6.2_
-  - [ ] 7.4 Write property test for error logging without UI exposure
+  - [x] 7.4 Write property test for error logging without UI exposure
     - **Property 8: Error Logging Without UI Exposure**
     - **Validates: Requirements 7.4**
 
-- [ ] 8. Create Patient Test Streamlit page
-  - [ ] 8.1 Create streamlit_app/pages/5_Patient_Test.py with page config
+- [x] 8. Create Patient Test Streamlit page
+  - [x] 8.1 Create streamlit_app/pages/5_Patient_Test.py with page config
     - Set page title "病患測試" (Patient Test)
     - Set page icon and layout
     - Initialize session state variables
     - _Requirements: 1.1_
-  - [ ] 8.2 Implement Patient ID input section
+  - [x] 8.2 Implement Patient ID input section
     - Add text input for Patient_ID
     - Implement validation (alphanumeric, non-empty)
     - Store valid ID in session state
     - Display error for invalid input in Traditional Chinese
     - _Requirements: 1.1, 1.2, 1.3, 1.4_
-  - [ ] 8.3 Write property test for agent display information
+  - [x] 8.3 Write property test for agent display information
     - **Property 2: Agent Display Contains Required Information**
     - **Validates: Requirements 2.2**
-  - [ ] 8.4 Implement agent selection section
+  - [x] 8.4 Implement agent selection section
     - Fetch agents from backend API
     - Display agent list with name and knowledge area
     - Handle empty agent list with informative message
     - Store selected agent in session state
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
-  - [ ] 8.5 Write property test for agent selection storage
+  - [x] 8.5 Write property test for agent selection storage
     - **Property 3: Agent Selection Storage**
     - **Validates: Requirements 2.4**
 
-- [ ] 9. Implement education audio section
-  - [ ] 9.1 Add education audio playback UI
+- [x] 9. Implement education audio section
+  - [x] 9.1 Add education audio playback UI
     - Fetch audio files for selected agent's knowledge documents
     - Display audio player for each file
     - Handle no audio available case
     - _Requirements: 3.1, 3.2, 3.3, 3.4_
-  - [ ] 9.2 Write property test for audio files rendering
+  - [x] 9.2 Write property test for audio files rendering
     - **Property 4: Audio Files Rendered with Players**
     - **Validates: Requirements 3.2**
 
-- [ ] 10. Implement conversation section
-  - [ ] 10.1 Add conversation start functionality
+- [x] 10. Implement conversation section
+  - [x] 10.1 Add conversation start functionality
     - Add "Start Conversation" button
     - Call backend to create session and get signed URL
     - Update session state with active conversation
     - _Requirements: 4.1, 4.2_
-  - [ ] 10.2 Implement message input and display
+  - [x] 10.2 Implement message input and display
     - Add text input for patient questions
     - Display conversation history with role distinction
     - Show patient messages and agent responses differently
     - _Requirements: 4.3, 5.1, 5.2, 5.3_
-  - [ ] 10.3 Implement message sending and audio response
+  - [x] 10.3 Implement message sending and audio response
     - Send message to backend on submit
     - Receive and display agent text response
     - Play audio response using st.audio
     - Append messages to conversation history
     - _Requirements: 4.4, 4.5, 5.2_
-  - [ ] 10.4 Implement end conversation functionality
+  - [x] 10.4 Implement end conversation functionality
     - Add "End Conversation" button
     - Call backend to end session
     - Display confirmation message
     - Reset conversation state, preserve Patient_ID
     - _Requirements: 6.1, 6.2, 6.3, 6.4_
-  - [ ] 10.5 Write property test for session end state management
+  - [x] 10.5 Write property test for session end state management
     - **Property 7: Session End State Management**
     - **Validates: Requirements 6.4**
 
-- [ ] 11. Implement error handling
-  - [ ] 11.1 Add comprehensive error handling to all API calls
+- [x] 11. Implement error handling
+  - [x] 11.1 Add comprehensive error handling to all API calls
     - Wrap all backend calls in try-except
     - Display user-friendly errors in Traditional Chinese
     - Log detailed errors for debugging
     - Implement retry functionality where appropriate
     - _Requirements: 7.1, 7.2, 7.3, 7.4_
 
-- [ ] 12. Final Checkpoint - Ensure all tests pass
+- [x] 12. Final Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.

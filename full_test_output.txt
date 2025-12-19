@@ -1,0 +1,180 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.0, pytest-8.4.2, pluggy-1.6.0
+rootdir: C:\Users\Cheney\Documents\Github\ElevenDops
+configfile: pyproject.toml
+plugins: anyio-4.12.0, hypothesis-6.148.7, asyncio-0.24.0
+asyncio: mode=Mode.AUTO, default_loop_scope=None
+collected 104 items
+
+tests\properties\test_frontend_api_props.py .                            [  0%]
+tests\properties\test_frontend_patient_props.py .                        [  1%]
+tests\properties\test_patient_page_props.py ..s                          [  4%]
+tests\properties\test_patient_service_props.py .                         [  5%]
+tests\properties\test_patient_test_props.py ..                           [  7%]
+tests\test_agent_schemas_props.py ...                                    [ 10%]
+tests\test_agent_service_props.py ....                                   [ 14%]
+tests\test_agent_setup_props.py ..                                       [ 16%]
+tests\test_audio_api_props.py ..                                         [ 18%]
+tests\test_audio_schemas_props.py .....                                  [ 23%]
+tests\test_audio_service_props.py ..                                     [ 25%]
+tests\test_backend_api_props.py ..............                           [ 38%]
+tests\test_config_props.py ...................                           [ 56%]
+tests\test_conversation_logs_props.py ......                             [ 62%]
+tests\test_education_audio_integration.py ..F.                           [ 66%]
+tests\test_elevenlabs_service_props.py ....                              [ 70%]
+tests\test_elevenlabs_tts_props.py .                                     [ 71%]
+tests\test_endpoints_props.py .........                                  [ 79%]
+tests\test_frontend_api_props.py .                                       [ 80%]
+tests\test_knowledge_api_props.py ...                                    [ 83%]
+tests\test_knowledge_models_props.py ....                                [ 87%]
+tests\test_knowledge_validation_props.py ..                              [ 89%]
+tests\test_models_props.py ...........                                   [100%]
+
+================================== FAILURES ===================================
+_________________________ test_audio_generation_flow __________________________
+
+mock_client = <MagicMock id='2312391388496'>
+
+    def test_audio_generation_flow(mock_client):
+        """Test selecting a voice and generating audio."""
+        with patch("streamlit_app.services.backend_api.get_backend_client", return_value=mock_client):
+            at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py")
+            at.run()
+    
+            # 1. Select Document
+            at.selectbox[0].select_index(0).run()
+    
+            # 2. Generate Script
+            at.button(key="generate_script_btn").click().run()
+    
+            # 3. Select Voice
+            # Voice selector should now be visible (index 1)
+            assert not at.error, f"Errors: {[e.value for e in at.error]}"
+            assert not at.warning, f"Warnings: {[w.value for w in at.warning]}"
+    
+            assert len(at.selectbox) >= 2
+            # "Rachel" is at index 0 of the voices list (mocked)
+            at.selectbox[1].select("Rachel").run()
+    
+            # 4. Generate Audio
+>           audio_btn = at.button(key="generate_audio_btn")
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\test_education_audio_integration.py:122: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = WidgetList(_list=[Button(key='generate_script_btn', label='\u2728 Generate Script')])
+key = 'generate_audio_btn'
+
+    def __call__(self, key: str) -> W_co:
+        for e in self._list:
+            if e.key == key:
+                return e
+    
+>       raise KeyError(key)
+E       KeyError: 'generate_audio_btn'
+
+..\..\..\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\testing\v1\element_tree.py:258: KeyError
+---------------------------- Captured stderr call -----------------------------
+2025-12-19 14:05:24.050 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-19 14:05:24.105 Uncaught app execution
+Traceback (most recent call last):
+  File "C:\Users\Cheney\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\runtime\memory_media_file_storage.py", line 164, in _read_file
+    with open(filename, "rb") as f:
+         ^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'url'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Cheney\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\runtime\scriptrunner\exec_code.py", line 129, in exec_func_with_error_handling
+    result = func()
+             ^^^^^^
+  File "C:\Users\Cheney\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\runtime\scriptrunner\script_runner.py", line 671, in code_to_exec
+    exec(code, module.__dict__)  # noqa: S102
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Cheney\Documents\Github\ElevenDops\streamlit_app\pages\3_Education_Audio.py", line 238, in <module>
+    asyncio.run(main())
+  File "C:\Users\Cheney\AppData\Local\Programs\Python\Python311\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Cheney\AppData\Local\Programs\Python\Python311\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Cheney\AppData\Local\Programs\Python\Python311\Lib\asyncio\base_events.py", line 650, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "C:\Users\Cheney\Documents\Github\ElevenDops\streamlit_app\pages\3_Education_Audio.py", line 232, in main
+    await render_audio_generation()
+  File "C:\Users\Cheney\Documents\Github\ElevenDops\streamlit_app\pages\3_Education_Audio.py", line 183, in render_audio_generation
+    st.audio(selected_voice.preview_url, format="audio/mpeg")
+  File "C:\Users\Cheney\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\runtime\metrics_util.py", line 531, in wrapped_func
+    result = non_optional_func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Cheney\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\elements\media.py", line 209, in audio
+    marshall_audio(
+  File "C:\Users\Cheney\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\elements\media.py", line 826, in marshall_audio
+    _marshall_av_media(coordinates, proto, data, mimetype)
+  File "C:\Users\Cheney\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\elements\media.py", line 488, in _marshall_av_media
+    file_url = runtime.get_instance().media_file_mgr.add(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Cheney\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\runtime\media_file_manager.py", line 277, in add
+    file_id = self._storage.load_and_get_id(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Cheney\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\runtime\memory_media_file_storage.py", line 114, in load_and_get_id
+    self._read_file(path_or_data)
+  File "C:\Users\Cheney\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\runtime\memory_media_file_storage.py", line 167, in _read_file
+    raise MediaFileStorageError(f"Error opening '{filename}'") from ex
+streamlit.runtime.media_file_storage.MediaFileStorageError: Error opening 'url'
+2025-12-19 14:05:24.130 Uncaught app execution
+Traceback (most recent call last):
+  File "C:\Users\Cheney\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\runtime\memory_media_file_storage.py", line 164, in _read_file
+    with open(filename, "rb") as f:
+         ^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'url'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\Cheney\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\runtime\scriptrunner\exec_code.py", line 129, in exec_func_with_error_handling
+    result = func()
+             ^^^^^^
+  File "C:\Users\Cheney\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\runtime\scriptrunner\script_runner.py", line 671, in code_to_exec
+    exec(code, module.__dict__)  # noqa: S102
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Cheney\Documents\Github\ElevenDops\streamlit_app\pages\3_Education_Audio.py", line 238, in <module>
+    asyncio.run(main())
+  File "C:\Users\Cheney\AppData\Local\Programs\Python\Python311\Lib\asyncio\runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\Cheney\AppData\Local\Programs\Python\Python311\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Cheney\AppData\Local\Programs\Python\Python311\Lib\asyncio\base_events.py", line 650, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "C:\Users\Cheney\Documents\Github\ElevenDops\streamlit_app\pages\3_Education_Audio.py", line 232, in main
+    await render_audio_generation()
+  File "C:\Users\Cheney\Documents\Github\ElevenDops\streamlit_app\pages\3_Education_Audio.py", line 183, in render_audio_generation
+    st.audio(selected_voice.preview_url, format="audio/mpeg")
+  File "C:\Users\Cheney\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\runtime\metrics_util.py", line 531, in wrapped_func
+    result = non_optional_func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Cheney\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\elements\media.py", line 209, in audio
+    marshall_audio(
+  File "C:\Users\Cheney\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\elements\media.py", line 826, in marshall_audio
+    _marshall_av_media(coordinates, proto, data, mimetype)
+  File "C:\Users\Cheney\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\elements\media.py", line 488, in _marshall_av_media
+    file_url = runtime.get_instance().media_file_mgr.add(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Cheney\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\runtime\media_file_manager.py", line 277, in add
+    file_id = self._storage.load_and_get_id(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Cheney\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\runtime\memory_media_file_storage.py", line 114, in load_and_get_id
+    self._read_file(path_or_data)
+  File "C:\Users\Cheney\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\runtime\memory_media_file_storage.py", line 167, in _read_file
+    raise MediaFileStorageError(f"Error opening '{filename}'") from ex
+streamlit.runtime.media_file_storage.MediaFileStorageError: Error opening 'url'
+=========================== short test summary info ===========================
+FAILED tests/test_education_audio_integration.py::test_audio_generation_flow
+================== 1 failed, 102 passed, 1 skipped in 27.97s ==================

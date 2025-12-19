@@ -76,7 +76,7 @@
 - 商業邏輯判斷與處理
 
 #### 1.2.3 架構設計考量
-即使在 Phase 1 階段將 API 功能與 Streamlit 置於同一程式庫中，程式結構仍須保持模組化分離設計，以利後續系統擴展。
+Phase 1 階段將 API 功能與 Streamlit 置於同一程式庫中，採用清晰的程式結構設計，便於團隊協作與程式碼維護。
 
 ---
 
@@ -148,9 +148,9 @@
 - agent_id：智能代理識別碼
 
 #### 3.2.3 資料架構設計原則
-- Firestore 作為主要資料來源
-- ElevenLabs Knowledge Base 僅儲存參考資料
-- Firestore 維護 elevenlabs_document_id 對應關係
+- Firestore 儲存系統管理資料（醫生設定、病患記錄、元資料）
+- ElevenLabs Knowledge Base 儲存 AI 對話所需的知識內容
+- Firestore 維護 elevenlabs_document_id 對應關係，確保資料一致性
 
 ---
 
@@ -312,9 +312,9 @@ firestore_data = {
 #### 6.2.2 知識庫同步策略
 
 **資料流向設計：**
-- **主要資料源**: Firestore (raw_markdown, structured_sections)
-- **ElevenLabs 副本**: 僅儲存 Agent 查詢所需的處理後內容
-- **同步觸發**: 醫生執行「儲存並同步」操作時
+- **Firestore**: 儲存原始文件與結構化資料 (raw_markdown, structured_sections)
+- **ElevenLabs Knowledge Base**: 儲存 Agent 對話查詢所需的知識內容
+- **同步觸發**: 醫生執行「儲存並同步」操作時，確保兩端資料一致
 
 **錯誤處理機制：**
 - 同步失敗時保留 Firestore 原始資料
@@ -614,21 +614,21 @@ def robust_api_call(api_function, *args, **kwargs):
 #### 6.9.2 技術債務管理
 - 預留完整 WebSocket 語音串流實作空間
 - 保持 API 介面設計的擴展性
-- 確保所有 ElevenLabs 整合模組可獨立測試與部署
+- 建立完善的測試機制確保系統穩定性
 
 ---
 
 ## 7. Phase 1 設計原則總結
 
 ### 7.1 核心設計原則
-- **Firestore**: 系統主要資料庫
-- **ElevenLabs Knowledge Base**: 智能代理專用資料副本
+- **Firestore**: 系統管理資料庫（使用者設定、對話記錄、元資料）
+- **ElevenLabs Knowledge Base**: AI 對話知識庫
 - **Streamlit**: 使用者介面層，不包含業務邏輯
 - **Backend API**: 核心產品邏輯層
 - **架構擴展性**: 所有模組設計支援未來 React/Next.js 框架整合
 
 ### 7.2 ElevenLabs 整合策略
-- **API 封裝**: 所有 ElevenLabs API 呼叫封裝於 services/elevenlabs.py
+- **服務整合**: ElevenLabs API 呼叫統一管理於 services/elevenlabs.py
 - **錯誤處理**: 實作完整的重試機制與降級策略  
 - **安全性**: 使用簽名 URL 與環境變數管理敏感資訊
 - **監控**: 整合使用量追蹤與成本控制機制

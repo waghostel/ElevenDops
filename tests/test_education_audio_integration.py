@@ -30,8 +30,8 @@ MOCK_DOCS = [
 ]
 
 MOCK_VOICES = [
-    VoiceOption(voice_id="v1", name="Rachel", description="American, calm", preview_url="url"),
-    VoiceOption(voice_id="v2", name="Drew", description="British, news", preview_url="url"),
+    VoiceOption(voice_id="v1", name="Rachel", description="American, calm", preview_url="https://example.com/preview1.mp3"),
+    VoiceOption(voice_id="v2", name="Drew", description="British, news", preview_url="https://example.com/preview2.mp3"),
 ]
 
 MOCK_SCRIPT = ScriptResponse(

@@ -17,6 +17,9 @@ from backend.models.schemas import (
     PatientSessionResponse,
     SyncStatus,
     DocumentType,
+    ConversationSummarySchema,
+    ConversationDetailSchema,
+    ConversationMessageSchema,
 )
 
 
@@ -65,6 +68,40 @@ class DataServiceProtocol(Protocol):
         """Get a patient session by ID."""
         ...
 
+    async def add_session_message(
+        self, session_id: str, message: ConversationMessageSchema
+    ) -> None:
+        """Add a message to a session."""
+        ...
+
+    async def get_session_messages(
+        self, session_id: str
+    ) -> List[ConversationMessageSchema]:
+        """Get messages for a session."""
+        ...
+
+    async def save_conversation(
+        self, conversation: ConversationDetailSchema
+    ) -> ConversationDetailSchema:
+        """Save a conversation."""
+        ...
+
+    async def get_conversation_logs(
+        self,
+        patient_id: Optional[str] = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        requires_attention_only: bool = False,
+    ) -> List[ConversationSummarySchema]:
+        """Get conversation logs with filters."""
+        ...
+
+    async def get_conversation_detail(
+        self, conversation_id: str
+    ) -> Optional[ConversationDetailSchema]:
+        """Get a specific conversation by ID."""
+        ...
+
     # Optional: Update session if we need to store state (e.g. ended status)
     # For now, maybe just 'end_session'? 
     # Let's keep it simple.
@@ -81,6 +118,8 @@ class MockDataService:
         """Initialize with empty in-memory storage."""
         self._documents: dict[str, KnowledgeDocumentResponse] = {}
         self._sessions: dict[str, PatientSessionResponse] = {}
+        self._conversation_details: dict[str, ConversationDetailSchema] = {}
+        self._session_messages: dict[str, List[ConversationMessageSchema]] = {}
 
     def _parse_structured_sections(self, content: str) -> dict:
         """Parse markdown content into structured sections based on headers.
@@ -234,6 +273,77 @@ class MockDataService:
     ) -> Optional[PatientSessionResponse]:
         """Get a patient session by ID."""
         return self._sessions.get(session_id)
+
+    async def add_session_message(
+        self, session_id: str, message: ConversationMessageSchema
+    ) -> None:
+        """Add a message to a session in memory."""
+        if session_id not in self._session_messages:
+            self._session_messages[session_id] = []
+        self._session_messages[session_id].append(message)
+
+    async def get_session_messages(
+        self, session_id: str
+    ) -> List[ConversationMessageSchema]:
+        """Get messages for a session from memory."""
+        return self._session_messages.get(session_id, [])
+
+    async def save_conversation(
+        self, conversation: ConversationDetailSchema
+    ) -> ConversationDetailSchema:
+        """Save a conversation in memory."""
+        self._conversation_details[conversation.conversation_id] = conversation
+        return conversation
+
+    async def get_conversation_logs(
+        self,
+        patient_id: Optional[str] = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        requires_attention_only: bool = False,
+    ) -> List[ConversationSummarySchema]:
+        """Get conversation logs from memory with filters."""
+        results = []
+        for conv in self._conversation_details.values():
+            # Filters
+            if patient_id and patient_id.lower() not in conv.patient_id.lower():
+                continue
+            
+            # Date filtering
+            # Assuming created_at is aware if start_date/end_date are, or both naive.
+            # Usually we might need to be careful with timezone mixed types.
+            if start_date and conv.created_at < start_date:
+                continue
+            if end_date and conv.created_at > end_date:
+                continue
+                
+            if requires_attention_only and not conv.requires_attention:
+                continue
+
+            summary = ConversationSummarySchema(
+                conversation_id=conv.conversation_id,
+                patient_id=conv.patient_id,
+                agent_id=conv.agent_id,
+                agent_name=conv.agent_name,
+                requires_attention=conv.requires_attention,
+                main_concerns=conv.main_concerns,
+                total_messages=len(conv.messages),
+                answered_count=len(conv.answered_questions),
+                unanswered_count=len(conv.unanswered_questions),
+                duration_seconds=conv.duration_seconds,
+                created_at=conv.created_at,
+            )
+            results.append(summary)
+            
+        # Sort by created_at descending
+        results.sort(key=lambda x: x.created_at, reverse=True)
+        return results
+
+    async def get_conversation_detail(
+        self, conversation_id: str
+    ) -> Optional[ConversationDetailSchema]:
+        """Get a specific conversation by ID."""
+        return self._conversation_details.get(conversation_id)
 
 
 # Singleton instance to persist state across requests in mock mode
