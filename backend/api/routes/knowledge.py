@@ -11,7 +11,7 @@ from backend.models.schemas import (
     SyncStatus,
     ErrorResponse,
 )
-from backend.services.data_service import get_data_service, DataServiceProtocol
+from backend.services.data_service import get_data_service, DataServiceInterface
 from backend.services.elevenlabs_service import (
     get_elevenlabs_service,
     ElevenLabsService,
@@ -26,7 +26,7 @@ async def sync_knowledge_to_elevenlabs(
     knowledge_id: str,
     content: str,
     name: str,
-    data_service: DataServiceProtocol,
+    data_service: DataServiceInterface,
     elevenlabs_service: ElevenLabsService,
 ):
     """Background task to sync document to ElevenLabs."""
@@ -60,7 +60,7 @@ async def sync_knowledge_to_elevenlabs(
 async def create_knowledge_document(
     doc: KnowledgeDocumentCreate,
     background_tasks: BackgroundTasks,
-    data_service: Annotated[DataServiceProtocol, Depends(get_data_service)],
+    data_service: Annotated[DataServiceInterface, Depends(get_data_service)],
     elevenlabs_service: Annotated[ElevenLabsService, Depends(get_elevenlabs_service)],
 ):
     """Create a new knowledge document and sync to ElevenLabs.
@@ -97,7 +97,7 @@ async def create_knowledge_document(
 
 @router.get("", response_model=KnowledgeDocumentListResponse)
 async def list_knowledge_documents(
-    data_service: Annotated[DataServiceProtocol, Depends(get_data_service)],
+    data_service: Annotated[DataServiceInterface, Depends(get_data_service)],
 ):
     """List all knowledge documents."""
     documents = await data_service.get_knowledge_documents()
@@ -111,7 +111,7 @@ async def list_knowledge_documents(
 )
 async def get_knowledge_document(
     knowledge_id: str,
-    data_service: Annotated[DataServiceProtocol, Depends(get_data_service)],
+    data_service: Annotated[DataServiceInterface, Depends(get_data_service)],
 ):
     """Get a specific knowledge document."""
     doc = await data_service.get_knowledge_document(knowledge_id)
@@ -130,7 +130,7 @@ async def get_knowledge_document(
 )
 async def delete_knowledge_document(
     knowledge_id: str,
-    data_service: Annotated[DataServiceProtocol, Depends(get_data_service)],
+    data_service: Annotated[DataServiceInterface, Depends(get_data_service)],
     elevenlabs_service: Annotated[ElevenLabsService, Depends(get_elevenlabs_service)],
 ):
     """Delete a knowledge document from database and ElevenLabs."""
@@ -171,7 +171,7 @@ async def delete_knowledge_document(
 async def retry_knowledge_sync(
     knowledge_id: str,
     background_tasks: BackgroundTasks,
-    data_service: Annotated[DataServiceProtocol, Depends(get_data_service)],
+    data_service: Annotated[DataServiceInterface, Depends(get_data_service)],
     elevenlabs_service: Annotated[ElevenLabsService, Depends(get_elevenlabs_service)],
 ):
     """Retry syncing a failed knowledge document."""

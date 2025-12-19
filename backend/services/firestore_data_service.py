@@ -1,0 +1,507 @@
+import logging
+from datetime import datetime
+from typing import List, Optional
+import uuid
+import re
+
+from google.cloud import firestore
+from google.cloud.firestore import SERVER_TIMESTAMP
+
+from backend.services.data_service import DataServiceInterface
+from backend.services.firestore_service import get_firestore_service
+from backend.models.schemas import (
+    DashboardStatsResponse,
+    KnowledgeDocumentCreate,
+    KnowledgeDocumentResponse,
+    PatientSessionResponse,
+    SyncStatus,
+    DocumentType,
+    ConversationSummarySchema,
+    ConversationDetailSchema,
+    ConversationMessageSchema,
+    AudioMetadata,
+    AgentResponse,
+    AnswerStyle,
+)
+
+logger = logging.getLogger(__name__)
+
+# Collection names as constants
+KNOWLEDGE_DOCUMENTS = "knowledge_documents"
+AUDIO_FILES = "audio_files"
+AGENTS = "agents"
+CONVERSATIONS = "conversations"
+PATIENT_SESSIONS = "patient_sessions"
+
+
+class FirestoreDataService(DataServiceInterface):
+    """Firestore implementation of the data service interface."""
+
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
+    def __init__(self):
+        if self._initialized:
+            return
+        
+        self._firestore = get_firestore_service()
+        self._db = self._firestore.db
+        self._initialized = True
+        logger.info("FirestoreDataService initialized")
+
+    # ==================== Helper Methods ====================
+    
+    def _doc_to_knowledge_response(self, doc_dict: dict) -> KnowledgeDocumentResponse:
+        """Convert Firestore document to KnowledgeDocumentResponse."""
+        return KnowledgeDocumentResponse(
+            knowledge_id=doc_dict["knowledge_id"],
+            doctor_id=doc_dict["doctor_id"],
+            disease_name=doc_dict["disease_name"],
+            document_type=DocumentType(doc_dict["document_type"]),
+            raw_content=doc_dict["raw_content"],
+            sync_status=SyncStatus(doc_dict["sync_status"]),
+            elevenlabs_document_id=doc_dict.get("elevenlabs_document_id"),
+            structured_sections=doc_dict.get("structured_sections"),
+            created_at=doc_dict["created_at"],
+        )
+
+    def _doc_to_audio_metadata(self, doc_dict: dict) -> AudioMetadata:
+        """Convert Firestore document to AudioMetadata."""
+        return AudioMetadata(
+            audio_id=doc_dict["audio_id"],
+            knowledge_id=doc_dict["knowledge_id"],
+            voice_id=doc_dict["voice_id"],
+            script=doc_dict["script"],
+            audio_url=doc_dict["audio_url"],
+            duration_seconds=doc_dict.get("duration_seconds"),
+            created_at=doc_dict["created_at"],
+        )
+
+    def _doc_to_agent_response(self, doc_dict: dict) -> AgentResponse:
+        """Convert Firestore document to AgentResponse."""
+        return AgentResponse(
+            agent_id=doc_dict["agent_id"],
+            name=doc_dict["name"],
+            knowledge_ids=doc_dict.get("knowledge_ids", []),
+            voice_id=doc_dict["voice_id"],
+            answer_style=AnswerStyle(doc_dict["answer_style"]),
+            elevenlabs_agent_id=doc_dict["elevenlabs_agent_id"],
+            doctor_id=doc_dict["doctor_id"],
+            created_at=doc_dict["created_at"],
+        )
+    
+    def _doc_to_patient_session_response(self, doc_dict: dict) -> PatientSessionResponse:
+        """Convert Firestore document to PatientSessionResponse."""
+        return PatientSessionResponse(
+            session_id=doc_dict["session_id"],
+            patient_id=doc_dict["patient_id"],
+            agent_id=doc_dict["agent_id"],
+            signed_url=doc_dict["signed_url"],
+            created_at=doc_dict["created_at"],
+        )
+
+    def _doc_to_conversation_detail(self, doc_dict: dict) -> ConversationDetailSchema:
+        """Convert Firestore document to ConversationDetailSchema."""
+        messages = [
+            ConversationMessageSchema(
+                role=m["role"],
+                content=m["content"],
+                timestamp=m["timestamp"],
+                is_answered=m.get("is_answered"),
+            )
+            for m in doc_dict.get("messages", [])
+        ]
+        return ConversationDetailSchema(
+            conversation_id=doc_dict["conversation_id"],
+            patient_id=doc_dict["patient_id"],
+            agent_id=doc_dict["agent_id"],
+            agent_name=doc_dict["agent_name"],
+            requires_attention=doc_dict.get("requires_attention", False),
+            main_concerns=doc_dict.get("main_concerns", []),
+            messages=messages,
+            answered_questions=doc_dict.get("answered_questions", []),
+            unanswered_questions=doc_dict.get("unanswered_questions", []),
+            duration_seconds=doc_dict.get("duration_seconds", 0),
+            created_at=doc_dict["created_at"],
+        )
+        
+    def _parse_structured_sections(self, content: str) -> dict:
+        """Parse markdown content into structured sections based on headers."""
+        sections = {}
+        matches = list(re.finditer(r'(^|\n)(?P<level>\s*#{1,6})\s(?P<title>.*)', content))
+        if not matches:
+             if content.strip():
+                 sections["content"] = content
+             return sections
+
+        for i, match in enumerate(matches):
+            current_start = match.start()
+            if i == 0:
+                intro = content[0:current_start].strip()
+                if intro:
+                    sections["Introduction"] = intro
+
+            header_title = match.group("title").strip()
+            match_end = match.end()
+            
+            if i + 1 < len(matches):
+                next_start = matches[i+1].start()
+                section_content = content[match_end:next_start].strip()
+            else:
+                section_content = content[match_end:].strip()
+            
+            if section_content:
+                sections[header_title] = section_content
+        return sections
+
+    # ==================== Dashboard ====================
+    async def get_dashboard_stats(self) -> DashboardStatsResponse:
+        """Get dashboard statistics using collection counts."""
+        try:
+            # Use aggregation queries for counts
+            # Note: The synchronous python client returns a list of AggregationResult
+            # which has a value property.
+            doc_count_query = self._db.collection(KNOWLEDGE_DOCUMENTS).count()
+            agent_count_query = self._db.collection(AGENTS).count()
+            audio_count_query = self._db.collection(AUDIO_FILES).count()
+            
+            # Execute queries
+            doc_snapshot = doc_count_query.get()
+            agent_snapshot = agent_count_query.get()
+            audio_snapshot = audio_count_query.get()
+            
+            doc_count = doc_snapshot[0][0].value
+            agent_count = agent_snapshot[0][0].value
+            audio_count = audio_snapshot[0][0].value
+            
+            last_activity = datetime.now()
+            
+            # Simple optimization: query most recent created_at from knowledge docs
+            docs = self._db.collection(KNOWLEDGE_DOCUMENTS).order_by("created_at", direction=firestore.Query.DESCENDING).limit(1).stream()
+            for d in docs:
+                last_activity = d.to_dict().get("created_at", last_activity)
+                
+            return DashboardStatsResponse(
+                document_count=doc_count,
+                agent_count=agent_count,
+                audio_count=audio_count,
+                last_activity=last_activity,
+            )
+        except Exception as e:
+            logger.error(f"Failed to get dashboard stats: {e}")
+            # Fallback
+            return DashboardStatsResponse(
+                document_count=0,
+                agent_count=0,
+                audio_count=0,
+                last_activity=datetime.now(),
+            )
+
+    # ==================== Knowledge Documents ====================
+    async def create_knowledge_document(
+        self, doc: KnowledgeDocumentCreate
+    ) -> KnowledgeDocumentResponse:
+        try:
+            knowledge_id = str(uuid.uuid4())
+            structured = self._parse_structured_sections(doc.raw_content)
+            
+            doc_data = {
+                "knowledge_id": knowledge_id,
+                "doctor_id": doc.doctor_id,
+                "disease_name": doc.disease_name,
+                "document_type": doc.document_type.value,
+                "raw_content": doc.raw_content,
+                "sync_status": SyncStatus.PENDING.value,
+                "elevenlabs_document_id": None,
+                "structured_sections": structured,
+                "created_at": SERVER_TIMESTAMP,
+            }
+            
+            self._db.collection(KNOWLEDGE_DOCUMENTS).document(knowledge_id).set(doc_data)
+            
+            # Approximate created_at for return since SERVER_TIMESTAMP is handled server-side
+            doc_data["created_at"] = datetime.now()
+            
+            return self._doc_to_knowledge_response(doc_data)
+        except Exception as e:
+            logger.error(f"Failed to create knowledge document: {e}")
+            raise
+
+    async def get_knowledge_documents(
+        self, doctor_id: Optional[str] = None
+    ) -> List[KnowledgeDocumentResponse]:
+        try:
+            ref = self._db.collection(KNOWLEDGE_DOCUMENTS)
+            if doctor_id:
+                ref = ref.where(filter=firestore.FieldFilter("doctor_id", "==", doctor_id))
+            
+            docs = ref.stream()
+            return [self._doc_to_knowledge_response(d.to_dict()) for d in docs]
+        except Exception as e:
+            logger.error(f"Failed to get knowledge documents: {e}")
+            return []
+
+    async def get_knowledge_document(
+        self, knowledge_id: str
+    ) -> Optional[KnowledgeDocumentResponse]:
+        try:
+            doc = self._db.collection(KNOWLEDGE_DOCUMENTS).document(knowledge_id).get()
+            if not doc.exists:
+                return None
+            return self._doc_to_knowledge_response(doc.to_dict())
+        except Exception as e:
+            logger.error(f"Failed to get knowledge document {knowledge_id}: {e}")
+            return None
+
+    async def update_knowledge_sync_status(
+        self, knowledge_id: str, status: SyncStatus, elevenlabs_id: Optional[str] = None
+    ) -> bool:
+        try:
+            ref = self._db.collection(KNOWLEDGE_DOCUMENTS).document(knowledge_id)
+            updates = {"sync_status": status.value}
+            if elevenlabs_id:
+                updates["elevenlabs_document_id"] = elevenlabs_id
+            
+            try:
+                # Update requires document to exist
+                ref.update(updates)
+                return True
+            except Exception:
+                return False
+        except Exception as e:
+            logger.error(f"Failed to update sync status {knowledge_id}: {e}")
+            return False
+
+    async def delete_knowledge_document(self, knowledge_id: str) -> bool:
+        try:
+            # Check if exists first to return correct boolean
+            doc_ref = self._db.collection(KNOWLEDGE_DOCUMENTS).document(knowledge_id)
+            if not doc_ref.get().exists:
+                return False
+            doc_ref.delete()
+            return True
+        except Exception as e:
+            logger.error(f"Failed to delete knowledge document {knowledge_id}: {e}")
+            return False
+
+    # ==================== Audio Files ====================
+    async def save_audio_metadata(self, audio: AudioMetadata) -> AudioMetadata:
+        try:
+            doc_data = audio.model_dump()
+            self._db.collection(AUDIO_FILES).document(audio.audio_id).set(doc_data)
+            return audio
+        except Exception as e:
+            logger.error(f"Failed to save audio metadata: {e}")
+            raise
+
+    async def get_audio_files(
+        self, knowledge_id: Optional[str] = None
+    ) -> List[AudioMetadata]:
+        try:
+            ref = self._db.collection(AUDIO_FILES)
+            if knowledge_id:
+                ref = ref.where(filter=firestore.FieldFilter("knowledge_id", "==", knowledge_id))
+            
+            docs = ref.stream()
+            return [self._doc_to_audio_metadata(d.to_dict()) for d in docs]
+        except Exception as e:
+            logger.error(f"Failed to get audio files: {e}")
+            return []
+
+    async def get_audio_file(self, audio_id: str) -> Optional[AudioMetadata]:
+        try:
+            doc = self._db.collection(AUDIO_FILES).document(audio_id).get()
+            if not doc.exists:
+                return None
+            return self._doc_to_audio_metadata(doc.to_dict())
+        except Exception as e:
+            logger.error(f"Failed to get audio file {audio_id}: {e}")
+            return None
+
+    async def delete_audio_file(self, audio_id: str) -> bool:
+        try:
+            doc_ref = self._db.collection(AUDIO_FILES).document(audio_id)
+            if not doc_ref.get().exists:
+                return False
+            doc_ref.delete()
+            return True
+        except Exception as e:
+            logger.error(f"Failed to delete audio file {audio_id}: {e}")
+            return False
+
+    # ==================== Agents ====================
+    async def save_agent(self, agent: AgentResponse) -> AgentResponse:
+        try:
+            doc_data = agent.model_dump()
+            doc_data["answer_style"] = agent.answer_style.value
+            
+            self._db.collection(AGENTS).document(agent.agent_id).set(doc_data)
+            return agent
+        except Exception as e:
+            logger.error(f"Failed to save agent: {e}")
+            raise
+
+    async def get_agents(
+        self, doctor_id: Optional[str] = None
+    ) -> List[AgentResponse]:
+        try:
+            ref = self._db.collection(AGENTS)
+            if doctor_id:
+                ref = ref.where(filter=firestore.FieldFilter("doctor_id", "==", doctor_id))
+            
+            docs = ref.stream()
+            return [self._doc_to_agent_response(d.to_dict()) for d in docs]
+        except Exception as e:
+            logger.error(f"Failed to get agents: {e}")
+            return []
+
+    async def get_agent(self, agent_id: str) -> Optional[AgentResponse]:
+        try:
+            doc = self._db.collection(AGENTS).document(agent_id).get()
+            if not doc.exists:
+                return None
+            return self._doc_to_agent_response(doc.to_dict())
+        except Exception as e:
+            logger.error(f"Failed to get agent {agent_id}: {e}")
+            return None
+
+    async def delete_agent(self, agent_id: str) -> bool:
+        try:
+            doc_ref = self._db.collection(AGENTS).document(agent_id)
+            if not doc_ref.get().exists:
+                return False
+            doc_ref.delete()
+            return True
+        except Exception as e:
+            logger.error(f"Failed to delete agent {agent_id}: {e}")
+            return False
+
+    # ==================== Patient Sessions ====================
+    async def create_patient_session(
+        self, session: PatientSessionResponse
+    ) -> PatientSessionResponse:
+        try:
+            doc_data = session.model_dump()
+            doc_data["messages"] = [] 
+            self._db.collection(PATIENT_SESSIONS).document(session.session_id).set(doc_data)
+            return session
+        except Exception as e:
+            logger.error(f"Failed to create patient session: {e}")
+            raise
+
+    async def get_patient_session(
+        self, session_id: str
+    ) -> Optional[PatientSessionResponse]:
+        try:
+            doc = self._db.collection(PATIENT_SESSIONS).document(session_id).get()
+            if not doc.exists:
+                return None
+            return self._doc_to_patient_session_response(doc.to_dict())
+        except Exception as e:
+            logger.error(f"Failed to get patient session {session_id}: {e}")
+            return None
+
+    async def add_session_message(
+        self, session_id: str, message: ConversationMessageSchema
+    ) -> None:
+        try:
+            ref = self._db.collection(PATIENT_SESSIONS).document(session_id)
+            message_dict = message.model_dump()
+            ref.update({
+                "messages": firestore.ArrayUnion([message_dict])
+            })
+        except Exception as e:
+            logger.error(f"Failed to add session message {session_id}: {e}")
+            raise
+
+    async def get_session_messages(
+        self, session_id: str
+    ) -> List[ConversationMessageSchema]:
+        try:
+            doc = self._db.collection(PATIENT_SESSIONS).document(session_id).get()
+            if not doc.exists:
+                return []
+            
+            messages = doc.to_dict().get("messages", [])
+            return [ConversationMessageSchema(**m) for m in messages]
+        except Exception as e:
+            logger.error(f"Failed to get session messages {session_id}: {e}")
+            return []
+
+    # ==================== Conversations ====================
+    async def save_conversation(
+        self, conversation: ConversationDetailSchema
+    ) -> ConversationDetailSchema:
+        try:
+            doc_data = conversation.model_dump()
+            self._db.collection(CONVERSATIONS).document(conversation.conversation_id).set(doc_data)
+            return conversation
+        except Exception as e:
+            logger.error(f"Failed to save conversation: {e}")
+            raise
+
+    async def get_conversation_logs(
+        self,
+        patient_id: Optional[str] = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
+        requires_attention_only: bool = False,
+    ) -> List[ConversationSummarySchema]:
+        try:
+            ref = self._db.collection(CONVERSATIONS)
+            
+            if requires_attention_only:
+                 ref = ref.where(filter=firestore.FieldFilter("requires_attention", "==", True))
+            
+            ref = ref.order_by("created_at", direction=firestore.Query.DESCENDING)
+            
+            if start_date:
+                ref = ref.where(filter=firestore.FieldFilter("created_at", ">=", start_date))
+            if end_date:
+                ref = ref.where(filter=firestore.FieldFilter("created_at", "<=", end_date))
+                
+            docs = ref.stream()
+            
+            results = []
+            for d in docs:
+                data = d.to_dict()
+                
+                if patient_id and patient_id.lower() not in data.get("patient_id", "").lower():
+                    continue
+
+                summary = ConversationSummarySchema(
+                    conversation_id=data["conversation_id"],
+                    patient_id=data["patient_id"],
+                    agent_id=data["agent_id"],
+                    agent_name=data["agent_name"],
+                    requires_attention=data.get("requires_attention", False),
+                    main_concerns=data.get("main_concerns", []),
+                    total_messages=len(data.get("messages", [])),
+                    answered_count=len(data.get("answered_questions", [])),
+                    unanswered_count=len(data.get("unanswered_questions", [])),
+                    duration_seconds=data.get("duration_seconds", 0),
+                    created_at=data["created_at"],
+                )
+                results.append(summary)
+            
+            return results
+        except Exception as e:
+            logger.error(f"Failed to get conversation logs: {e}")
+            return []
+
+    async def get_conversation_detail(
+        self, conversation_id: str
+    ) -> Optional[ConversationDetailSchema]:
+        try:
+            doc = self._db.collection(CONVERSATIONS).document(conversation_id).get()
+            if not doc.exists:
+                return None
+            return self._doc_to_conversation_detail(doc.to_dict())
+        except Exception as e:
+            logger.error(f"Failed to get conversation detail {conversation_id}: {e}")
+            return None

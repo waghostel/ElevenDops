@@ -16,14 +16,14 @@ from backend.models.schemas import (
 from backend.services.data_service import get_data_service
 from backend.services.elevenlabs_service import get_elevenlabs_service, ElevenLabsServiceError
 from backend.services.conversation_service import ConversationService
-from backend.services.data_service import DataServiceProtocol
+from backend.services.data_service import DataServiceInterface
 
 class PatientService:
     """Service for managing patient conversation sessions."""
 
     def __init__(
         self,
-        data_service: Optional[DataServiceProtocol] = None,
+        data_service: Optional[DataServiceInterface] = None,
         elevenlabs_service=None,
         conversation_service: Optional[ConversationService] = None,
     ):

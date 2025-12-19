@@ -38,6 +38,12 @@ class Settings(BaseSettings):
         description="Enable debug mode",
     )
 
+    # Data Service Configuration
+    use_mock_data: bool = Field(
+        default=False,
+        description="Use MockDataService instead of Firestore (for testing without emulator)",
+    )
+
     # Firestore Configuration
     use_firestore_emulator: bool = Field(
         default=True,

@@ -4,88 +4,156 @@ This module provides a mock data service that can be easily replaced
 with a Firestore client for production use.
 """
 
+from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import List, Optional, Protocol
+from typing import List, Optional
 import uuid
 import re
 
+from backend.config import get_settings
 from backend.models.schemas import (
     DashboardStatsResponse,
     KnowledgeDocumentCreate,
     KnowledgeDocumentResponse,
-    PatientSessionCreate,
     PatientSessionResponse,
     SyncStatus,
     DocumentType,
     ConversationSummarySchema,
     ConversationDetailSchema,
     ConversationMessageSchema,
+    AudioMetadata,
+    AgentResponse,
+    AnswerStyle,
 )
 
 
-class DataServiceProtocol(Protocol):
-    """Protocol defining the data service interface."""
+class DataServiceInterface(ABC):
+    """Abstract interface for data service implementations."""
 
+    # ==================== Dashboard ====================
+    @abstractmethod
     async def get_dashboard_stats(self) -> DashboardStatsResponse:
         """Get dashboard statistics."""
-        ...
+        pass
 
+    # ==================== Knowledge Documents ====================
+    @abstractmethod
     async def create_knowledge_document(
         self, doc: KnowledgeDocumentCreate
     ) -> KnowledgeDocumentResponse:
         """Create a new knowledge document."""
-        ...
+        pass
 
-    async def get_knowledge_documents(self) -> List[KnowledgeDocumentResponse]:
-        """Get all knowledge documents."""
-        ...
+    @abstractmethod
+    async def get_knowledge_documents(
+        self, doctor_id: Optional[str] = None
+    ) -> List[KnowledgeDocumentResponse]:
+        """Get all knowledge documents, optionally filtered by doctor."""
+        pass
 
+    @abstractmethod
     async def get_knowledge_document(
         self, knowledge_id: str
     ) -> Optional[KnowledgeDocumentResponse]:
         """Get a specific knowledge document by ID."""
-        ...
+        pass
 
+    @abstractmethod
     async def update_knowledge_sync_status(
         self, knowledge_id: str, status: SyncStatus, elevenlabs_id: Optional[str] = None
     ) -> bool:
         """Update the sync status of a knowledge document."""
-        ...
+        pass
 
+    @abstractmethod
     async def delete_knowledge_document(self, knowledge_id: str) -> bool:
         """Delete a knowledge document."""
-        ...
+        pass
 
+    # ==================== Audio Files ====================
+    @abstractmethod
+    async def save_audio_metadata(self, audio: AudioMetadata) -> AudioMetadata:
+        """Save audio file metadata."""
+        pass
+
+    @abstractmethod
+    async def get_audio_files(
+        self, knowledge_id: Optional[str] = None
+    ) -> List[AudioMetadata]:
+        """Get audio files, optionally filtered by knowledge_id."""
+        pass
+
+    @abstractmethod
+    async def get_audio_file(self, audio_id: str) -> Optional[AudioMetadata]:
+        """Get a specific audio file by ID."""
+        pass
+
+    @abstractmethod
+    async def delete_audio_file(self, audio_id: str) -> bool:
+        """Delete an audio file metadata."""
+        pass
+
+    # ==================== Agents ====================
+    @abstractmethod
+    async def save_agent(self, agent: AgentResponse) -> AgentResponse:
+        """Save an agent."""
+        pass
+
+    @abstractmethod
+    async def get_agents(
+        self, doctor_id: Optional[str] = None
+    ) -> List[AgentResponse]:
+        """Get all agents, optionally filtered by doctor."""
+        pass
+
+    @abstractmethod
+    async def get_agent(self, agent_id: str) -> Optional[AgentResponse]:
+        """Get a specific agent by ID."""
+        pass
+
+    @abstractmethod
+    async def delete_agent(self, agent_id: str) -> bool:
+        """Delete an agent."""
+        pass
+
+    # ==================== Patient Sessions ====================
+    @abstractmethod
     async def create_patient_session(
         self, session: PatientSessionResponse
     ) -> PatientSessionResponse:
         """Create a new patient session."""
-        ...
+        pass
 
+    @abstractmethod
     async def get_patient_session(
         self, session_id: str
     ) -> Optional[PatientSessionResponse]:
         """Get a patient session by ID."""
-        ...
+        pass
 
+    @abstractmethod
     async def add_session_message(
         self, session_id: str, message: ConversationMessageSchema
     ) -> None:
         """Add a message to a session."""
-        ...
+        pass
 
+    @abstractmethod
     async def get_session_messages(
         self, session_id: str
     ) -> List[ConversationMessageSchema]:
         """Get messages for a session."""
-        ...
+        pass
 
+    # ==================== Conversations ====================
+    @abstractmethod
     async def save_conversation(
         self, conversation: ConversationDetailSchema
     ) -> ConversationDetailSchema:
         """Save a conversation."""
-        ...
+        pass
 
+    @abstractmethod
     async def get_conversation_logs(
         self,
         patient_id: Optional[str] = None,
@@ -94,21 +162,17 @@ class DataServiceProtocol(Protocol):
         requires_attention_only: bool = False,
     ) -> List[ConversationSummarySchema]:
         """Get conversation logs with filters."""
-        ...
+        pass
 
+    @abstractmethod
     async def get_conversation_detail(
         self, conversation_id: str
     ) -> Optional[ConversationDetailSchema]:
         """Get a specific conversation by ID."""
-        ...
-
-    # Optional: Update session if we need to store state (e.g. ended status)
-    # For now, maybe just 'end_session'? 
-    # Let's keep it simple.
+        pass
 
 
-
-class MockDataService:
+class MockDataService(DataServiceInterface):
     """Mock data service for development and testing.
 
     This service returns mock data and stores state in memory.
@@ -120,6 +184,8 @@ class MockDataService:
         self._sessions: dict[str, PatientSessionResponse] = {}
         self._conversation_details: dict[str, ConversationDetailSchema] = {}
         self._session_messages: dict[str, List[ConversationMessageSchema]] = {}
+        self._audio_files: dict[str, AudioMetadata] = {}
+        self._agents: dict[str, AgentResponse] = {}
 
     def _parse_structured_sections(self, content: str) -> dict:
         """Parse markdown content into structured sections based on headers.
@@ -131,35 +197,14 @@ class MockDataService:
             Dict mapping headers to section content.
         """
         sections = {}
-        # improved regex to capture headers and content
-        # splitting by headers (# or ##, etc)
-        # simplistic MVP parser
-        headers = re.split(r'(^|\n)(#{1,6}\s.*)', content)
-        
-        if not headers:
-            return {"raw": content}
-
-        current_header = "Introduction"
-        # First chunk is usually content before first header
-        if headers[0].strip():
-            sections[current_header] = headers[0].strip()
-
-        # Iterate through captured groups
-        # split output structure: [text, newline, header, text, newline, header, text...]
-        # We need to process from index 1 safely
-        
-        # Simpler approach: find all occurrences, allowing for indentation
         matches = list(re.finditer(r'(^|\n)(?P<level>\s*#{1,6})\s(?P<title>.*)', content))
         if not matches:
-             # Just put everything under Introduction if no headers found? Or "raw"?
-             # Let's keep existing logic or just return raw content as 'content'
              if content.strip():
                  sections["content"] = content
              return sections
 
-        last_pos = 0
         for i, match in enumerate(matches):
-            current_start = match.start()  # This might include the newline
+            current_start = match.start()
             
             # If this is the first match, capture intro text before it
             if i == 0:
@@ -168,11 +213,8 @@ class MockDataService:
                     sections["Introduction"] = intro
 
             header_title = match.group("title").strip()
-            
-            # Content starts after this match
             match_end = match.end()
             
-            # Content ends at start of next match or EOF
             if i + 1 < len(matches):
                 next_start = matches[i+1].start()
                 section_content = content[match_end:next_start].strip()
@@ -185,15 +227,11 @@ class MockDataService:
         return sections
 
     async def get_dashboard_stats(self) -> DashboardStatsResponse:
-        """Get mock dashboard statistics.
-
-        Returns stats based on in-memory data for documents.
-        """
-        doc_count = len(self._documents)
+        """Get mock dashboard statistics."""
         return DashboardStatsResponse(
-            document_count=doc_count,
-            agent_count=2,  # Mock constant
-            audio_count=10,  # Mock constant
+            document_count=len(self._documents),
+            agent_count=len(self._agents),
+            audio_count=len(self._audio_files),
             last_activity=datetime.now(),
         )
 
@@ -221,9 +259,14 @@ class MockDataService:
         self._documents[knowledge_id] = new_doc
         return new_doc
 
-    async def get_knowledge_documents(self) -> List[KnowledgeDocumentResponse]:
+    async def get_knowledge_documents(
+        self, doctor_id: Optional[str] = None
+    ) -> List[KnowledgeDocumentResponse]:
         """Get all knowledge documents from memory."""
-        return list(self._documents.values())
+        docs = list(self._documents.values())
+        if doctor_id:
+            docs = [d for d in docs if d.doctor_id == doctor_id]
+        return docs
 
     async def get_knowledge_document(
         self, knowledge_id: str
@@ -239,6 +282,9 @@ class MockDataService:
             return False
         
         doc = self._documents[knowledge_id]
+        object.__setattr__(doc, 'sync_status', status) # Use setattr for frozen models or just recreate
+        # Since pydantic models might be frozen or not, safer to recreate if they are immutable or frozen
+        # But looking at previous code it was creating a new object. Let's do that to be safe.
         
         updated_doc = KnowledgeDocumentResponse(
             knowledge_id=doc.knowledge_id,
@@ -261,6 +307,59 @@ class MockDataService:
             return True
         return False
 
+    # ==================== Audio Files Implementation ====================
+    async def save_audio_metadata(self, audio: AudioMetadata) -> AudioMetadata:
+        """Save audio file metadata."""
+        self._audio_files[audio.audio_id] = audio
+        return audio
+
+    async def get_audio_files(
+        self, knowledge_id: Optional[str] = None
+    ) -> List[AudioMetadata]:
+        """Get audio files, optionally filtered by knowledge_id."""
+        audios = list(self._audio_files.values())
+        if knowledge_id:
+            audios = [a for a in audios if a.knowledge_id == knowledge_id]
+        return audios
+
+    async def get_audio_file(self, audio_id: str) -> Optional[AudioMetadata]:
+        """Get a specific audio file by ID."""
+        return self._audio_files.get(audio_id)
+
+    async def delete_audio_file(self, audio_id: str) -> bool:
+        """Delete an audio file metadata."""
+        if audio_id in self._audio_files:
+            del self._audio_files[audio_id]
+            return True
+        return False
+
+    # ==================== Agents Implementation ====================
+    async def save_agent(self, agent: AgentResponse) -> AgentResponse:
+        """Save an agent."""
+        self._agents[agent.agent_id] = agent
+        return agent
+
+    async def get_agents(
+        self, doctor_id: Optional[str] = None
+    ) -> List[AgentResponse]:
+        """Get all agents, optionally filtered by doctor."""
+        agents = list(self._agents.values())
+        if doctor_id:
+            agents = [a for a in agents if a.doctor_id == doctor_id]
+        return agents
+
+    async def get_agent(self, agent_id: str) -> Optional[AgentResponse]:
+        """Get a specific agent by ID."""
+        return self._agents.get(agent_id)
+
+    async def delete_agent(self, agent_id: str) -> bool:
+        """Delete an agent."""
+        if agent_id in self._agents:
+            del self._agents[agent_id]
+            return True
+        return False
+
+    # ==================== Patient Sessions Implementation ====================
     async def create_patient_session(
         self, session: PatientSessionResponse
     ) -> PatientSessionResponse:
@@ -288,6 +387,7 @@ class MockDataService:
         """Get messages for a session from memory."""
         return self._session_messages.get(session_id, [])
 
+    # ==================== Conversations Implementation ====================
     async def save_conversation(
         self, conversation: ConversationDetailSchema
     ) -> ConversationDetailSchema:
@@ -309,9 +409,6 @@ class MockDataService:
             if patient_id and patient_id.lower() not in conv.patient_id.lower():
                 continue
             
-            # Date filtering
-            # Assuming created_at is aware if start_date/end_date are, or both naive.
-            # Usually we might need to be careful with timezone mixed types.
             if start_date and conv.created_at < start_date:
                 continue
             if end_date and conv.created_at > end_date:
@@ -346,9 +443,47 @@ class MockDataService:
         return self._conversation_details.get(conversation_id)
 
 
-# Singleton instance to persist state across requests in mock mode
-_mock_instance = MockDataService()
+# Singleton instances
+_mock_instance = None
+_firestore_instance = None
 
-def get_data_service() -> MockDataService:
-    """Get the data service instance."""
-    return _mock_instance
+
+def get_data_service() -> DataServiceInterface:
+    """Factory function - returns appropriate service based on config.
+    
+    Returns FirestoreDataService when:
+    - USE_FIRESTORE_EMULATOR is true (local development with emulator)
+    - USE_MOCK_DATA is false (production mode)
+    
+    Returns MockDataService when:
+    - USE_MOCK_DATA is true AND USE_FIRESTORE_EMULATOR is false
+    """
+    global _mock_instance, _firestore_instance
+    
+    settings = get_settings()
+    
+    # Use Firestore if emulator is enabled OR if not using mock data
+    # Note: firestore_emulator defaults to True in local dev, so we check it explicitly.
+    # If explicit mock data is requested, we should probably favor it if emulator is FALSE.
+    # But if emulator is TRUE, we should probably prefer that because it's "better" mock.
+    # The logic in design doc was:
+    # use_firestore = settings.use_firestore_emulator or not getattr(settings, 'use_mock_data', True)
+    # Wait, if use_mock_data is default False (from config update), then 'not False' is True.
+    # So by default 'use_firestore' is True.
+    
+    use_firestore = settings.use_firestore_emulator or not settings.use_mock_data
+    
+    # However, if use_firestore_emulator is False AND use_mock_data is False, what happens?
+    # Then use_firestore becomes True. But that assumes production firestore?
+    # Yes, typically if not mocking, we use real/emulator firestore.
+    
+    if use_firestore:
+        if _firestore_instance is None:
+            # Lazy import to avoid circular imports or import errors if dependencies missing
+            from backend.services.firestore_data_service import FirestoreDataService
+            _firestore_instance = FirestoreDataService()
+        return _firestore_instance
+    else:
+        if _mock_instance is None:
+            _mock_instance = MockDataService()
+        return _mock_instance
