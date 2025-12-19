@@ -21,6 +21,7 @@ from streamlit_app.services.models import (
     ScriptResponse,
     AudioResponse,
     VoiceOption,
+    AgentConfig,
 )
 
 # Default configuration
@@ -383,6 +384,110 @@ class BackendAPIClient:
         except httpx.HTTPStatusError as e:
             raise APIError(
                 message=f"Failed to fetch voices: {e.response.text}",
+                status_code=e.response.status_code,
+            ) from e
+
+    async def create_agent(
+        self,
+        name: str,
+        knowledge_ids: List[str],
+        voice_id: str,
+        answer_style: str,
+        doctor_id: str = "default_doctor",
+    ) -> AgentConfig:
+        """Create a new agent.
+
+        Args:
+            name: Agent name.
+            knowledge_ids: List of linked knowledge document IDs.
+            voice_id: Voice ID.
+            answer_style: Answer style.
+            doctor_id: Doctor ID.
+
+        Returns:
+            AgentConfig object.
+        """
+        try:
+            payload = {
+                "name": name,
+                "knowledge_ids": knowledge_ids,
+                "voice_id": voice_id,
+                "answer_style": answer_style,
+                "doctor_id": doctor_id,
+            }
+            async with self._get_client() as client:
+                response = await client.post("/api/agent", json=payload)
+                response.raise_for_status()
+                data = response.json()
+                return AgentConfig(
+                    agent_id=data["agent_id"],
+                    name=data["name"],
+                    knowledge_ids=data["knowledge_ids"],
+                    voice_id=data["voice_id"],
+                    answer_style=data["answer_style"],
+                    elevenlabs_agent_id=data["elevenlabs_agent_id"],
+                    doctor_id=data["doctor_id"],
+                    created_at=datetime.fromisoformat(data["created_at"]),
+                )
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Failed to create agent: {e.response.text}",
+                status_code=e.response.status_code,
+            ) from e
+
+    async def get_agents(self) -> List[AgentConfig]:
+        """Get all agents.
+
+        Returns:
+            List of AgentConfig objects.
+        """
+        try:
+            async with self._get_client() as client:
+                response = await client.get("/api/agent")
+                response.raise_for_status()
+                data = response.json()
+                return [
+                    AgentConfig(
+                        agent_id=d["agent_id"],
+                        name=d["name"],
+                        knowledge_ids=d["knowledge_ids"],
+                        voice_id=d["voice_id"],
+                        answer_style=d["answer_style"],
+                        elevenlabs_agent_id=d["elevenlabs_agent_id"],
+                        doctor_id=d["doctor_id"],
+                        created_at=datetime.fromisoformat(d["created_at"]),
+                    )
+                    for d in data["agents"]
+                ]
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Failed to get agents: {e.response.text}",
+                status_code=e.response.status_code,
+            ) from e
+
+    async def delete_agent(self, agent_id: str) -> bool:
+        """Delete an agent.
+
+        Args:
+            agent_id: ID of the agent to delete.
+
+        Returns:
+            True if successful.
+        """
+        try:
+            async with self._get_client() as client:
+                response = await client.delete(f"/api/agent/{agent_id}")
+                response.raise_for_status()
+                return True
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Failed to delete agent: {e.response.text}",
                 status_code=e.response.status_code,
             ) from e
 

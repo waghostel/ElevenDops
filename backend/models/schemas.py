@@ -150,3 +150,49 @@ class VoiceOption(BaseModel):
     name: str = Field(..., description="Display name")
     description: Optional[str] = Field(None, description="Voice description")
     preview_url: Optional[str] = Field(None, description="Voice preview audio URL")
+
+
+class AnswerStyle(str, Enum):
+    """Style of the agent's answers."""
+
+    PROFESSIONAL = "professional"
+    FRIENDLY = "friendly"
+    EDUCATIONAL = "educational"
+
+
+class AgentCreateRequest(BaseModel):
+    """Request model for creating an agent."""
+
+    name: str = Field(..., min_length=1, max_length=100, description="Name of the agent")
+    knowledge_ids: List[str] = Field(default_factory=list, description="IDs of linked knowledge documents")
+    voice_id: str = Field(..., description="ID of the voice to use")
+    answer_style: AnswerStyle = Field(..., description="Style of the agent's answers")
+    doctor_id: str = Field(default="default_doctor", description="ID of the creating doctor")
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        """Validate that agent name is not empty or whitespace only."""
+        if not v.strip():
+            raise ValueError("Agent name cannot be empty or whitespace only")
+        return v
+
+
+class AgentResponse(BaseModel):
+    """Response model for agent details."""
+
+    agent_id: str = Field(..., description="Unique agent ID")
+    name: str = Field(..., description="Name of the agent")
+    knowledge_ids: List[str] = Field(..., description="IDs of linked knowledge documents")
+    voice_id: str = Field(..., description="ID of the voice used")
+    answer_style: AnswerStyle = Field(..., description="Style of the agent's answers")
+    elevenlabs_agent_id: str = Field(..., description="ID of the agent in ElevenLabs")
+    doctor_id: str = Field(..., description="ID of the creating doctor")
+    created_at: datetime = Field(..., description="Creation timestamp")
+
+
+class AgentListResponse(BaseModel):
+    """Response model for listing agents."""
+
+    agents: List[AgentResponse] = Field(..., description="List of agents")
+    total_count: int = Field(..., ge=0, description="Total number of agents")

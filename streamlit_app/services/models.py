@@ -82,3 +82,28 @@ class VoiceOption:
     name: str
     description: Optional[str] = None
     preview_url: Optional[str] = None
+
+
+@dataclass
+class AgentConfig:
+    """Agent configuration data class.
+
+    Attributes:
+        agent_id: Unique agent ID.
+        name: Name of the agent.
+        knowledge_ids: IDs of linked knowledge documents.
+        voice_id: ID of the voice used.
+        answer_style: Style of the agent's answers.
+        elevenlabs_agent_id: ID of the agent in ElevenLabs.
+        doctor_id: ID of the creating doctor.
+        created_at: Creation timestamp.
+    """
+
+    agent_id: str
+    name: str
+    knowledge_ids: list[str]
+    voice_id: str
+    answer_style: str
+    elevenlabs_agent_id: str
+    doctor_id: str
+    created_at: datetime

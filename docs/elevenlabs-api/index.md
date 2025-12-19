@@ -25,6 +25,7 @@ Welcome to the ElevenLabs API documentation. This comprehensive guide covers all
 
 ### Agent Configuration
 - [**Agents Overview**](agents_overview.md) - Complete platform capabilities for building, deploying, and monitoring agents
+- [**Prompting Guide**](prompting-guide.md) - System design principles for production-grade conversational AI
 - [**Knowledge Base**](knowledge_base.md) - Enhance agents with custom knowledge and context
 - [**Client Tools**](client_tools.md) - Enable client-side operations and UI interactions
 - [**Data Collection**](data_collection.md) - Extract structured information from conversations
