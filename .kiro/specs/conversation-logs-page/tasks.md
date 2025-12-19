@@ -1,0 +1,170 @@
+# Implementation Plan
+
+- [ ] 1. Create backend data models for conversation logs
+  - [ ] 1.1 Add conversation schemas to backend/models/schemas.py
+    - Add ConversationMessageSchema with role, content, timestamp, is_answered fields
+    - Add ConversationSummarySchema with conversation_id, patient_id, agent_id, agent_name, requires_attention, main_concerns, counts, duration, created_at
+    - Add ConversationDetailSchema with full messages list and question categorization
+    - Add ConversationLogsResponseSchema with conversations list and aggregate statistics
+    - Add ConversationLogsQueryParams for filter parameters
+    - _Requirements: 1.3, 1.5, 5.2, 6.2, 7.1_
+
+- [ ] 2. Extend data service for conversation storage
+  - [ ] 2.1 Add conversation storage methods to backend/services/data_service.py
+    - Add _conversations dict to MockDataService.__init__
+    - Implement save_conversation method to store ConversationSummarySchema
+    - Implement get_conversation_logs method with filtering (patient_id, date range, attention)
+    - Implement get_conversation_detail method to retrieve full conversation by ID
+    - _Requirements: 1.2, 2.2, 3.2, 4.2, 6.2_
+  - [ ] 2.2 Write property test for filter correctness
+    - **Property 2: Patient ID Filter Correctness**
+    - **Property 3: Date Range Filter Correctness**
+    - **Property 4: Attention Filter Correctness**
+    - **Validates: Requirements 2.2, 3.2, 4.2**
+
+- [ ] 3. Create conversation service
+  - [ ] 3.1 Create backend/services/conversation_service.py
+    - Implement ConversationService class
+    - Add get_conversation_logs method with filter parameters
+    - Add get_conversation_detail method
+    - Add save_conversation method for storing new conversations
+    - Calculate aggregate statistics (total, attention_count, answered, unanswered)
+    - _Requirements: 1.2, 5.2, 5.3_
+  - [ ] 3.2 Write property test for statistics accuracy
+    - **Property 5: Statistics Accuracy**
+    - **Validates: Requirements 5.2, 5.3**
+
+- [ ] 4. Update patient service to save conversations
+  - [ ] 4.1 Enhance PatientService.end_session in backend/services/patient_service.py
+    - Collect conversation messages from session
+    - Analyze questions for answered/unanswered status
+    - Extract main concerns from conversation
+    - Determine requires_attention flag
+    - Call conversation_service.save_conversation
+    - _Requirements: 6.2, 7.1, 7.2_
+  - [ ] 4.2 Write property test for question categorization
+    - **Property 7: Question Categorization Consistency**
+    - **Validates: Requirements 7.3, 7.4**
+
+- [ ] 5. Create conversation API routes
+  - [ ] 5.1 Create backend/api/routes/conversation.py
+    - GET /api/conversations/logs - List conversations with filters
+    - GET /api/conversations/{conversation_id} - Get conversation details
+    - Include query parameters: patient_id, start_date, end_date, requires_attention_only
+    - _Requirements: 1.2, 2.2, 3.2, 4.2, 6.2_
+  - [ ] 5.2 Register conversation routes in backend/main.py
+    - Add conversation router to FastAPI app with prefix /api/conversations
+    - _Requirements: 1.2_
+
+- [ ] 6. Checkpoint - Ensure all backend tests pass
+  - Run pytest to verify all backend functionality
+  - Ensure conversation storage and retrieval works correctly
+  - Ask the user if questions arise
+
+- [ ] 7. Create frontend data models
+  - [ ] 7.1 Add conversation models to streamlit_app/services/models.py
+    - Add ConversationMessage dataclass (role, content, timestamp, is_answered)
+    - Add ConversationSummary dataclass for list display
+    - Add ConversationDetail dataclass for expanded view
+    - Add ConversationLogsResponse dataclass with statistics
+    - _Requirements: 1.5, 6.2, 7.1_
+  - [ ] 7.2 Write property test for conversation detail completeness
+    - **Property 6: Conversation Detail Completeness**
+    - **Validates: Requirements 6.2, 6.3, 7.1, 7.2**
+
+- [ ] 8. Add conversation API methods to backend_api.py
+  - [ ] 8.1 Add get_conversation_logs method to streamlit_app/services/backend_api.py
+    - Call GET /api/conversations/logs with filter parameters
+    - Return ConversationLogsResponse object
+    - Handle errors with appropriate exceptions
+    - _Requirements: 1.2, 2.2, 3.2, 4.2_
+  - [ ] 8.2 Add get_conversation_detail method
+    - Call GET /api/conversations/{conversation_id}
+    - Return ConversationDetail object
+    - _Requirements: 6.2_
+  - [ ] 8.3 Write property test for error state display
+    - **Property 8: Error State Display**
+    - **Validates: Requirements 8.1, 8.2, 8.3**
+
+- [ ] 9. Create Conversation Logs Streamlit page - Basic Structure
+  - [ ] 9.1 Create streamlit_app/pages/6_Conversation_Logs.py with page config
+    - Set page title "對話記錄查詢" (Conversation Logs)
+    - Set page icon 📋 and layout wide
+    - Initialize session state variables (conversation_logs, selected_conversation_id, filters, loading, error)
+    - _Requirements: 1.1_
+  - [ ] 9.2 Implement filter section UI
+    - Add text input for patient_id filter with label "病患ID"
+    - Add date pickers for start_date and end_date with labels "開始日期", "結束日期"
+    - Add checkbox for requires_attention_only with label "僅顯示需關注"
+    - Add "套用篩選" (Apply) and "清除篩選" (Clear) buttons
+    - _Requirements: 2.1, 3.1, 4.1_
+
+- [ ] 10. Implement statistics section
+  - [ ] 10.1 Add statistics metrics display
+    - Display total conversation count with label "總對話數"
+    - Display attention required count with label "需關注"
+    - Display answered questions count with label "已回答問題"
+    - Display unanswered questions count with label "未回答問題"
+    - Use st.metric or st.columns for layout
+    - _Requirements: 5.1, 5.2_
+  - [ ] 10.2 Write property test for conversation list display
+    - **Property 1: Conversation List Display**
+    - **Validates: Requirements 1.3, 1.5**
+
+- [ ] 11. Implement conversation list section
+  - [ ] 11.1 Add conversation list display
+    - Fetch conversations from backend on page load
+    - Display each conversation as expandable card using st.expander
+    - Show patient_id, date/time, agent_name in header
+    - Add visual indicator (⚠️) for requires_attention conversations
+    - Handle empty list with message "目前沒有對話記錄"
+    - Handle filtered empty with message "找不到符合條件的對話記錄"
+    - _Requirements: 1.2, 1.3, 1.4, 1.5, 2.3, 2.4, 4.3_
+  - [ ] 11.2 Implement filter application logic
+    - Apply patient_id filter on button click
+    - Apply date range filter
+    - Apply attention-only filter
+    - Update statistics after filtering
+    - Clear filters and reload all data on clear button
+    - _Requirements: 2.2, 3.2, 3.3, 3.4, 3.5, 4.2_
+
+- [ ] 12. Implement conversation detail view
+  - [ ] 12.1 Add expanded conversation detail display
+    - Show main_concerns list with header "主要關切"
+    - Display full conversation transcript with role distinction
+    - Use different styling for patient (🧑) vs agent (🤖) messages
+    - Show answered questions with ✓ indicator
+    - Show unanswered questions with ✗ indicator and highlight
+    - Display conversation duration
+    - _Requirements: 6.1, 6.2, 6.3, 7.1, 7.2, 7.3_
+  - [ ] 12.2 Add audio playback for agent responses (if available)
+    - Check if message has audio_url
+    - Display st.audio component for playback
+    - _Requirements: 6.4_
+
+- [ ] 13. Implement error handling
+  - [ ] 13.1 Add comprehensive error handling to all API calls
+    - Wrap backend calls in try-except blocks
+    - Display "無法連接伺服器，請稍後再試" for connection errors
+    - Display "載入對話記錄時發生錯誤，請稍後再試" for data loading errors
+    - Log detailed errors for debugging without exposing to UI
+    - Show loading indicator (st.spinner) during data fetch
+    - _Requirements: 8.1, 8.2, 8.3, 8.4_
+
+- [ ] 14. Final integration and testing
+  - [ ] 14.1 Test end-to-end flow
+    - Create patient session in 5_Patient_Test.py
+    - Have conversation and end session
+    - Verify conversation appears in 6_Conversation_Logs.py
+    - Test all filters work correctly
+    - Verify statistics update properly
+  - [ ] 14.2 Run all property tests
+    - Execute pytest tests/test_conversation_logs_props.py
+    - Ensure all 8 properties pass
+    - Fix any failing tests
+
+- [ ] 15. Final Checkpoint - Ensure all tests pass
+  - Run full test suite with pytest
+  - Verify UI displays correctly in Traditional Chinese
+  - Ensure all requirements are met
+  - Ask the user if questions arise
