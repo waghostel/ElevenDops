@@ -33,9 +33,9 @@ def render_sidebar() -> None:
         st.subheader("📍 Navigation")
 
         # Navigation links to available pages
-        st.page_link("streamlit_app/app.py", label="🏠 Home", icon="🏠")
+        st.page_link("app.py", label="🏠 Home", icon="🏠")
         st.page_link(
-            "streamlit_app/pages/1_Doctor_Dashboard.py",
+            "pages/1_Doctor_Dashboard.py",
             label="📊 Doctor Dashboard",
             icon="📊",
         )

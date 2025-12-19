@@ -1,0 +1,6 @@
+{
+  "Streamlit": 7,
+  "StreamlitPort": 8501,
+  "FastAPI": 5,
+  "FastAPIPort": 8000
+}
