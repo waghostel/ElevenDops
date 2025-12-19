@@ -38,6 +38,30 @@ class Settings(BaseSettings):
         description="Enable debug mode",
     )
 
+    # Firestore Configuration
+    use_firestore_emulator: bool = Field(
+        default=True,
+        description="Use Firestore Emulator for local development",
+    )
+    firestore_emulator_host: str = Field(
+        default="localhost:8080",
+        description="Firestore Emulator host",
+    )
+
+    # GCS Configuration
+    use_gcs_emulator: bool = Field(
+        default=True,
+        description="Use GCS Emulator for local development",
+    )
+    gcs_emulator_host: str = Field(
+        default="http://localhost:4443",
+        description="GCS Emulator host",
+    )
+    gcs_bucket_name: str = Field(
+        default="elevenlabs-audio",
+        description="GCS bucket name",
+    )
+
     # Backend API configuration
     backend_api_url: str = Field(
         default="http://localhost:8000",
