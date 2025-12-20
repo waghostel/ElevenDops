@@ -1,5 +1,4 @@
-"""Health check API endpoints."""
-
+from datetime import datetime
 from fastapi import APIRouter
 from backend.services.firestore_service import get_firestore_service
 from backend.services.storage_service import get_storage_service
@@ -37,6 +36,8 @@ async def health_check():
     
     return {
         "status": "healthy" if all_healthy else "unhealthy",
+        "timestamp": datetime.now().isoformat(),
+        "version": "0.1.0",
         "services": {
             "firestore": {
                 "status": "healthy" if firestore_healthy else "unhealthy",

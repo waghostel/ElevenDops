@@ -622,7 +622,7 @@ class BackendAPIClient:
                 params["requires_attention_only"] = str(requires_attention_only).lower()
 
             async with self._get_client() as client:
-                response = await client.get("/api/conversations/logs", params=params)
+                response = await client.get("/api/conversations", params=params)
                 response.raise_for_status()
                 data = response.json()
                 
@@ -704,6 +704,25 @@ class BackendAPIClient:
         except httpx.HTTPStatusError as e:
             raise APIError(
                 message=f"Failed to get conversation detail: {e.response.text}",
+                status_code=e.response.status_code,
+            ) from e
+
+    async def get_conversation_statistics(self) -> dict:
+        """Get conversation statistics.
+
+        Returns:
+             Dictionary with conversation statistics.
+        """
+        try:
+            async with self._get_client() as client:
+                response = await client.get("/api/conversations/statistics")
+                response.raise_for_status()
+                return response.json()
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Failed to get statistics: {e.response.text}",
                 status_code=e.response.status_code,
             ) from e
 

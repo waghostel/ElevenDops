@@ -13,12 +13,13 @@ def mock_elevenlabs():
     return MagicMock()
 
 
+from backend.services.data_service import MockDataService
+
 @pytest.fixture
 def agent_service(mock_elevenlabs):
     with patch("backend.services.agent_service.get_elevenlabs_service", return_value=mock_elevenlabs):
-        service = AgentService()
-        # Reset in-memory storage
-        service._agents = {}
+        # Inject mock data service
+        service = AgentService(data_service=MockDataService())
         return service
 
 
@@ -29,9 +30,11 @@ def test_answer_style_mapping(style):
     
     Validates: Requirements 4.2, 4.3, 4.4
     """
-    service = AgentService()
-    # Mock elevenlabs to avoid instantiation issues if checks happen
-    service.elevenlabs = MagicMock()
+    # Pass mocks
+    service = AgentService(
+        data_service=MockDataService(),
+        elevenlabs_service=MagicMock()
+    )
     
     prompt = service._get_system_prompt(style)
     assert isinstance(prompt, str)
@@ -93,9 +96,8 @@ async def test_knowledge_document_association_persistence(knowledge_ids):
         mock_elevenlabs.create_agent.return_value = "el_agent_123"
         mock_get_service.return_value = mock_elevenlabs
         
-        service = AgentService()
-        # Reset in-memory storage
-        service._agents = {}
+        service = AgentService(data_service=MockDataService())
+        # Reset in-memory storage removed
         
         request = AgentCreateRequest(
             name="Test Agent",
@@ -128,9 +130,8 @@ async def test_voice_selection_persistence(voice_id):
         mock_elevenlabs.create_agent.return_value = "el_agent_123"
         mock_get_service.return_value = mock_elevenlabs
         
-        service = AgentService()
-        # Reset in-memory storage
-        service._agents = {}
+        service = AgentService(data_service=MockDataService())
+        # Reset in-memory storage removed
         
         request = AgentCreateRequest(
             name="Test Agent",

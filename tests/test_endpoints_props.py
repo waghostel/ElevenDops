@@ -10,12 +10,73 @@ Validates: Requirements 2.2
 """
 
 from datetime import datetime
+from unittest.mock import MagicMock, AsyncMock
 
 import pytest
 from fastapi.testclient import TestClient
 from hypothesis import given, settings, strategies as st
 
 from backend.main import app
+from backend.services.data_service import get_data_service
+from backend.services.firestore_service import get_firestore_service
+from backend.services.storage_service import get_storage_service
+from backend.models.schemas import DashboardStatsResponse
+
+# Mock Data Service
+mock_data_service = AsyncMock()
+mock_data_service.get_dashboard_stats.return_value = DashboardStatsResponse(
+    document_count=10,
+    agent_count=5,
+    audio_count=20,
+    last_activity=datetime.now()
+)
+
+# Mock Firestore Service (for health check)
+mock_firestore_service = MagicMock()
+mock_firestore_service.health_check.return_value = True
+
+# Mock Storage Service (for health check)
+mock_storage_service = MagicMock()
+mock_storage_service.health_check.return_value = True
+
+# Override dependency
+app.dependency_overrides[get_data_service] = lambda: mock_data_service
+# Health endpoint uses direct imports or get methods, not Depends()?
+# Checking backend/api/health.py...
+# It imports: from backend.services.firestore_service import get_firestore_service
+# It calls: firestore_service = get_firestore_service()
+# It does NOT use Depends(). 
+# So app.dependency_overrides WON'T work for health check unless health check uses Depends.
+
+# Since health_check() does NOT use Depends(), we must patch the imports.
+# We can use unittest.mock.patch.
+# But TestClient(app) is global. We need to patch before importing/using client?
+# Or we can patch inside the test methods?
+# Since health_check is an async def, but TestClient calls it sync?
+# Wait, TestClient wraps FastAPI app.
+# If I patch "backend.api.health.get_firestore_service", it should work.
+
+# Let's adjust the structure to use patch.
+
+from unittest.mock import patch
+
+# We can keep data service override as dashboard likely uses Depends (checking...)
+# backend/api/dashboard.py likely uses Depends(get_data_service).
+
+@pytest.fixture(autouse=True)
+def mock_health_dependencies():
+    with patch("backend.api.health.get_firestore_service") as mock_fs, \
+         patch("backend.api.health.get_storage_service") as mock_storage:
+        
+        mock_fs_instance = MagicMock()
+        mock_fs_instance.health_check.return_value = True
+        mock_fs.return_value = mock_fs_instance
+        
+        mock_storage_instance = MagicMock()
+        mock_storage_instance.health_check.return_value = True
+        mock_storage.return_value = mock_storage_instance
+        
+        yield
 
 client = TestClient(app)
 

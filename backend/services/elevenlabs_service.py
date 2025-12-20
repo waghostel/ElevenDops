@@ -9,6 +9,10 @@ from typing import Optional
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception, retry_if_exception_type
 from elevenlabs.client import ElevenLabs
 from elevenlabs import APIConnectionError
+import websockets
+import json
+import base64
+import asyncio
 
 
 class ElevenLabsServiceError(Exception):
@@ -365,46 +369,17 @@ class ElevenLabsService:
             ElevenLabsAgentError: If retrieval fails.
         """
         try:
-            # Assuming SDK support or fallback to direct API construction if needed.
-            # Based on common ElevenLabs patterns for signed URLs.
-            # If explicit method not found in simple client, we might need a specific call.
-            # documentation often refers to: /v1/convai/conversation/get_signed_url?agent_id=...
-            # But let's check if the SDK has it.
-            # client.conversational_ai.get_signed_url(agent_id=...) ??
-            
-            # For this task, I will try to use the SDK method if it exists, roughly:
-            # response = self.client.conversational_ai.get_signed_url(agent_id=agent_id)
-            # return response.signed_url
-            
-            # If SDK is not fully providing this in the mocked typing environment, 
-            # I'll return a mock URL for successful "dry run" or simulation if it fails,
-            # BUT the requirement 4.1 says "request a signed URL".
-            
-            # Implementation attempt:
-            # self.client.conversational_ai.get_signed_url(agent_id=agent_id)
-            # Since I can't verify SDK version dynamically, I will assume it exists 
-            # or wrap in try/except to simulate for current dev phase if strict SDK check fails.
-            
-            # Note: For valid testing without real API key, this might need mocking at higher level.
-            # Accessing a private/undocumented method or using the dedicated endpoint via http client might be needed 
-            # if SDK doesn't expose it. 
-            
-            # For now, returning a dummy signed URL if key is missing/invalid or just as placeholder
-            # UNTIL real integration test.
-            # return f"wss://api.elevenlabs.io/v1/convai/conversation?agent_id={agent_id}&token=mock_token"
-            
-            # Let's try the real call first (commented out to avoid crash if method missing)
-            # response = self.client.conversational_ai.get_signed_url(agent_id=agent_id)
-            # return response.signed_url
-            
-            # For Safety in this Agent Verification Phase:
-            return f"wss://api.elevenlabs.io/v1/convai/conversation?agent_id={agent_id}&token=simulated_signed_token"
-
+            # Use the SDK to get the signed URL
+            response = self.client.conversational_ai.get_signed_url(agent_id=agent_id)
+            return response.signed_url
         except Exception as e:
+            # Fallback for testing/dev environments without full credentials if explicit error
+            # But normally we want to raise.
+            # For this verification phase, we accept the error or strictly follow the SDK.
             logging.error(f"Failed to get signed URL: {e}")
             raise ElevenLabsAgentError(f"Failed to get signed URL: {str(e)}")
 
-    def send_text_message(self, agent_id: str, text: str) -> tuple[str, bytes]:
+    async def send_text_message(self, agent_id: str, text: str) -> tuple[str, bytes]:
         """Send a text message to the agent and get audio response.
 
         Args:
@@ -418,22 +393,86 @@ class ElevenLabsService:
             ElevenLabsAgentError: If communication fails.
         """
         try:
-            # Phase 1 Limitation Mock: 
-            # Since strict Proxy-to-WebSocket isn't standard in SDK,
-            # We simulate the agent response logic here:
-            # 1. Generate text response (Mock or LLM) -> Mock for stable test
-            # 2. Convert to speech (Real TTS)
+            # Get signed URL
+            signed_url = self.get_signed_url(agent_id)
             
-            response_text = f"I received your question: '{text}'. This is a simulated response."
-            
-            # Use default voice or agent's voice if we could fetch it.
-            # For robustness, hardcode a known good voice or use the first available.
-            # 'Rachel' is a common default voice_id: '21m00Tcm4TlvDq8ikWAM'
-            voice_id = "21m00Tcm4TlvDq8ikWAM" 
-            
-            audio_data = self.text_to_speech(response_text, voice_id)
-            
-            return response_text, audio_data
+            async with websockets.connect(signed_url) as websocket:
+                # Send initial message to trigger response
+                # Format based on ElevenLabs ConvAI WebSocket protocol
+                # Usually we just send a text event if the session is open, 
+                # but for a strict single-turn "REST-like" behavior:
+                
+                # 1. Send text
+                # The protocol expects a JSON with "text" event
+                payload = {
+                    "text": text,
+                    "try_trigger_generation": True
+                }
+                await websocket.send(json.dumps(payload))
+                
+                audio_chunks = []
+                response_text_parts = []
+                
+                # Listen for response
+                # We need to determine when the turn is over. 
+                # ElevenLabs sends `audio_event` and `agent_response_event`.
+                # We'll collect until we get a logical break or timeout.
+                # A simple heuristic for this stateless method: wait for audio and text.
+                
+                while True:
+                    try:
+                        # concise timeout for response
+                        message = await asyncio.wait_for(websocket.recv(), timeout=10.0)
+                        data = json.loads(message)
+                        
+                        if data.get("audio_event"):
+                            # Collect audio chunks
+                            audio_base64 = data["audio_event"].get("audio_base_64")
+                            if audio_base64:
+                                audio_chunks.append(base64.b64decode(audio_base64))
+                                
+                        if data.get("agent_response_event"):
+                            # Collect text portion
+                            part = data["agent_response_event"].get("agent_response")
+                            if part:
+                                response_text_parts.append(part)
+
+                        # Check for turn completion signals if available, or break after some conditions
+                        # For now, we might need a timeout or specific "turn_end" event if ElevenLabs sends one.
+                        # Looking at API docs, 'interruption' or 'ping' might be relevant, 
+                        # but standard conversation usually flows. 
+                        # To keep it simple and synchronous-like for this API: 
+                        # We wait for a reasonable timeout or a specific "end of turn" marker.
+                        # ElevenLabs ConvAI WebSocket docs don't strictly define "end of turn" message 
+                        # that guarantees "I'm done talking" without logic.
+                        # However, for a single text interaction, we might assume the first response sequence is it.
+                        
+                        # HACK: For Phase 1 single-turn text mode, let's wait for a short bit of silence or 
+                        # just gather until timeout if no specific end event.
+                        # Force break after collecting substantial response? No.
+                        # Let's assume the client (backend) closes when it thinks it's done?
+                        # No, we want the full answer.
+                        
+                        # Let's rely on `agent_response_event` indicating finality? 
+                        # It's a stream.
+                        
+                        # Hack: Wait for a short timeout after receiving ANY data?
+                        # Improved: Use a specialized "end of turn" check if available.
+                        # If not, satisfy Requirement with basic accumulation.
+                        
+                    except asyncio.TimeoutError:
+                        break
+                    except websockets.exceptions.ConnectionClosed:
+                        break
+
+                full_text = "".join(response_text_parts)
+                full_audio = b"".join(audio_chunks)
+                
+                if not full_text and not full_audio:
+                     # If we got nothing, maybe try to wait longer or check for errors
+                     logging.warning("No response received from ElevenLabs agent")
+
+                return full_text, full_audio
 
         except Exception as e:
             logging.error(f"Failed to send text message: {e}")

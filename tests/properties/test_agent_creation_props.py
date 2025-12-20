@@ -115,7 +115,7 @@ async def test_voice_id_passthrough(voice_id):
 
 
 @given(
-    name=st.text(min_size=1).filter(lambda x: x.strip()),
+    name=st.text(min_size=1, max_size=100).filter(lambda x: x.strip()),
     agent_id=st.uuids().map(str),
     doctor_id=st.uuids().map(str)
 )

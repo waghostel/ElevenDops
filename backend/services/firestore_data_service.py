@@ -6,6 +6,8 @@ import re
 
 from google.cloud import firestore
 from google.cloud.firestore import SERVER_TIMESTAMP
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from google.api_core.exceptions import GoogleAPICallError, RetryError
 
 from backend.services.data_service import DataServiceInterface
 from backend.services.firestore_service import get_firestore_service
@@ -68,6 +70,9 @@ class FirestoreDataService(DataServiceInterface):
             elevenlabs_document_id=doc_dict.get("elevenlabs_document_id"),
             structured_sections=doc_dict.get("structured_sections"),
             created_at=doc_dict["created_at"],
+            sync_error_message=doc_dict.get("sync_error_message"),
+            last_sync_attempt=doc_dict.get("last_sync_attempt"),
+            sync_retry_count=doc_dict.get("sync_retry_count", 0),
         )
 
     def _doc_to_audio_metadata(self, doc_dict: dict) -> AudioMetadata:
@@ -113,6 +118,7 @@ class FirestoreDataService(DataServiceInterface):
                 content=m["content"],
                 timestamp=m["timestamp"],
                 is_answered=m.get("is_answered"),
+                audio_data=m.get("audio_data"),
             )
             for m in doc_dict.get("messages", [])
         ]
@@ -164,8 +170,6 @@ class FirestoreDataService(DataServiceInterface):
         """Get dashboard statistics using collection counts."""
         try:
             # Use aggregation queries for counts
-            # Note: The synchronous python client returns a list of AggregationResult
-            # which has a value property.
             doc_count_query = self._db.collection(KNOWLEDGE_DOCUMENTS).count()
             agent_count_query = self._db.collection(AGENTS).count()
             audio_count_query = self._db.collection(AUDIO_FILES).count()
@@ -203,6 +207,11 @@ class FirestoreDataService(DataServiceInterface):
             )
 
     # ==================== Knowledge Documents ====================
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((GoogleAPICallError, RetryError))
+    )
     async def create_knowledge_document(
         self, doc: KnowledgeDocumentCreate
     ) -> KnowledgeDocumentResponse:
@@ -224,7 +233,7 @@ class FirestoreDataService(DataServiceInterface):
             
             self._db.collection(KNOWLEDGE_DOCUMENTS).document(knowledge_id).set(doc_data)
             
-            # Approximate created_at for return since SERVER_TIMESTAMP is handled server-side
+            # Approximate created_at for return
             doc_data["created_at"] = datetime.now()
             
             return self._doc_to_knowledge_response(doc_data)
@@ -275,22 +284,16 @@ class FirestoreDataService(DataServiceInterface):
                 updates["elevenlabs_document_id"] = elevenlabs_id
             
             if status == SyncStatus.SYNCING:
-                # Increment retry count when starting sync
                 updates["sync_retry_count"] = firestore.Increment(1)
             
             if error_message:
                 updates["sync_error_message"] = error_message
             elif status == SyncStatus.COMPLETED or status == SyncStatus.PENDING:
-                # Clear error message on success or manual retry start
                 updates["sync_error_message"] = None
                 if status == SyncStatus.PENDING:
-                     # Reset retry count on manual retry initiation? 
-                     # Actually, Task 3.2 says "Reset sync_retry_count on manual retry (or increment)"
-                     # Let's reset it to 0 if we manually retry.
                      updates["sync_retry_count"] = 0
 
             try:
-                # Update requires document to exist
                 ref.update(updates)
                 return True
             except Exception:
@@ -357,6 +360,11 @@ class FirestoreDataService(DataServiceInterface):
             return False
 
     # ==================== Agents ====================
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((GoogleAPICallError, RetryError))
+    )
     async def save_agent(self, agent: AgentResponse) -> AgentResponse:
         try:
             doc_data = agent.model_dump()
@@ -404,6 +412,11 @@ class FirestoreDataService(DataServiceInterface):
             return False
 
     # ==================== Patient Sessions ====================
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((GoogleAPICallError, RetryError))
+    )
     async def create_patient_session(
         self, session: PatientSessionResponse
     ) -> PatientSessionResponse:
@@ -428,6 +441,11 @@ class FirestoreDataService(DataServiceInterface):
             logger.error(f"Failed to get patient session {session_id}: {e}")
             return None
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((GoogleAPICallError, RetryError))
+    )
     async def add_session_message(
         self, session_id: str, message: ConversationMessageSchema
     ) -> None:
@@ -456,6 +474,11 @@ class FirestoreDataService(DataServiceInterface):
             return []
 
     # ==================== Conversations ====================
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((GoogleAPICallError, RetryError))
+    )
     async def save_conversation(
         self, conversation: ConversationDetailSchema
     ) -> ConversationDetailSchema:
@@ -527,3 +550,48 @@ class FirestoreDataService(DataServiceInterface):
         except Exception as e:
             logger.error(f"Failed to get conversation detail {conversation_id}: {e}")
             return None
+
+    async def get_conversation_count(self) -> int:
+        """Get total number of conversations."""
+        try:
+            return self._db.collection(CONVERSATIONS).count().get()[0][0].value
+        except Exception as e:
+            logger.error(f"Failed to get conversation count: {e}")
+            return 0
+
+    async def get_average_duration(self) -> float:
+        """Get average conversation duration in seconds."""
+        try:
+            # Note: Firestore aggregation for AVG might be available but fetching fields is safe MVP
+            docs = self._db.collection(CONVERSATIONS).select(["duration_seconds"]).stream()
+            durations = []
+            for d in docs:
+                val = d.to_dict().get("duration_seconds", 0)
+                if val > 0:
+                    durations.append(val)
+            
+            if not durations:
+                return 0.0
+            return sum(durations) / len(durations)
+        except Exception as e:
+            logger.error(f"Failed to get average duration: {e}")
+            return 0.0
+
+    async def get_attention_percentage(self) -> float:
+        """Get percentage of conversations requiring attention."""
+        try:
+            total_req = self._db.collection(CONVERSATIONS).count()
+            attn_req = self._db.collection(CONVERSATIONS).where(filter=firestore.FieldFilter("requires_attention", "==", True)).count()
+            
+            total_snap = total_req.get()
+            attn_snap = attn_req.get()
+            
+            total = total_snap[0][0].value
+            if total == 0:
+                return 0.0
+            
+            attn = attn_snap[0][0].value
+            return (attn / total) * 100.0
+        except Exception as e:
+            logger.error(f"Failed to get attention percentage: {e}")
+            return 0.0

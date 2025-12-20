@@ -103,23 +103,31 @@ class PatientService:
         )
         await self.data_service.add_session_message(session_id, patient_msg_obj)
         
-        response_text, audio_bytes = self.elevenlabs_service.send_text_message(
-            session.agent_id, message
-        )
+        try:
+            response_text, audio_bytes = await self.elevenlabs_service.send_text_message(
+                session.agent_id, message
+            )
+        except Exception as e:
+            logging.error(f"Failed to get response from ElevenLabs for session {session_id}: {e}")
+            # Graceful degradation: return text-only fallback
+            response_text = (
+                "I apologize, but I am currently experiencing technical difficulties "
+                "and cannot generate a voice response. Please check the system status."
+            )
+            audio_bytes = None
         
+        # Convert audio bytes to base64 if needed by Schema
+        import base64
+        audio_b64 = base64.b64encode(audio_bytes).decode('utf-8') if audio_bytes else None
+
         # Log agent message
         agent_msg_obj = ConversationMessageSchema(
             role="agent",
             content=response_text,
             timestamp=datetime.now(),
+            audio_data=audio_b64
         )
         await self.data_service.add_session_message(session_id, agent_msg_obj)
-        
-        # Convert audio bytes to base64 if needed by Schema?
-        # Schema says `audio_data: Optional[str] = Field(None, description="Base64 encoded audio data")`
-        # simulate base64 encoding if it's bytes
-        import base64
-        audio_b64 = base64.b64encode(audio_bytes).decode('utf-8') if audio_bytes else None
 
         # Log conversation (Feature for future Task: logging history to DB)
         # For now, just return the response

@@ -51,3 +51,17 @@ app.include_router(conversation_router, prefix="/api/conversations", tags=["conv
 async def root():
     """Root endpoint."""
     return {"message": APP_TITLE, "version": APP_VERSION}
+
+
+from fastapi import Request
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Global exception handler for unexpected errors."""
+    import logging
+    logging.error(f"Global exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An unexpected error occurred. Please contact support.", "error_code": "INTERNAL_SERVER_ERROR"},
+    )

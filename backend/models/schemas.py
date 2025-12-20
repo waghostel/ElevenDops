@@ -246,6 +246,7 @@ class ConversationMessageSchema(BaseModel):
     content: str
     timestamp: datetime
     is_answered: Optional[bool] = None
+    audio_data: Optional[str] = Field(None, description="Base64 encoded audio data (agent only)")
 
 
 class ConversationSummarySchema(BaseModel):

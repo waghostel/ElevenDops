@@ -175,6 +175,21 @@ class DataServiceInterface(ABC):
         """Get a specific conversation by ID."""
         pass
 
+    @abstractmethod
+    async def get_conversation_count(self) -> int:
+        """Get total number of conversations."""
+        pass
+
+    @abstractmethod
+    async def get_average_duration(self) -> float:
+        """Get average conversation duration in seconds."""
+        pass
+
+    @abstractmethod
+    async def get_attention_percentage(self) -> float:
+        """Get percentage of conversations requiring attention."""
+        pass
+
 
 class MockDataService(DataServiceInterface):
     """Mock data service for development and testing.
@@ -462,6 +477,31 @@ class MockDataService(DataServiceInterface):
     ) -> Optional[ConversationDetailSchema]:
         """Get a specific conversation by ID."""
         return self._conversation_details.get(conversation_id)
+
+    async def get_conversation_count(self) -> int:
+        """Get total number of conversations."""
+        return len(self._conversation_details)
+
+    async def get_average_duration(self) -> float:
+        """Get average conversation duration in seconds."""
+        conversations = [
+            c for c in self._conversation_details.values() 
+            if c.duration_seconds > 0
+        ]
+        if not conversations:
+            return 0.0
+        
+        total_duration = sum(c.duration_seconds for c in conversations)
+        return total_duration / len(conversations)
+
+    async def get_attention_percentage(self) -> float:
+        """Get percentage of conversations requiring attention."""
+        conversations = list(self._conversation_details.values())
+        if not conversations:
+            return 0.0
+            
+        attention_count = sum(1 for c in conversations if c.requires_attention)
+        return (attention_count / len(conversations)) * 100.0
 
 
 # Singleton instances

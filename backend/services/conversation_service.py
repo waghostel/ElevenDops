@@ -1,55 +1,100 @@
+"""Conversation service for business logic."""
+
+from typing import List, Optional
 from datetime import datetime
-from typing import Optional
 
 from backend.models.schemas import (
-    ConversationLogsResponseSchema,
+    ConversationSummarySchema,
     ConversationDetailSchema,
+    ConversationMessageSchema,
+    ConversationLogsResponseSchema,
+    ConversationLogsQueryParams
 )
-from backend.services.data_service import get_data_service
-
+from backend.services.data_service import DataServiceInterface, get_data_service
+from backend.services.analysis_service import AnalysisService
 
 class ConversationService:
-    """Service for managing conversation logs."""
+    """Service for conversation log management and analysis."""
+    
+    def __init__(
+        self, 
+        data_service: Optional[DataServiceInterface] = None,
+        analysis_service: Optional[AnalysisService] = None
+    ):
+        self.data_service = data_service or get_data_service()
+        self.analysis_service = analysis_service or AnalysisService()
 
-    def __init__(self):
-        self.data_service = get_data_service()
-
-    async def get_conversation_logs(
-        self,
-        patient_id: Optional[str] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        requires_attention_only: bool = False,
+    async def get_conversations(
+        self, query_params: ConversationLogsQueryParams
     ) -> ConversationLogsResponseSchema:
-        """Get conversation logs with statistics."""
+        """Get filtered conversation logs with statistics.
+        
+        Args:
+            query_params: Filter parameters.
+            
+        Returns:
+            Response containing list of conversations and aggregate counts.
+        """
+        # Get conversations from data service with basic filtering
         conversations = await self.data_service.get_conversation_logs(
-            patient_id=patient_id,
-            start_date=start_date,
-            end_date=end_date,
-            requires_attention_only=requires_attention_only,
+            patient_id=query_params.patient_id,
+            start_date=query_params.start_date,
+            end_date=query_params.end_date,
+            requires_attention_only=query_params.requires_attention_only
         )
-
+        
+        # Calculate statistics from the filtered result set
         total_count = len(conversations)
-        attention_required_count = sum(1 for c in conversations if c.requires_attention)
-        total_answered = sum(c.answered_count for c in conversations)
-        total_unanswered = sum(c.unanswered_count for c in conversations)
-
+        attention_count = sum(1 for c in conversations if c.requires_attention)
+        answered_total = sum(c.answered_count for c in conversations)
+        unanswered_total = sum(c.unanswered_count for c in conversations)
+        
         return ConversationLogsResponseSchema(
             conversations=conversations,
             total_count=total_count,
-            attention_required_count=attention_required_count,
-            total_answered=total_answered,
-            total_unanswered=total_unanswered,
+            attention_required_count=attention_count,
+            total_answered=answered_total,
+            total_unanswered=unanswered_total
         )
 
-    async def get_conversation_detail(
+    async def get_conversation_details(
         self, conversation_id: str
     ) -> Optional[ConversationDetailSchema]:
-        """Get conversation details."""
-        return await self.data_service.get_conversation_detail(conversation_id)
+        """Get detailed conversation view.
+        
+        Args:
+            conversation_id: ID of the conversation.
+            
+        Returns:
+            Detailed conversation object or None if not found.
+        """
+        detail = await self.data_service.get_conversation_detail(conversation_id)
+        if not detail:
+            return None
+            
+        # Ensure messages are sorted chronologically
+        detail.messages.sort(key=lambda m: m.timestamp)
+        
+        return detail
 
-    async def save_conversation(
-        self, conversation: ConversationDetailSchema
-    ) -> ConversationDetailSchema:
-        """Save a new conversation."""
-        return await self.data_service.save_conversation(conversation)
+    async def get_conversation_statistics(self) -> dict:
+        """Get overall conversation dashboard statistics.
+        
+        Returns:
+            Dictionary with statistical metrics.
+        """
+        # In a real app, this might be a single aggregated query
+        # For MVP/Mock, we use the data service methods
+        
+        total = await self.data_service.get_conversation_count()
+        avg_duration = await self.data_service.get_average_duration()
+        attention_pct = await self.data_service.get_attention_percentage()
+        
+        formatted_duration = self.analysis_service.format_duration(int(avg_duration))
+        
+        return {
+            "total_conversations": total,
+            "average_duration_seconds": avg_duration,
+            "average_duration_formatted": formatted_duration,
+            "attention_percentage": round(attention_pct, 1)
+        }

@@ -1,6 +1,7 @@
 
 import streamlit as st
 import asyncio
+import base64
 from datetime import datetime
 from streamlit_app.services.backend_api import get_backend_client
 from streamlit_app.components.sidebar import render_sidebar
@@ -195,12 +196,19 @@ if st.session_state.selected_agent_id:
         # Display History
         for msg in st.session_state.conversation_history:
             with st.chat_message(msg.role):
+                # Timestamp header
+                timestamp_str = msg.timestamp.strftime("%H:%M:%S")
+                st.caption(f"🕒 {timestamp_str}")
+                
                 st.write(msg.content)
+                
+                # Audio Playback
                 if msg.audio_data:
-                    # TODO: detailed audio handling if audio_data is base64 string
-                    # st.audio(base64_to_bytes(msg.audio_data)) 
-                    # For now, just indicating audio present or mock playback if URL
-                    st.caption("🔊 [Audio Response]") 
+                    try:
+                        audio_bytes = base64.b64decode(msg.audio_data)
+                        st.audio(audio_bytes, format="audio/mp3")
+                    except Exception as e:
+                        st.error(f"⚠️ 無法播放音檔 (Cannot play audio): {str(e)}") 
 
         # Input
         if prompt := st.chat_input("請輸入您的問題 (Type your message)..."):
