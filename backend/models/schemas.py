@@ -80,6 +80,9 @@ class KnowledgeDocumentResponse(BaseModel):
     structured_sections: Optional[dict] = Field(
         None, description="Structured sections of the document"
     )
+    sync_error_message: Optional[str] = Field(None, description="Error message if sync failed")
+    last_sync_attempt: Optional[datetime] = Field(None, description="Timestamp of last sync attempt")
+    sync_retry_count: int = Field(default=0, description="Number of sync retry attempts")
     created_at: datetime = Field(..., description="Creation timestamp")
 
 

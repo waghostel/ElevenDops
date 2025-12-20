@@ -37,18 +37,33 @@ async def sync_knowledge_to_elevenlabs(
         # Create in ElevenLabs
         try:
             elevenlabs_id = elevenlabs_service.create_document(text=content, name=name)
-        except Exception:
-            # Re-raise to trigger failure handling
-            raise
+        except ElevenLabsSyncError as e:
+            # Re-raise explicit sync error to be caught below with type info if needed
+            # But simpler to just let it bubble to the specific except block below
+            raise e
+        except Exception as e:
+            # Wrap generic errors
+            raise e
 
         # Update status to completed
         await data_service.update_knowledge_sync_status(
             knowledge_id, SyncStatus.COMPLETED, elevenlabs_id
         )
 
-    except Exception:
-        # Update status to failed on any error
-        await data_service.update_knowledge_sync_status(knowledge_id, SyncStatus.FAILED)
+    except ElevenLabsSyncError as e:
+        # Update status to failed with specific message
+        await data_service.update_knowledge_sync_status(
+            knowledge_id, 
+            SyncStatus.FAILED, 
+            error_message=str(e)
+        )
+    except Exception as e:
+        # Update status to failed on generic error
+        await data_service.update_knowledge_sync_status(
+            knowledge_id, 
+            SyncStatus.FAILED, 
+            error_message=f"Unexpected error: {str(e)}"
+        )
 
 
 @router.post(
@@ -187,6 +202,13 @@ async def retry_knowledge_sync(
 
     elevenlabs_doc_name = f"{doc.disease_name}_{doc.document_type.value}"
 
+    # Set status to PENDING immediately to clear error and show feedback
+    await data_service.update_knowledge_sync_status(
+        knowledge_id, 
+        SyncStatus.PENDING,
+        error_message=None # Explicitly clear error
+    )
+    
     # Trigger background sync
     background_tasks.add_task(
         sync_knowledge_to_elevenlabs,
@@ -197,4 +219,7 @@ async def retry_knowledge_sync(
         elevenlabs_service,
     )
     
+    # Return updated doc state
+    doc.sync_status = SyncStatus.PENDING
+    doc.sync_error_message = None
     return doc

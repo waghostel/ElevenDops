@@ -259,14 +259,36 @@ class FirestoreDataService(DataServiceInterface):
             return None
 
     async def update_knowledge_sync_status(
-        self, knowledge_id: str, status: SyncStatus, elevenlabs_id: Optional[str] = None
+        self, 
+        knowledge_id: str, 
+        status: SyncStatus, 
+        elevenlabs_id: Optional[str] = None,
+        error_message: Optional[str] = None
     ) -> bool:
         try:
             ref = self._db.collection(KNOWLEDGE_DOCUMENTS).document(knowledge_id)
-            updates = {"sync_status": status.value}
+            updates = {
+                "sync_status": status.value,
+                "last_sync_attempt": firestore.SERVER_TIMESTAMP
+            }
             if elevenlabs_id:
                 updates["elevenlabs_document_id"] = elevenlabs_id
             
+            if status == SyncStatus.SYNCING:
+                # Increment retry count when starting sync
+                updates["sync_retry_count"] = firestore.Increment(1)
+            
+            if error_message:
+                updates["sync_error_message"] = error_message
+            elif status == SyncStatus.COMPLETED or status == SyncStatus.PENDING:
+                # Clear error message on success or manual retry start
+                updates["sync_error_message"] = None
+                if status == SyncStatus.PENDING:
+                     # Reset retry count on manual retry initiation? 
+                     # Actually, Task 3.2 says "Reset sync_retry_count on manual retry (or increment)"
+                     # Let's reset it to 0 if we manually retry.
+                     updates["sync_retry_count"] = 0
+
             try:
                 # Update requires document to exist
                 ref.update(updates)

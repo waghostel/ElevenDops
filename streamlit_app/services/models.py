@@ -51,6 +51,9 @@ class KnowledgeDocument:
     elevenlabs_document_id: Optional[str]
     structured_sections: Optional[Dict[str, str]]
     created_at: datetime
+    sync_error_message: Optional[str] = None
+    last_sync_attempt: Optional[datetime] = None
+    sync_retry_count: int = 0
 
 
 @dataclass

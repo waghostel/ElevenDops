@@ -60,7 +60,11 @@ class DataServiceInterface(ABC):
 
     @abstractmethod
     async def update_knowledge_sync_status(
-        self, knowledge_id: str, status: SyncStatus, elevenlabs_id: Optional[str] = None
+        self, 
+        knowledge_id: str, 
+        status: SyncStatus, 
+        elevenlabs_id: Optional[str] = None,
+        error_message: Optional[str] = None
     ) -> bool:
         """Update the sync status of a knowledge document."""
         pass
@@ -275,7 +279,7 @@ class MockDataService(DataServiceInterface):
         return self._documents.get(knowledge_id)
 
     async def update_knowledge_sync_status(
-        self, knowledge_id: str, status: SyncStatus, elevenlabs_id: Optional[str] = None
+        self, knowledge_id: str, status: SyncStatus, elevenlabs_id: Optional[str] = None, error_message: Optional[str] = None
     ) -> bool:
         """Update the sync status of a knowledge document."""
         if knowledge_id not in self._documents:
@@ -295,8 +299,25 @@ class MockDataService(DataServiceInterface):
             sync_status=status,
             elevenlabs_document_id=elevenlabs_id if elevenlabs_id is not None else doc.elevenlabs_document_id,
             structured_sections=doc.structured_sections,
+            sync_error_message=error_message if error_message is not None else (doc.sync_error_message if status == SyncStatus.FAILED else None),
+            last_sync_attempt=datetime.now(),
+            sync_retry_count=doc.sync_retry_count, # retry count logic needs to be handled by caller or separate update? 
+            # For this MVP, let's assume retry count is updated separately or we just keep it. 
+            # Actually caller usually handles retry loops. 
+            # If status becomes PENDING/SYNCING/COMPLETED we might want to reset error message? 
+            # My logic above: if error_message passed, use it. if Status FAILED and no error passed, keep old? 
+            # Better: if status != FAILED, clear error message? 
+            # The UI logic says "Clear previous sync_error_message before retry".
+            # Let's trust the caller to pass None if they want to clear it, or we clear it on success.
+            # If status is COMPLETED, error should be None.
             created_at=doc.created_at,
         )
+        # Refined logic for error message in replacement block:
+        # If status is COMPLETED, clear error.
+        # If error_message provided, set it.
+        if status == SyncStatus.COMPLETED:
+             updated_doc.sync_error_message = None
+        
         self._documents[knowledge_id] = updated_doc
         return True
 

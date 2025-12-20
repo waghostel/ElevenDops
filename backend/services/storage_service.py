@@ -91,6 +91,26 @@ class StorageService:
             logger.error(f"Failed to delete file {filename}: {e}")
             return False
     
+    def delete_audio(self, filename: str) -> bool:
+        """Delete audio file from storage.
+        
+        Args:
+            filename: Filename to delete (without path prefix)
+            
+        Returns:
+            True if deletion succeeded, False if file not found or error
+        """
+        return self.delete_file(f"audio/{filename}")
+    
+    def file_exists(self, filename: str) -> bool:
+        """Check if a file exists in storage."""
+        try:
+            blob = self._bucket.blob(filename)
+            return blob.exists()
+        except Exception as e:
+            logger.error(f"Failed to check file existence {filename}: {e}")
+            return False
+    
     def health_check(self) -> bool:
         """Check if storage is accessible."""
         try:

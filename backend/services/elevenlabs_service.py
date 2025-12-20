@@ -3,9 +3,12 @@
 import logging
 import os
 import tempfile
+from enum import Enum
 from typing import Optional
 
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception, retry_if_exception_type
 from elevenlabs.client import ElevenLabs
+from elevenlabs import APIConnectionError
 
 
 class ElevenLabsServiceError(Exception):
@@ -14,10 +17,29 @@ class ElevenLabsServiceError(Exception):
     pass
 
 
+class ElevenLabsErrorType(Enum):
+    RATE_LIMIT = "rate_limit"
+    AUTH_ERROR = "auth_error"
+    VALIDATION = "validation"
+    SERVER_ERROR = "server_error"
+    NETWORK = "network"
+    UNKNOWN = "unknown"
+
+
 class ElevenLabsSyncError(ElevenLabsServiceError):
     """Raised when document sync to ElevenLabs fails."""
 
-    pass
+    def __init__(
+        self, 
+        message: str, 
+        error_type: ElevenLabsErrorType = ElevenLabsErrorType.UNKNOWN,
+        original_error: Optional[Exception] = None,
+        is_retryable: bool = False
+    ):
+        super().__init__(message)
+        self.error_type = error_type
+        self.original_error = original_error
+        self.is_retryable = is_retryable
 
 
 
@@ -40,6 +62,13 @@ class ElevenLabsAgentError(ElevenLabsServiceError):
     pass
 
 
+def _should_retry(exception: Exception) -> bool:
+    """Determine if exception should trigger retry."""
+    if isinstance(exception, ElevenLabsSyncError):
+        return exception.is_retryable
+    return False
+
+
 class ElevenLabsService:
     """Service for ElevenLabs Knowledge Base operations.
 
@@ -54,6 +83,41 @@ class ElevenLabsService:
             logging.warning("ELEVENLABS_API_KEY not found. ElevenLabs integration will fail.")
         self.client = ElevenLabs(api_key=api_key)
 
+    def _classify_error(self, error: Exception) -> tuple[ElevenLabsErrorType, bool]:
+        """Classify error and determine if retryable."""
+        error_str = str(error).lower()
+        
+        # Check for rate limiting
+        if "429" in error_str or "rate" in error_str:
+            return ElevenLabsErrorType.RATE_LIMIT, True
+        
+        # Check for auth errors
+        if "401" in error_str or "403" in error_str or "unauthorized" in error_str:
+            return ElevenLabsErrorType.AUTH_ERROR, False
+        
+        # Check for validation errors
+        if "400" in error_str or "invalid" in error_str:
+            return ElevenLabsErrorType.VALIDATION, False
+        
+        # Check for server errors
+        if any(code in error_str for code in ["500", "502", "503", "504"]):
+            return ElevenLabsErrorType.SERVER_ERROR, True
+        
+        # Check for network errors
+        if any(term in error_str for term in ["connection", "timeout", "network"]):
+            return ElevenLabsErrorType.NETWORK, True
+        
+        return ElevenLabsErrorType.UNKNOWN, False
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        retry=retry_if_exception(_should_retry),
+        reraise=True,
+        before_sleep=lambda retry_state: logging.warning(
+            f"Retrying ElevenLabs API call, attempt {retry_state.attempt_number}"
+        )
+    )
     def create_document(self, text: str, name: str) -> str:
         """Create document in ElevenLabs Knowledge Base.
 
@@ -67,6 +131,7 @@ class ElevenLabsService:
         Raises:
             ElevenLabsSyncError: If creation fails.
         """
+        logging.info(f"Creating ElevenLabs document: {name} (length: {len(text)})")
         try:
             # Create a temporary file to upload as the API expects a file-like object or path
             with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.md', encoding='utf-8') as tmp:
@@ -79,14 +144,27 @@ class ElevenLabsService:
                         name=name,
                         file=f
                     )
+                logging.info(f"Successfully created document {name}. ID: {response.id}")
                 return response.id
             finally:
                 if os.path.exists(tmp_path):
                     os.unlink(tmp_path)
 
         except Exception as e:
-            logging.error(f"Failed to create ElevenLabs document: {e}")
-            raise ElevenLabsSyncError(f"Failed to sync with ElevenLabs: {str(e)}")
+            error_type, is_retryable = self._classify_error(e)
+            
+            # Log full stack trace for unexpected errors, cleaner log for known ones
+            if error_type == ElevenLabsErrorType.UNKNOWN:
+                logging.error(f"Failed to create ElevenLabs document '{name}': {e}", exc_info=True)
+            else:
+                logging.error(f"Failed to create ElevenLabs document '{name}': {e} (Type: {error_type.value}, Retryable: {is_retryable})")
+                
+            raise ElevenLabsSyncError(
+                message=f"Failed to sync with ElevenLabs: {str(e)}",
+                error_type=error_type,
+                original_error=e,
+                is_retryable=is_retryable
+            )
 
     def delete_document(self, document_id: str) -> bool:
         """Delete document from ElevenLabs Knowledge Base.
@@ -101,10 +179,15 @@ class ElevenLabsService:
             ElevenLabsDeleteError: If deletion fails.
         """
         try:
+            # Also apply deletion error handling
+            logging.info(f"Deleting ElevenLabs document: {document_id}")
             self.client.conversational_ai.delete_knowledge_base_document(document_id=document_id)
+            logging.info(f"Successfully deleted document {document_id}")
             return True
         except Exception as e:
-            logging.error(f"Failed to delete ElevenLabs document: {e}")
+            # We don't typically retry deletes as aggressively, but logging is important
+            logging.error(f"Failed to delete ElevenLabs document {document_id}: {e}")
+            # Could classify here too if needed, but keeping it simple for now as per spec focus on Sync
             raise ElevenLabsDeleteError(f"Failed to delete from ElevenLabs: {str(e)}")
 
     def text_to_speech(self, text: str, voice_id: str) -> bytes:
@@ -165,6 +248,11 @@ class ElevenLabsService:
             logging.error(f"Failed to fetch voices: {e}")
             raise ElevenLabsTTSError(f"Failed to fetch voices: {str(e)}")
 
+    @retry(
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        stop=stop_after_attempt(3),
+        retry=retry_if_exception_type((ElevenLabsAgentError, APIConnectionError))
+    )
     def create_agent(
         self,
         name: str,
@@ -186,68 +274,25 @@ class ElevenLabsService:
         Raises:
             ElevenLabsAgentError: If creation fails.
         """
+        if not voice_id:
+             raise ElevenLabsAgentError("Voice ID is required")
+
         try:
-            # Note: The SDK method signature might vary slightly based on version.
-            # Assuming client.conversational_ai.agents.create based on general pattern 
-            # or client.conversational_ai.create_agent depending on exact SDK version.
-            # Based on recent SDKs it's often:
-            response = self.client.conversational_ai.create_agent(
-                name=name,
-                conversation_config={
-                    "agent": {
-                         "prompt": {
-                             "prompt": system_prompt
-                         },
-                         "language": "en", # or "zh" if supported/needed, defaults usually fine
-                         "first_message": "Hello, I am your medical assistant. How can I help you today?"
-                    },
-                     "tts": {
-                         "voice_id": voice_id
-                     }
-                }
-            )
-            
-            # Linking knowledge base often happens either during creation or via separate update
-            # If the creation API supports it directly:
-            # The SDK is rapidly evolving. Let's assume we might need to add knowledge based on the docs.
-            # But wait, looking at standard ElevenLabs Conversational AI API, knowledge base is part of agent config.
-            # Let's try to update it after creation if needed, or pass it if possible.
-            # Given the lack of precise SDK docs in context, I will attempt to pass it in config if possible, 
-            # or do a second call.
-            
-            # Actually, `client.conversational_ai.create_agent` usually takes a config object.
-            # Let's use a robust approach: create then potentially patch if KB is separate, 
-            # but usually it's in the 'agent' -> 'knowledge_base' section.
-            
-            # However, since I don't have the exact SDK signature in front of me (I saw 'add_to_knowledge_base' earlier),
-            # and I need to be safe.
-            # I will assume the `create_agent` returns an object with an `agent_id`.
-            
-            # Wait, looking at `elevenlabs_integration.md`:
-            # Endpoint: `client.conversational_ai.agents.create_or_update()` 
-            # But `elevenlabs_service.py` uses `self.client.conversational_ai`.
-            
-            # Let's try to implement with the presumed correct structure:
-            
-            # Construct the comprehensive config
-            # Checks for knowledge base field support
-            
+            # Construct agent config
             agent_config = {
                 "prompt": {
                     "prompt": system_prompt
                 },
-                "first_message": "您好，我是您的醫療助手。請問有什麼我可以幫您的？", # Chinese default
-                "language": "en" # Conversational AI often entails the model language, 'en' is safest, 'zh' if supported.
+                "first_message": "您好，我是您的醫療助手。請問有什麼我可以幫您的？", # Traditional Chinese
+                "language": "en" # Use 'en' as safe default, the prompt instructs Chinese
             }
             
+            # Add KB if present
             if knowledge_base_ids:
-                 # Depending on SDK, might be 'knowledge_base': [{'id': ...}] or similar
-                 # Checking commonly used patterns:
-                 agent_config["knowledge_base"] = [
+                 agent_config["prompt"]["knowledge_base"] = [
                      {"id": kb_id} for kb_id in knowledge_base_ids
                  ]
                  
-            
             response = self.client.conversational_ai.create_agent(
                 name=name,
                 conversation_config={
@@ -261,8 +306,9 @@ class ElevenLabsService:
             return response.agent_id
 
         except Exception as e:
+            error_type, _ = self._classify_error(e) # _classify_error returns (error_type, is_retryable)
             logging.error(f"Failed to create ElevenLabs agent: {e}")
-            raise ElevenLabsAgentError(f"Failed to create agent: {str(e)}")
+            raise ElevenLabsAgentError(f"Failed to create agent: {str(e)}", error_type=error_type)
 
     def delete_agent(self, agent_id: str) -> bool:
         """Delete an agent from ElevenLabs.

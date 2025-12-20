@@ -51,7 +51,7 @@ async def load_documents() -> List[KnowledgeDocument]:
     try:
         return await client.get_knowledge_documents()
     except Exception as e:
-        st.error(f"Failed to load documents: {e}")
+        st.error(f"Unable to load documents. Please check your connection. (Error: {e})")
         return []
 
 
@@ -60,7 +60,7 @@ async def load_voices() -> List[VoiceOption]:
     try:
         return await client.get_available_voices()
     except Exception as e:
-        st.error(f"Failed to load voices: {e}")
+        st.error(f"Unable to load voice options. (Error: {e})")
         return []
 
 
@@ -72,7 +72,7 @@ async def generate_script(knowledge_id: str):
             st.session_state.generated_script = response.script
             st.toast("Script generated successfully!", icon="📝")
     except Exception as e:
-        st.error(f"Failed to generate script: {e}")
+        st.error(f"Script generation failed. Please try again. (Error: {e})")
 
 
 async def generate_audio(knowledge_id: str, script: str, voice_id: str):
@@ -86,7 +86,7 @@ async def generate_audio(knowledge_id: str, script: str, voice_id: str):
             # We'll reload the history.
             st.rerun()
     except Exception as e:
-        st.error(f"Failed to generate audio: {e}")
+        st.error(f"Audio generation failed. Please check your quota or try again. (Error: {e})")
 
 
 async def render_document_selection(documents: List[KnowledgeDocument]):
@@ -218,7 +218,7 @@ async def render_audio_history():
                     st.audio(audio.audio_url, format="audio/mpeg")
 
     except Exception as e:
-        st.error(f"Failed to load history: {e}")
+        st.error(f"Unable to load audio history. Please refer to conversion logs or try again later. (Error: {e})")
 
 
 async def main():

@@ -3,7 +3,9 @@
 ## Phase 1: Interface and Configuration
 
 - [x] 1. Create DataServiceInterface abstract base class
+
   - [x] 1.1 Refactor backend/services/data_service.py
+
     - Import ABC and abstractmethod from abc module
     - Create DataServiceInterface class extending ABC
     - Move all methods from DataServiceProtocol to DataServiceInterface as abstract methods
@@ -13,8 +15,8 @@
     - _Requirements: 1.1, 1.2, 1.3_
 
   - [x] 1.2 Update MockDataService to implement new interface methods
-    - Add _audio_files dict for in-memory audio storage
-    - Add _agents dict for in-memory agent storage
+    - Add \_audio_files dict for in-memory audio storage
+    - Add \_agents dict for in-memory agent storage
     - Implement save_audio_metadata method
     - Implement get_audio_files method with optional knowledge_id filter
     - Implement get_audio_file method
@@ -26,7 +28,9 @@
     - _Requirements: 1.2, 1.3_
 
 - [x] 2. Update configuration for data service selection
+
   - [x] 2.1 Add use_mock_data setting to backend/config.py
+
     - Add use_mock_data boolean field with default False
     - Add description explaining when to use mock vs Firestore
     - _Requirements: 2.1, 2.2, 2.3_
@@ -38,11 +42,12 @@
     - Use lazy import for FirestoreDataService to avoid circular imports
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-
 ## Phase 2: FirestoreDataService Implementation
 
 - [x] 3. Create FirestoreDataService class structure
+
   - [x] 3.1 Create backend/services/firestore_data_service.py
+
     - Import required modules: logging, datetime, uuid, typing
     - Import firestore and SERVER_TIMESTAMP from google.cloud
     - Import DataServiceInterface from data_service
@@ -50,22 +55,24 @@
     - Import all schema models from backend.models.schemas
     - Define collection name constants: KNOWLEDGE_DOCUMENTS, AUDIO_FILES, AGENTS, CONVERSATIONS, PATIENT_SESSIONS
     - Create FirestoreDataService class extending DataServiceInterface
-    - Implement singleton pattern with __new__ and _initialized flag
-    - Initialize _db from get_firestore_service().db in __init__
+    - Implement singleton pattern with **new** and \_initialized flag
+    - Initialize \_db from get_firestore_service().db in **init**
     - _Requirements: 3.1, 4.1, 5.1, 6.1, 8.1_
 
   - [x] 3.2 Implement helper conversion methods
-    - Create _doc_to_knowledge_response method to convert Firestore doc to KnowledgeDocumentResponse
-    - Create _doc_to_audio_metadata method to convert Firestore doc to AudioMetadata
-    - Create _doc_to_agent_response method to convert Firestore doc to AgentResponse
-    - Create _doc_to_conversation_detail method to convert Firestore doc to ConversationDetailSchema
-    - Create _doc_to_session_response method to convert Firestore doc to PatientSessionResponse
+    - Create \_doc_to_knowledge_response method to convert Firestore doc to KnowledgeDocumentResponse
+    - Create \_doc_to_audio_metadata method to convert Firestore doc to AudioMetadata
+    - Create \_doc_to_agent_response method to convert Firestore doc to AgentResponse
+    - Create \_doc_to_conversation_detail method to convert Firestore doc to ConversationDetailSchema
+    - Create \_doc_to_session_response method to convert Firestore doc to PatientSessionResponse
     - Handle enum conversions (DocumentType, SyncStatus, AnswerStyle)
     - Handle optional fields with .get() and defaults
     - _Requirements: 3.2, 4.2, 5.2, 6.2_
 
 - [x] 4. Implement Knowledge Document operations
+
   - [x] 4.1 Implement create_knowledge_document method
+
     - Generate UUID for knowledge_id
     - Parse structured_sections from raw_content (reuse logic from MockDataService)
     - Create document dict with all fields
@@ -75,6 +82,7 @@
     - _Requirements: 3.1, 3.2_
 
   - [x] 4.2 Implement get_knowledge_documents method
+
     - Query KNOWLEDGE_DOCUMENTS collection
     - Optionally filter by doctor_id if provided
     - Convert each document to KnowledgeDocumentResponse
@@ -82,12 +90,14 @@
     - _Requirements: 3.3_
 
   - [x] 4.3 Implement get_knowledge_document method
+
     - Get document by knowledge_id from KNOWLEDGE_DOCUMENTS
     - Return None if document doesn't exist
     - Convert to KnowledgeDocumentResponse if exists
     - _Requirements: 3.3, 9.4_
 
   - [x] 4.4 Implement update_knowledge_sync_status method
+
     - Get document reference by knowledge_id
     - Update sync_status field
     - Optionally update elevenlabs_document_id if provided
@@ -95,6 +105,7 @@
     - _Requirements: 3.4_
 
   - [x] 4.5 Implement delete_knowledge_document method
+
     - Delete document by knowledge_id from KNOWLEDGE_DOCUMENTS
     - Return True on success, False if not found
     - _Requirements: 3.5_
@@ -105,15 +116,17 @@
     - Test all fields are preserved
     - **Validates: Requirements 3.1, 3.2, 3.3**
 
-
 - [x] 5. Implement Audio File operations
+
   - [x] 5.1 Implement save_audio_metadata method
+
     - Write AudioMetadata to AUDIO_FILES collection using audio_id as document ID
     - Convert datetime to Firestore timestamp
     - Return saved AudioMetadata
     - _Requirements: 4.1, 4.2_
 
   - [x] 5.2 Implement get_audio_files method
+
     - Query AUDIO_FILES collection
     - Optionally filter by knowledge_id if provided
     - Convert each document to AudioMetadata
@@ -121,6 +134,7 @@
     - _Requirements: 4.3_
 
   - [x] 5.3 Implement get_audio_file method
+
     - Get document by audio_id from AUDIO_FILES
     - Return None if not found
     - Convert to AudioMetadata if exists
@@ -132,7 +146,9 @@
     - _Requirements: 4.3_
 
 - [x] 6. Implement Agent operations
+
   - [x] 6.1 Implement save_agent method
+
     - Write AgentResponse to AGENTS collection using agent_id as document ID
     - Convert AnswerStyle enum to string value
     - Convert datetime to Firestore timestamp
@@ -140,6 +156,7 @@
     - _Requirements: 5.1, 5.2_
 
   - [x] 6.2 Implement get_agents method
+
     - Query AGENTS collection
     - Optionally filter by doctor_id if provided
     - Convert each document to AgentResponse
@@ -147,6 +164,7 @@
     - _Requirements: 5.3_
 
   - [x] 6.3 Implement get_agent method
+
     - Get document by agent_id from AGENTS
     - Return None if not found
     - Convert to AgentResponse if exists
@@ -158,19 +176,23 @@
     - _Requirements: 5.5_
 
 - [x] 7. Implement Patient Session operations
+
   - [x] 7.1 Implement create_patient_session method
+
     - Write PatientSessionResponse to PATIENT_SESSIONS collection using session_id as document ID
     - Initialize empty messages array
     - Return saved PatientSessionResponse
     - _Requirements: 8.1, 8.2_
 
   - [x] 7.2 Implement get_patient_session method
+
     - Get document by session_id from PATIENT_SESSIONS
     - Return None if not found
     - Convert to PatientSessionResponse if exists
     - _Requirements: 8.4_
 
   - [x] 7.3 Implement add_session_message method
+
     - Get session document reference
     - Append message to messages array using array_union
     - Convert ConversationMessageSchema to dict
@@ -183,9 +205,10 @@
     - Return list of messages
     - _Requirements: 8.4_
 
-
 - [x] 8. Implement Conversation operations
+
   - [x] 8.1 Implement save_conversation method
+
     - Write ConversationDetailSchema to CONVERSATIONS collection using conversation_id as document ID
     - Convert messages list to list of dicts
     - Convert datetime to Firestore timestamp
@@ -193,6 +216,7 @@
     - _Requirements: 6.1, 6.2_
 
   - [x] 8.2 Implement get_conversation_logs method
+
     - Query CONVERSATIONS collection
     - Apply patient_id filter if provided (case-insensitive partial match)
     - Apply start_date filter if provided (created_at >= start_date)
@@ -204,6 +228,7 @@
     - _Requirements: 6.3, 6.5_
 
   - [x] 8.3 Implement get_conversation_detail method
+
     - Get document by conversation_id from CONVERSATIONS
     - Return None if not found
     - Convert to ConversationDetailSchema if exists
@@ -217,7 +242,9 @@
     - **Validates: Requirements 6.3, 6.5**
 
 - [x] 9. Implement Dashboard Statistics
+
   - [x] 9.1 Implement get_dashboard_stats method
+
     - Count documents in KNOWLEDGE_DOCUMENTS collection
     - Count documents in AGENTS collection
     - Count documents in AUDIO_FILES collection
@@ -234,7 +261,9 @@
 ## Phase 3: Testing and Validation
 
 - [x] 10. Write interface compliance tests
+
   - [x] 10.1 Create tests/test_firestore_data_service_props.py
+
     - **Property 1: Interface Implementation Completeness**
     - Test FirestoreDataService has all DataServiceInterface methods
     - Test MockDataService has all DataServiceInterface methods
@@ -248,6 +277,7 @@
     - **Validates: Requirements 2.4**
 
 - [x] 11. Write delete operation tests
+
   - [x] 11.1 Write property test for delete completeness
     - **Property 6: Delete Operation Completeness**
     - Create document, verify exists
@@ -265,6 +295,7 @@
 ## Phase 4: Integration and Documentation
 
 - [x] 13. Update .env.example with new setting
+
   - [x] 13.1 Add USE_MOCK_DATA documentation
     - Add USE_MOCK_DATA=false to .env.example
     - Add comment explaining when to use mock vs Firestore
@@ -272,6 +303,7 @@
     - _Requirements: 2.5_
 
 - [ ] 14. Final integration testing
+
   - [ ] 14.1 Test complete workflow with Firestore
     - Start emulators with docker-compose
     - Create knowledge document via API
@@ -284,9 +316,11 @@
     - Stop and restart emulators
     - Verify data persists across restarts
     - _Requirements: 3.1-3.5, 4.1-4.3, 5.1-5.5, 6.1-6.5, 7.1-7.4, 8.1-8.4_
+    ```
+     To verify the functionality, please ensure Docker Desktop is running and then execute: poetry run pytest tests/test_integration_workflow.py
+    ```
 
 - [x] 15. Final Checkpoint
-
 
   - Run full test suite with pytest
   - Verify all property tests pass

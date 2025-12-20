@@ -96,8 +96,25 @@ try:
                 st.text(f"{doc.disease_name} ({doc.document_type})")
             
             with col2:
-                status_color = "green" if doc.sync_status == "completed" else "red" if doc.sync_status == "failed" else "orange"
-                st.markdown(f":{status_color}[{doc.sync_status}]")
+                # Status display with color and retry count
+                status_color = "green"
+                if doc.sync_status == "failed":
+                    status_color = "red"
+                elif doc.sync_status == "syncing":
+                    status_color = "blue"
+                elif doc.sync_status == "pending":
+                    status_color = "orange"
+                
+                status_label = doc.sync_status
+                if doc.sync_retry_count > 0:
+                    status_label += f" (Retry {doc.sync_retry_count})"
+
+                st.markdown(f":{status_color}[{status_label}]")
+                
+                # Show error details for failed syncs
+                if doc.sync_status == "failed" and doc.sync_error_message:
+                    with st.expander("Error Details"):
+                        st.error(doc.sync_error_message)
                 
             with col3:
                 if st.button("Delete", key=f"del_{doc.knowledge_id}"):
@@ -110,14 +127,15 @@ try:
                             st.error(f"Delete failed: {e.message}")
 
             with col4:
+                # Retry button - only for failed documents
                 if doc.sync_status == "failed":
-                    if st.button("Retry Sync", key=f"retry_{doc.knowledge_id}"):
-                        try:
-                            asyncio.run(client.retry_knowledge_sync(doc.knowledge_id))
-                            st.success("Retry initiated.")
-                            st.rerun()
-                        except APIError as e:
-                            st.error(f"Retry failed: {e.message}")
+                    if st.button("Retry Sync", key=f"retry_{doc.knowledge_id}", disabled=(doc.sync_status == "syncing")):
+                         try:
+                             asyncio.run(client.retry_knowledge_sync(doc.knowledge_id))
+                             st.success("Retry initiated.")
+                             st.rerun()
+                         except APIError as e:
+                             st.error(f"Retry failed: {e.message}")
 
 except APIError as e:
     st.error(f"Failed to load documents: {e.message}")

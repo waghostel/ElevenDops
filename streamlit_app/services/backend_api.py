@@ -172,6 +172,9 @@ class BackendAPIClient:
                     elevenlabs_document_id=data["elevenlabs_document_id"],
                     structured_sections=data.get("structured_sections"),
                     created_at=datetime.fromisoformat(data["created_at"]),
+                    sync_error_message=data.get("sync_error_message"),
+                    last_sync_attempt=datetime.fromisoformat(data["last_sync_attempt"]) if data.get("last_sync_attempt") else None,
+                    sync_retry_count=data.get("sync_retry_count", 0),
                 )
         except httpx.ConnectError as e:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
@@ -205,6 +208,9 @@ class BackendAPIClient:
                         elevenlabs_document_id=d["elevenlabs_document_id"],
                         structured_sections=d.get("structured_sections"),
                         created_at=datetime.fromisoformat(d["created_at"]),
+                        sync_error_message=d.get("sync_error_message"),
+                        last_sync_attempt=datetime.fromisoformat(d["last_sync_attempt"]) if d.get("last_sync_attempt") else None,
+                        sync_retry_count=d.get("sync_retry_count", 0),
                     )
                     for d in data["documents"]
                 ]
@@ -256,6 +262,9 @@ class BackendAPIClient:
                     elevenlabs_document_id=data["elevenlabs_document_id"],
                     structured_sections=data.get("structured_sections"),
                     created_at=datetime.fromisoformat(data["created_at"]),
+                    sync_error_message=data.get("sync_error_message"),
+                    last_sync_attempt=datetime.fromisoformat(data["last_sync_attempt"]) if data.get("last_sync_attempt") else None,
+                    sync_retry_count=data.get("sync_retry_count", 0),
                 )
         except httpx.ConnectError as e:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
