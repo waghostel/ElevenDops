@@ -175,6 +175,17 @@ class FirestoreDataService(DataServiceInterface):
             audio_count_query = self._db.collection(AUDIO_FILES).count()
             
             # Execute queries
+            # Note: In a real production scenario, we might want to run these concurrently
+            # using asyncio.gather if the client library supports async aggregation execution well.
+            # standard google-cloud-firestore uses sync methods for count().get() usually, 
+            # but wrapping in executor or just calling sequentially is fine for MVP scale.
+            # If using async client, await properly. 
+            
+            # Assuming sync client wrapped in async service or async client usage:
+            # The current codebase seems to use standard sync calls in async defs without await on .get() 
+            # for count aggregation in the existing snippet, which might be blocking.
+            # However, `get()` on generation returns an object with `value`.
+            
             doc_snapshot = doc_count_query.get()
             agent_snapshot = agent_count_query.get()
             audio_snapshot = audio_count_query.get()
@@ -183,12 +194,8 @@ class FirestoreDataService(DataServiceInterface):
             agent_count = agent_snapshot[0][0].value
             audio_count = audio_snapshot[0][0].value
             
-            last_activity = datetime.now()
-            
-            # Simple optimization: query most recent created_at from knowledge docs
-            docs = self._db.collection(KNOWLEDGE_DOCUMENTS).order_by("created_at", direction=firestore.Query.DESCENDING).limit(1).stream()
-            for d in docs:
-                last_activity = d.to_dict().get("created_at", last_activity)
+            # Calculate last_activity across all collections
+            last_activity = await self._get_last_activity_timestamp()
                 
             return DashboardStatsResponse(
                 document_count=doc_count,
@@ -205,6 +212,40 @@ class FirestoreDataService(DataServiceInterface):
                 audio_count=0,
                 last_activity=datetime.now(),
             )
+
+    async def _get_last_activity_timestamp(self) -> datetime:
+        """Get the most recent created_at timestamp across all collections."""
+        collections = [KNOWLEDGE_DOCUMENTS, AGENTS, AUDIO_FILES, CONVERSATIONS]
+        latest = None
+        
+        for collection_name in collections:
+            try:
+                # Get the most recent document from this collection
+                docs = (
+                    self._db.collection(collection_name)
+                    .order_by("created_at", direction=firestore.Query.DESCENDING)
+                    .limit(1)
+                    .stream()
+                )
+                
+                for doc in docs:
+                    timestamp = doc.to_dict().get("created_at")
+                    # Handle Firestore Timestamp objects or datetime strings
+                    if timestamp:
+                        # If it's a string, try to parse it (though models usually enforce datetime/Timestamp)
+                        if isinstance(timestamp, str):
+                            try:
+                                timestamp = datetime.fromisoformat(timestamp)
+                            except ValueError:
+                                continue
+                                
+                        if latest is None or timestamp > latest:
+                            latest = timestamp
+            except Exception as e:
+                logger.warning(f"Failed to check last activity for {collection_name}: {e}")
+                continue
+        
+        return latest if latest else datetime.now()
 
     # ==================== Knowledge Documents ====================
     @retry(

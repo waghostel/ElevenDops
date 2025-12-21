@@ -2,81 +2,76 @@
 
 ## Introduction
 
-This specification defines the requirements for connecting the Doctor Dashboard to real Firestore statistics instead of mock data. The dashboard currently displays mock statistics including document count, agent count, audio count, and last activity timestamp. This feature will integrate with the Firestore data service to provide accurate, real-time statistics for doctors monitoring their ElevenDops system.
+This specification defines the requirements for connecting the Doctor Dashboard to real Firestore statistics. The Doctor Dashboard currently displays mock data and needs to be updated to show actual counts of documents, agents, audio files, and the most recent activity timestamp from the Firestore database. This feature is part of MVP1 Phase 3 and depends on the Firestore Data Service (Spec 2) being implemented.
 
 ## Glossary
 
-- **Dashboard**: The main monitoring interface for doctors showing system statistics
-- **Firestore**: Google Cloud Firestore database service used for data persistence
-- **MockDataService**: Current in-memory data service used for development
-- **FirestoreDataService**: Production data service that connects to Firestore
-- **Statistics**: Numerical metrics including counts and timestamps displayed on dashboard
-- **Last Activity**: The most recent timestamp when any system activity occurred
+- **Doctor_Dashboard**: The main overview page for doctors showing system statistics and quick monitoring capabilities
+- **Firestore**: Google Cloud Firestore database serving as the primary data source for the system
+- **Dashboard_Statistics**: Aggregated metrics including document count, agent count, audio count, and last activity timestamp
+- **Last_Activity**: The timestamp of the most recent data modification across all collections (knowledge documents, agents, audio files, conversations)
+- **Data_Service**: The backend service layer that abstracts database operations and provides a unified interface for data access
 
 ## Requirements
 
 ### Requirement 1
 
-**User Story:** As a doctor, I want to see accurate document counts on my dashboard, so that I can monitor how many medical documents I have uploaded to the system.
+**User Story:** As a doctor, I want to see accurate document counts on my dashboard, so that I can understand how much medical knowledge has been uploaded to the system.
 
 #### Acceptance Criteria
 
-1. WHEN the dashboard loads THEN the system SHALL query Firestore to count knowledge documents
-2. WHEN displaying document count THEN the system SHALL show the actual number of documents stored in Firestore
-3. WHEN no documents exist THEN the system SHALL display zero as the document count
-4. WHEN documents are filtered by doctor ID THEN the system SHALL count only documents belonging to that doctor
+1. WHEN the Doctor_Dashboard loads THEN the system SHALL display the total count of knowledge documents from Firestore
+2. WHEN a new knowledge document is created THEN the Dashboard_Statistics document_count SHALL reflect the updated total within 5 seconds of page refresh
+3. WHEN a knowledge document is deleted THEN the Dashboard_Statistics document_count SHALL reflect the updated total within 5 seconds of page refresh
 
 ### Requirement 2
 
-**User Story:** As a doctor, I want to see accurate agent counts on my dashboard, so that I can monitor how many AI agents I have configured.
+**User Story:** As a doctor, I want to see accurate agent counts on my dashboard, so that I can track how many AI assistants have been configured.
 
 #### Acceptance Criteria
 
-1. WHEN the dashboard loads THEN the system SHALL query Firestore to count active agents
-2. WHEN displaying agent count THEN the system SHALL show the actual number of agents stored in Firestore
-3. WHEN no agents exist THEN the system SHALL display zero as the agent count
-4. WHEN agents are filtered by doctor ID THEN the system SHALL count only agents belonging to that doctor
+1. WHEN the Doctor_Dashboard loads THEN the system SHALL display the total count of agents from Firestore
+2. WHEN a new agent is created THEN the Dashboard_Statistics agent_count SHALL reflect the updated total within 5 seconds of page refresh
+3. WHEN an agent is deleted THEN the Dashboard_Statistics agent_count SHALL reflect the updated total within 5 seconds of page refresh
 
 ### Requirement 3
 
-**User Story:** As a doctor, I want to see accurate audio file counts on my dashboard, so that I can monitor how many audio files have been generated.
+**User Story:** As a doctor, I want to see accurate audio file counts on my dashboard, so that I can monitor how many education audio files have been generated.
 
 #### Acceptance Criteria
 
-1. WHEN the dashboard loads THEN the system SHALL query Firestore to count audio files
-2. WHEN displaying audio count THEN the system SHALL show the actual number of audio files stored in Firestore
-3. WHEN no audio files exist THEN the system SHALL display zero as the audio count
-4. WHEN audio files are filtered by knowledge ID THEN the system SHALL count all audio files across all knowledge documents
+1. WHEN the Doctor_Dashboard loads THEN the system SHALL display the total count of audio files from Firestore
+2. WHEN a new audio file is generated THEN the Dashboard_Statistics audio_count SHALL reflect the updated total within 5 seconds of page refresh
+3. WHEN an audio file is deleted THEN the Dashboard_Statistics audio_count SHALL reflect the updated total within 5 seconds of page refresh
 
 ### Requirement 4
 
-**User Story:** As a doctor, I want to see the actual last activity timestamp on my dashboard, so that I can monitor when the system was last used.
+**User Story:** As a doctor, I want to see when the last system activity occurred, so that I can understand how recently the system has been used.
 
 #### Acceptance Criteria
 
-1. WHEN the dashboard loads THEN the system SHALL calculate the most recent activity timestamp from Firestore
-2. WHEN determining last activity THEN the system SHALL check creation timestamps across all collections
-3. WHEN no activity exists THEN the system SHALL display the current timestamp as last activity
-4. WHEN multiple activities exist THEN the system SHALL display the most recent timestamp
+1. WHEN the Doctor_Dashboard loads THEN the system SHALL display the most recent activity timestamp from Firestore
+2. WHEN calculating last activity THEN the system SHALL consider the most recent created_at timestamp across knowledge_documents, agents, audio_files, and conversations collections
+3. WHEN no data exists in any collection THEN the system SHALL display the current timestamp as last_activity
+4. WHEN displaying last_activity THEN the system SHALL format the timestamp as relative time (e.g., "Just now", "5m ago", "2h ago")
 
 ### Requirement 5
 
-**User Story:** As a system administrator, I want the dashboard to use the FirestoreDataService instead of MockDataService, so that statistics reflect real data persistence.
+**User Story:** As a doctor, I want the dashboard to handle errors gracefully, so that I can still use the system even when data retrieval fails.
 
 #### Acceptance Criteria
 
-1. WHEN the dashboard API is called THEN the system SHALL use FirestoreDataService for data queries
-2. WHEN FirestoreDataService is unavailable THEN the system SHALL return appropriate error responses
-3. WHEN switching from mock to real data THEN the system SHALL maintain the same API interface
-4. WHEN Firestore emulator is configured THEN the system SHALL connect to the emulator for local development
+1. IF the Firestore query fails THEN the system SHALL display zero counts and current timestamp as fallback values
+2. IF the Firestore query fails THEN the system SHALL log the error for debugging purposes
+3. WHEN an error occurs THEN the system SHALL display a user-friendly error message indicating data could not be loaded
+4. WHEN the backend is unreachable THEN the Doctor_Dashboard SHALL display a connection error message with a retry button
 
 ### Requirement 6
 
-**User Story:** As a developer, I want efficient Firestore queries for dashboard statistics, so that the dashboard loads quickly without impacting system performance.
+**User Story:** As a doctor, I want to manually refresh the dashboard statistics, so that I can see the latest data without reloading the entire page.
 
 #### Acceptance Criteria
 
-1. WHEN querying document counts THEN the system SHALL use Firestore count queries instead of fetching all documents
-2. WHEN querying agent counts THEN the system SHALL use Firestore count queries instead of fetching all agents
-3. WHEN querying audio counts THEN the system SHALL use Firestore count queries instead of fetching all audio metadata
-4. WHEN calculating last activity THEN the system SHALL use indexed timestamp queries for optimal performance
+1. WHEN the doctor clicks the refresh button THEN the system SHALL fetch fresh statistics from Firestore
+2. WHEN refreshing statistics THEN the system SHALL display a loading indicator
+3. WHEN the refresh completes THEN the system SHALL update all metric cards with the new values
