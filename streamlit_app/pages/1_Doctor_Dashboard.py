@@ -116,7 +116,7 @@ def render_empty_states(stats: DashboardStats) -> None:
 def render_dashboard() -> None:
     """Render the main dashboard content."""
     # Header
-    st.title("📊 Doctor Dashboard")
+    st.title("👨‍⚕️ Doctor Dashboard")
     st.markdown("Monitor your system status and recent activities at a glance.")
     st.divider()
 

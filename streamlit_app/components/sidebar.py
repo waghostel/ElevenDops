@@ -51,11 +51,11 @@ def render_sidebar() -> None:
         st.subheader("Navigation")
 
         # Navigation links to available pages
-        st.page_link("app.py", label="Quick Start", icon="🏠")
+        st.page_link("app.py", label="Quick Start", icon="🏥")
         st.page_link(
             "pages/1_Doctor_Dashboard.py",
             label="Doctor Dashboard",
-            icon="📊",
+            icon="👨‍⚕️",
         )
         st.page_link(
             "pages/2_Upload_Knowledge.py",
@@ -70,7 +70,7 @@ def render_sidebar() -> None:
         st.page_link(
             "pages/4_Agent_Setup.py",
             label="Voice Agents",
-            icon="🤖",
+            icon="🎙️",
         )
         st.page_link(
             "pages/5_Patient_Test.py",

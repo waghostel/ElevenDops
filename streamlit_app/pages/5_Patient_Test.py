@@ -17,7 +17,7 @@ st.set_page_config(
 
 render_sidebar()
 
-st.title("🏥 Patient Conversation Test")
+st.title("🧪 Patient Conversation Test")
 st.markdown("Simulate patient interactions and test your AI agents in real-time.")
 
 # Initialize session state

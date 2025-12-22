@@ -9,14 +9,13 @@ from streamlit_app.components.footer import render_footer
 
 # Page config
 st.set_page_config(
-    page_title="Voice Agents Setup",
-    page_icon="🤖",
+    page_title="🤖",
     layout="wide",
 )
 
 render_sidebar()
 
-st.title("🤖 Voice Agents Setup")
+st.title("🎙️ Voice Agents Setup")
 st.markdown("Configure your AI assistants with medical knowledge bases and voice personalities.")
 
 # Initialize session state for loading

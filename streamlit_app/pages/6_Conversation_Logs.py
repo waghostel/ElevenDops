@@ -235,7 +235,7 @@ async def render_detail_view(conversation_id: str):
                 st.info("No answered questions.")
 
 async def main():
-    st.title("💬 Conversation Logs")
+    st.title("💬 Patient Conversation Review")
     st.markdown("Review and analyze past conversations between patients and AI agents.")
     
     # --- Filters Section (Top) ---
