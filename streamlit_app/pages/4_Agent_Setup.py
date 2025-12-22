@@ -4,15 +4,19 @@ import streamlit as st
 from streamlit_app.services.backend_api import get_backend_client
 from streamlit_app.services.exceptions import APIError, APIConnectionError
 from backend.models.schemas import AnswerStyle
+from streamlit_app.components.sidebar import render_sidebar
+from streamlit_app.components.footer import render_footer
 
 # Page config
 st.set_page_config(
-    page_title="AI Agent Setup",
+    page_title="Voice Agents Setup",
     page_icon="🤖",
     layout="wide",
 )
 
-st.title("🤖 AI Agent Setup")
+render_sidebar()
+
+st.title("🤖 Voice Agents Setup")
 st.markdown("Configure your AI assistants with medical knowledge bases and voice personalities.")
 
 # Initialize session state for loading
@@ -59,78 +63,77 @@ STYLE_OPTIONS = {
 }
 
 # --- Create New Agent Column ---
-col1, col2 = st.columns([1, 1])
 
-with col1:
-    st.header("Create New Agent")
-    with st.form("create_agent_form"):
-        name = st.text_input("Agent Name", placeholder="e.g., Diabetes Specialist")
-        
-        # Knowledge Selection
-        st.subheader("Select Knowledge")
-        if docs:
-            doc_options = {doc.knowledge_id: f"{doc.disease_name} ({doc.document_type})" for doc in docs}
-            selected_doc_ids = st.multiselect(
-                "Link Knowledge Documents",
-                options=list(doc_options.keys()),
-                format_func=lambda x: doc_options[x]
-            )
+st.header("Create New Agent")
+with st.form("create_agent_form"):
+    name = st.text_input("Agent Name", placeholder="e.g., Diabetes Specialist")
+    
+    # Knowledge Selection
+    st.subheader("Select Knowledge")
+    if docs:
+        doc_options = {doc.knowledge_id: f"{doc.disease_name} ({doc.document_type})" for doc in docs}
+        selected_doc_ids = st.multiselect(
+            "Link Knowledge Documents",
+            options=list(doc_options.keys()),
+            format_func=lambda x: doc_options[x]
+        )
+    else:
+        st.info("No knowledge documents available. Please upload some first.")
+        selected_doc_ids = []
+
+    # Voice Selection
+    st.subheader("Voice Configuration")
+    voice_map = {v.voice_id: v for v in voices}
+    selected_voice_id = st.selectbox(
+        "Select Voice",
+        options=list(voice_map.keys()),
+        format_func=lambda x: voice_map[x].name if x in voice_map else x
+    )
+    
+    if selected_voice_id and selected_voice_id in voice_map:
+        voice = voice_map[selected_voice_id]
+        st.caption(voice.description or "No description")
+        if voice.preview_url:
+            st.audio(voice.preview_url)
+    
+    # Style Selection
+    st.subheader("Answer Style")
+    selected_style = st.selectbox(
+        "Select Answer Style",
+        options=list(STYLE_OPTIONS.keys()),
+        format_func=lambda x: STYLE_OPTIONS[x]
+    )
+    
+    submitted = st.form_submit_button("Create Agent")
+    
+    if submitted:
+        if not name.strip():
+            st.error("Agent name is required.")
+        elif not selected_voice_id:
+            st.error("Voice selection is required.")
         else:
-            st.info("No knowledge documents available. Please upload some first.")
-            selected_doc_ids = []
-
-        # Voice Selection
-        st.subheader("Voice Configuration")
-        voice_map = {v.voice_id: v for v in voices}
-        selected_voice_id = st.selectbox(
-            "Select Voice",
-            options=list(voice_map.keys()),
-            format_func=lambda x: voice_map[x].name if x in voice_map else x
-        )
-        
-        if selected_voice_id and selected_voice_id in voice_map:
-            voice = voice_map[selected_voice_id]
-            st.caption(voice.description or "No description")
-            if voice.preview_url:
-                st.audio(voice.preview_url)
-        
-        # Style Selection
-        st.subheader("Answer Style")
-        selected_style = st.selectbox(
-            "Select Answer Style",
-            options=list(STYLE_OPTIONS.keys()),
-            format_func=lambda x: STYLE_OPTIONS[x]
-        )
-        
-        submitted = st.form_submit_button("Create Agent")
-        
-        if submitted:
-            if not name.strip():
-                st.error("Agent name is required.")
-            elif not selected_voice_id:
-                st.error("Voice selection is required.")
-            else:
-                client = get_backend_client()
-                try:
-                    with st.spinner("Creating agent in ElevenLabs..."):
-                        run_async(client.create_agent(
-                            name=name,
-                            knowledge_ids=selected_doc_ids,
-                            voice_id=selected_voice_id,
-                            answer_style=selected_style
-                        ))
-                    st.success(f"Agent '{name}' created successfully!")
-                    st.rerun()
-                except APIError as e:
-                    st.error(f"Creation failed: {e.message}")
-                except Exception as e:
-                    st.error(f"Error: {str(e)}")
+            client = get_backend_client()
+            try:
+                with st.spinner("Creating agent in ElevenLabs..."):
+                    run_async(client.create_agent(
+                        name=name,
+                        knowledge_ids=selected_doc_ids,
+                        voice_id=selected_voice_id,
+                        answer_style=selected_style
+                    ))
+                st.success(f"Agent '{name}' created successfully!")
+                st.rerun()
+            except APIError as e:
+                st.error(f"Creation failed: {e.message}")
+            except Exception as e:
+                st.error(f"Error: {str(e)}")
 
 
 # --- Existing Agents Column ---
-with col2:
-    st.header("Existing Agents")
-    
+
+st.header("Existing Agents")
+
+with st.container(border=True):
     if not agents:
         st.info("No agents created yet.")
     else:
@@ -159,3 +162,5 @@ with col2:
                         st.rerun()
                     except Exception as e:
                         st.error(f"Delete failed: {str(e)}")
+
+render_footer()

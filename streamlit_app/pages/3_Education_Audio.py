@@ -16,9 +16,13 @@ from streamlit_app.services.models import (
     KnowledgeDocument,
     VoiceOption,
 )
+from streamlit_app.components.sidebar import render_sidebar
+from streamlit_app.components.footer import render_footer
 
 # Page configuration
 st.set_page_config(page_title="Education Audio", page_icon="🎧", layout="wide")
+
+render_sidebar()
 
 # Initialize client
 client = get_backend_client()
@@ -232,6 +236,7 @@ async def main():
     await render_audio_generation()
     st.divider()
     await render_audio_history()
+    render_footer()
 
 
 if __name__ == "__main__":

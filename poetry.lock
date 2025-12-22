@@ -2001,6 +2001,21 @@ files = [
 ]
 
 [[package]]
+name = "st-tailwind"
+version = "1.3.0"
+description = "Python tailwind toolkit - Injected with JS"
+optional = false
+python-versions = ">=3.9.10"
+groups = ["main"]
+files = [
+    {file = "st_tailwind-1.3.0-py3-none-any.whl", hash = "sha256:fc666317c8a6bac708bb0177ee6204af1e25a252312cf83412bcfce983579835"},
+    {file = "st_tailwind-1.3.0.tar.gz", hash = "sha256:ef91d596073526dafccaf946f57db490c2111a81ba334a89f18eb1d87702e007"},
+]
+
+[package.dependencies]
+streamlit = ">=1.38.0"
+
+[[package]]
 name = "starlette"
 version = "0.46.2"
 description = "The little ASGI library that shines."
@@ -2366,4 +2381,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<4.0"
-content-hash = "d274482345e38ead82661f95903e8896ff9f8d5a8444d2581d400df9f095d0e8"
+content-hash = "58a3631a343c88d0679edef6cdff6082d3f86cecbf222147369d8544766bd4b5"

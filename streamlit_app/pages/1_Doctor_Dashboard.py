@@ -16,6 +16,8 @@ from streamlit_app.services import (
     BackendAPIClient,
     DashboardStats,
 )
+from streamlit_app.components.sidebar import render_sidebar
+from streamlit_app.components.footer import render_footer
 
 # Page configuration
 st.set_page_config(
@@ -24,26 +26,25 @@ st.set_page_config(
     layout="wide",
 )
 
+render_sidebar()
 
-def get_dashboard_stats() -> DashboardStats | None:
+
+def get_dashboard_stats() -> tuple[DashboardStats | None, str | None]:
     """Fetch dashboard stats from backend API.
 
     Returns:
-        DashboardStats if successful, None if error occurred.
+        Tuple of (DashboardStats, None) if successful, or (None, error_message) if error occurred.
     """
     try:
         client = BackendAPIClient()
         # Run async function in sync context
-        return asyncio.run(client.get_dashboard_stats())
+        return (asyncio.run(client.get_dashboard_stats()), None)
     except APIConnectionError as e:
-        st.error(f"⚠️ Cannot connect to backend: {e.message}", icon="🔌")
-        return None
+        return (None, f" Cannot connect to backend: {e.message}")
     except APITimeoutError as e:
-        st.error(f"⏱️ Request timed out: {e.message}", icon="⏱️")
-        return None
+        return (None, f"⏱️ Request timed out: {e.message}")
     except APIError as e:
-        st.error(f"❌ API Error: {e.message}", icon="❌")
-        return None
+        return (None, f"❌ API Error: {e.message}")
 
 
 def render_metric_cards(stats: DashboardStats) -> None:
@@ -119,20 +120,9 @@ def render_dashboard() -> None:
     st.markdown("Monitor your system status and recent activities at a glance.")
     st.divider()
 
-    # Refresh button
-    col1, col2, col3 = st.columns([1, 1, 4])
-    with col1:
-        if st.button("🔄 Refresh", use_container_width=True):
-            st.rerun()
-    with col2:
-        if st.button("⚙️ Settings", use_container_width=True):
-            st.toast("Settings page coming soon!", icon="⚙️")
-
-    st.divider()
-
     # Fetch and display stats
     with st.spinner("Loading dashboard data..."):
-        stats = get_dashboard_stats()
+        stats, error_message = get_dashboard_stats()
 
     if stats:
         # Display metric cards
@@ -152,22 +142,28 @@ def render_dashboard() -> None:
         with col2:
             st.button("➕ Create Agent", use_container_width=True, disabled=True)
         with col3:
-            st.button("🎙️ Start Session", use_container_width=True, disabled=True)
+            st.button("� Start Session", use_container_width=True, disabled=True)
 
         st.caption("*Quick actions will be available in future updates.*")
     else:
-        # Error state with retry
+        # Error state - retry button first, then error messages
+
+        if st.button("🔄 Retry Connection"):
+            st.rerun()
+        
+        if error_message:
+            st.error(error_message, icon="🔌")
+        
         st.warning(
             "Could not load dashboard data. Please check if the backend is running.",
             icon="⚠️",
         )
-        if st.button("🔄 Retry Connection"):
-            st.rerun()
 
 
 def main() -> None:
     """Main page entry point."""
     render_dashboard()
+    render_footer()
 
 
 if __name__ == "__main__":

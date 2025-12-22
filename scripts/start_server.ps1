@@ -15,31 +15,76 @@ Write-Host ""
 function Kill-ProcessOnPort {
     param([int]$Port)
     
+    Write-Host "🔍 Checking port $Port..." -ForegroundColor Blue
+    
+    # First attempt: Use netstat to find processes
     try {
-        $processes = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue | 
-                    Select-Object -ExpandProperty OwningProcess -Unique
-        
-        if ($processes) {
+        $netstatOutput = netstat -ano | Select-String ":$Port "
+        if ($netstatOutput) {
             Write-Host "⚠️  Found processes on port $Port" -ForegroundColor Yellow
-            foreach ($pid in $processes) {
-                try {
-                    $process = Get-Process -Id $pid -ErrorAction SilentlyContinue
-                    if ($process) {
-                        Write-Host "   Killing process: $($process.ProcessName) (PID: $pid)" -ForegroundColor Yellow
-                        Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
-                        Start-Sleep -Milliseconds 500
+            
+            foreach ($line in $netstatOutput) {
+                if ($line -match "\s+(\d+)$") {
+                    $pid = $matches[1]
+                    try {
+                        $process = Get-Process -Id $pid -ErrorAction SilentlyContinue
+                        if ($process) {
+                            Write-Host "   🔪 Killing process: $($process.ProcessName) (PID: $pid)" -ForegroundColor Yellow
+                            Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
+                            Start-Sleep -Milliseconds 200
+                        }
+                    } catch {
+                        Write-Host "   ⚠️  Could not kill process PID: $pid" -ForegroundColor Red
                     }
-                } catch {
-                    Write-Host "   Could not kill process PID: $pid" -ForegroundColor Red
                 }
             }
-            Write-Host "✅ Port $Port is now available" -ForegroundColor Green
-        } else {
-            Write-Host "✅ Port $Port is available" -ForegroundColor Green
         }
     } catch {
-        Write-Host "✅ Port $Port is available" -ForegroundColor Green
+        # Fallback to Get-NetTCPConnection
+        try {
+            $processes = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue | 
+                        Select-Object -ExpandProperty OwningProcess -Unique
+            
+            if ($processes) {
+                Write-Host "⚠️  Found processes on port $Port (via NetTCP)" -ForegroundColor Yellow
+                foreach ($pid in $processes) {
+                    try {
+                        $process = Get-Process -Id $pid -ErrorAction SilentlyContinue
+                        if ($process) {
+                            Write-Host "   🔪 Killing process: $($process.ProcessName) (PID: $pid)" -ForegroundColor Yellow
+                            Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
+                            Start-Sleep -Milliseconds 200
+                        }
+                    } catch {
+                        Write-Host "   ⚠️  Could not kill process PID: $pid" -ForegroundColor Red
+                    }
+                }
+            }
+        } catch {
+            # Silent fallback
+        }
     }
+    
+    # Wait a moment for processes to fully terminate
+    Start-Sleep -Milliseconds 1000
+    
+    # Verify port is now free
+    try {
+        $stillRunning = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue
+        if ($stillRunning) {
+            Write-Host "   ⚠️  Some processes may still be running on port $Port" -ForegroundColor Yellow
+            # Try one more aggressive kill
+            $pids = $stillRunning | Select-Object -ExpandProperty OwningProcess -Unique
+            foreach ($pid in $pids) {
+                try {
+                    Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
+                } catch { }
+            }
+            Start-Sleep -Milliseconds 500
+        }
+    } catch { }
+    
+    Write-Host "✅ Port $Port should now be available" -ForegroundColor Green
 }
 
 # Function to check if Poetry is installed
@@ -86,22 +131,52 @@ Write-Host "🔧 Starting FastAPI backend on port $FastAPIPort..." -ForegroundCo
 $fastApiJob = Start-Job -ScriptBlock {
     param($port)
     Set-Location $using:PWD
-    poetry run uvicorn backend.main:app --host 0.0.0.0 --port $port --reload
+    
+    # Add more verbose output for debugging
+    Write-Host "FastAPI Job: Starting uvicorn on port $port"
+    Write-Host "FastAPI Job: Current directory: $(Get-Location)"
+    Write-Host "FastAPI Job: Python path: $(poetry run python -c 'import sys; print(sys.executable)')"
+    
+    try {
+        poetry run uvicorn backend.main:app --host 0.0.0.0 --port $port --reload
+    } catch {
+        Write-Host "FastAPI Job Error: $_"
+        throw
+    }
 } -ArgumentList $FastAPIPort
 
 # Wait for FastAPI to start
-Start-Sleep -Seconds 3
+Write-Host "   ⏳ Waiting for FastAPI to initialize..." -ForegroundColor Yellow
+Start-Sleep -Seconds 5
 
 # Check if FastAPI started successfully
 $fastApiRunning = $false
-try {
-    $response = Invoke-WebRequest -Uri "http://localhost:$FastAPIPort/" -TimeoutSec 5 -UseBasicParsing -ErrorAction SilentlyContinue
-    if ($response.StatusCode -eq 200) {
-        $fastApiRunning = $true
-        Write-Host "✅ FastAPI backend started successfully" -ForegroundColor Green
+$attempts = 0
+$maxAttempts = 6
+
+while ($attempts -lt $maxAttempts -and -not $fastApiRunning) {
+    $attempts++
+    try {
+        Write-Host "   🔍 Attempt $attempts/$maxAttempts: Testing FastAPI connection..." -ForegroundColor Yellow
+        $response = Invoke-WebRequest -Uri "http://localhost:$FastAPIPort/" -TimeoutSec 3 -UseBasicParsing -ErrorAction SilentlyContinue
+        if ($response.StatusCode -eq 200) {
+            $fastApiRunning = $true
+            Write-Host "✅ FastAPI backend started successfully" -ForegroundColor Green
+        }
+    } catch {
+        if ($attempts -eq $maxAttempts) {
+            Write-Host "❌ FastAPI backend failed to start after $maxAttempts attempts" -ForegroundColor Red
+            Write-Host "   📋 FastAPI Job Output:" -ForegroundColor Yellow
+            $jobOutput = Receive-Job -Job $fastApiJob -Keep
+            if ($jobOutput) {
+                $jobOutput | ForEach-Object { Write-Host "   $_" -ForegroundColor Gray }
+            } else {
+                Write-Host "   No output from FastAPI job" -ForegroundColor Gray
+            }
+        } else {
+            Start-Sleep -Seconds 2
+        }
     }
-} catch {
-    Write-Host "❌ FastAPI backend failed to start" -ForegroundColor Red
 }
 
 # Start Streamlit server
