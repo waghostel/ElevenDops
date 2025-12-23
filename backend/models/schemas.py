@@ -37,6 +37,8 @@ class DocumentType(str, Enum):
     FAQ = "faq"
     POST_CARE = "post_care"
     PRECAUTIONS = "precautions"
+    # We kept Enum for backward compatibility and standard suggestions, 
+    # but models will use str to allow custom types.
 
 
 class SyncStatus(str, Enum):
@@ -52,7 +54,7 @@ class KnowledgeDocumentCreate(BaseModel):
     """Request model for creating a knowledge document."""
 
     disease_name: str = Field(..., min_length=1, max_length=100, description="Name of the disease")
-    document_type: DocumentType = Field(..., description="Type of the document")
+    document_type: str = Field(..., description="Type of the document (standard or custom)")
     raw_content: str = Field(
         ..., min_length=1, max_length=300000, description="Content of the document (~300KB limit)"
     )
@@ -67,13 +69,28 @@ class KnowledgeDocumentCreate(BaseModel):
         return v
 
 
+class KnowledgeDocumentUpdate(BaseModel):
+    """Request model for updating a knowledge document."""
+
+    disease_name: Optional[str] = Field(None, min_length=1, max_length=100, description="Name of the disease")
+    document_type: Optional[str] = Field(None, description="Type of the document")
+    
+    @field_validator("disease_name")
+    @classmethod
+    def validate_disease_name(cls, v: Optional[str]) -> Optional[str]:
+        """Validate that disease name is not empty or whitespace only."""
+        if v is not None and not v.strip():
+            raise ValueError("Disease name cannot be empty or whitespace only")
+        return v
+
+
 class KnowledgeDocumentResponse(BaseModel):
     """Response model for knowledge document."""
 
     knowledge_id: str = Field(..., description="Unique document ID")
     doctor_id: str = Field(..., description="ID of the uploading doctor")
     disease_name: str = Field(..., description="Name of the disease")
-    document_type: DocumentType = Field(..., description="Type of the document")
+    document_type: str = Field(..., description="Type of the document")
     raw_content: str = Field(..., description="Content of the document")
     sync_status: SyncStatus = Field(..., description="Sync status with ElevenLabs")
     elevenlabs_document_id: Optional[str] = Field(None, description="Document ID in ElevenLabs")
@@ -84,6 +101,7 @@ class KnowledgeDocumentResponse(BaseModel):
     last_sync_attempt: Optional[datetime] = Field(None, description="Timestamp of last sync attempt")
     sync_retry_count: int = Field(default=0, description="Number of sync retry attempts")
     created_at: datetime = Field(..., description="Creation timestamp")
+    modified_at: Optional[datetime] = Field(None, description="Last modification timestamp")
 
 
 class KnowledgeDocumentListResponse(BaseModel):

@@ -219,6 +219,14 @@ Kill-ProcessOnPort -Port $StreamlitPort
 
 Write-Host ""
 
+# Capture variables for job scope (avoids scope ambiguity)
+$envUseFirestore = $Script:UseFirestore
+$envUseGcs = $Script:UseGcs
+$envUseMockData = $Script:UseMockData
+$envUseMockStorage = $Script:UseMockStorage
+$envFirestoreHost = $Script:FirestoreHost
+$envStorageHost = $Script:StorageHost
+
 # Start FastAPI server
 Write-Host "🔧 Starting FastAPI backend on port $FastAPIPort..." -ForegroundColor Blue
 $fastApiJob = Start-Job -ScriptBlock {
@@ -226,19 +234,21 @@ $fastApiJob = Start-Job -ScriptBlock {
     Set-Location $using:PWD
     
     # Set emulator environment variables from parent scope variables
-    [Environment]::SetEnvironmentVariable("FIRESTORE_EMULATOR_HOST", $using:FirestoreHost, "Process")
-    [Environment]::SetEnvironmentVariable("STORAGE_EMULATOR_HOST", $using:StorageHost, "Process")
-    [Environment]::SetEnvironmentVariable("USE_FIRESTORE_EMULATOR", $using:UseFirestore, "Process")
-    [Environment]::SetEnvironmentVariable("USE_GCS_EMULATOR", $using:UseGcs, "Process")
+    # We use local variables captured outside the job to ensuring correct value passing
+    [Environment]::SetEnvironmentVariable("FIRESTORE_EMULATOR_HOST", $using:envFirestoreHost, "Process")
+    [Environment]::SetEnvironmentVariable("STORAGE_EMULATOR_HOST", $using:envStorageHost, "Process")
+    [Environment]::SetEnvironmentVariable("USE_FIRESTORE_EMULATOR", $using:envUseFirestore, "Process")
+    [Environment]::SetEnvironmentVariable("USE_GCS_EMULATOR", $using:envUseGcs, "Process")
     [Environment]::SetEnvironmentVariable("GOOGLE_CLOUD_PROJECT", "elevenlabs-local", "Process")
-    [Environment]::SetEnvironmentVariable("USE_MOCK_DATA", $using:UseMockData, "Process")
-    [Environment]::SetEnvironmentVariable("USE_MOCK_STORAGE", $using:UseMockStorage, "Process")
+    [Environment]::SetEnvironmentVariable("USE_MOCK_DATA", $using:envUseMockData, "Process")
+    [Environment]::SetEnvironmentVariable("USE_MOCK_STORAGE", $using:envUseMockStorage, "Process")
     
     # Add more verbose output for debugging
     Write-Host "FastAPI Job: Starting uvicorn on port $port"
     Write-Host "FastAPI Job: Current directory: $(Get-Location)"
-    Write-Host "FastAPI Job: USE_MOCK_DATA = $using:UseMockData"
-    Write-Host "FastAPI Job: USE_MOCK_STORAGE = $using:UseMockStorage"
+    Write-Host "FastAPI Job: USE_MOCK_DATA = $using:envUseMockData"
+    Write-Host "FastAPI Job: USE_MOCK_STORAGE = $using:envUseMockStorage"
+    Write-Host "FastAPI Job: USE_FIRESTORE_EMULATOR = $using:envUseFirestore"
     
     try {
         poetry run uvicorn backend.main:app --host localhost --port $port --reload
@@ -317,7 +327,7 @@ Write-Host "   Streamlit Frontend: http://localhost:$StreamlitPort" -ForegroundC
 Write-Host ""
 
 if ($fastApiRunning -and $streamlitRunning) {
-    Write-Host "� Both servers are rrunning successfully!" -ForegroundColor Green
+    Write-Host "🚀 Both servers are running successfully!" -ForegroundColor Green
 }
 elseif ($fastApiRunning) {
     Write-Host "⚠️  Only FastAPI is running. Check Streamlit logs." -ForegroundColor Yellow

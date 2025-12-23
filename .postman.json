@@ -1,0 +1,25 @@
+{
+  "workspace_id": "bb2d5c64-2218-483c-8480-10a802b15e5e",
+  "collection_id": "a6cba9d4-f943-4f64-b6f1-b803ce2bb869",
+  "collection_uid": "42874768-a6cba9d4-f943-4f64-b6f1-b803ce2bb869",
+  "environment_id": "a3bf18a2-9357-4834-a978-7b6049aa0292",
+  "environment_uid": "42874768-a3bf18a2-9357-4834-a978-7b6049aa0292",
+  "base_url": "http://localhost:8000",
+  "description": "ElevenDops Backend API Testing Configuration - Updated with working collection",
+  "created_at": "2025-12-23T07:08:45.656Z",
+  "updated_at": "2025-12-23T07:33:49.000Z",
+  "test_results": {
+    "backend_status": "running",
+    "endpoints_tested": [
+      {"endpoint": "/", "status": "✅ working", "response": "ElevenDops Backend API v0.1.0"},
+      {"endpoint": "/api/health", "status": "✅ working", "response": "healthy with mock services"},
+      {"endpoint": "/api/dashboard/stats", "status": "✅ working", "response": "1 document, 0 agents, 0 audio files"},
+      {"endpoint": "/api/knowledge", "status": "✅ working", "response": "1 knowledge document found"},
+      {"endpoint": "/api/audio/voices/list", "status": "✅ working", "response": "2 mock voices available"},
+      {"endpoint": "/api/agent", "status": "✅ working", "response": "0 agents configured"},
+      {"endpoint": "/api/conversations", "status": "✅ working", "response": "0 conversations logged"},
+      {"endpoint": "/api/conversations/statistics", "status": "✅ working", "response": "conversation stats available"}
+    ],
+    "last_tested": "2025-12-23T07:33:49.000Z"
+  }
+}

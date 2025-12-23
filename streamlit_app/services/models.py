@@ -54,6 +54,7 @@ class KnowledgeDocument:
     sync_error_message: Optional[str] = None
     last_sync_attempt: Optional[datetime] = None
     sync_retry_count: int = 0
+    modified_at: Optional[datetime] = None
 
 
 @dataclass

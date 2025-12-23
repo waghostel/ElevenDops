@@ -1,11 +1,12 @@
 """API routes for knowledge base management."""
 
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, status
 
 from backend.models.schemas import (
     KnowledgeDocumentCreate,
+    KnowledgeDocumentUpdate,
     KnowledgeDocumentResponse,
     KnowledgeDocumentListResponse,
     SyncStatus,
@@ -66,6 +67,51 @@ async def sync_knowledge_to_elevenlabs(
         )
 
 
+async def resync_knowledge_to_elevenlabs(
+    knowledge_id: str,
+    old_elevenlabs_id: Optional[str],
+    content: str,
+    new_name: str,
+    data_service: DataServiceInterface,
+    elevenlabs_service: ElevenLabsService,
+):
+    """Background task to re-sync document to ElevenLabs (Delete + Create)."""
+    try:
+        # Update status to syncing
+        await data_service.update_knowledge_sync_status(knowledge_id, SyncStatus.SYNCING)
+        
+        # Delete old document if it exists
+        if old_elevenlabs_id:
+            try:
+                elevenlabs_service.delete_document(old_elevenlabs_id)
+            except Exception:
+                # Log error but verify if we should continue.
+                # Proceed to create new one to ensure consistency with new name.
+                pass
+
+        # Create new in ElevenLabs
+        try:
+            elevenlabs_id = elevenlabs_service.create_document(text=content, name=new_name)
+        except ElevenLabsSyncError as e:
+            raise e
+        except Exception as e:
+            raise e
+
+        # Update status to completed with NEW ID
+        await data_service.update_knowledge_sync_status(
+            knowledge_id, SyncStatus.COMPLETED, elevenlabs_id
+        )
+
+    except ElevenLabsSyncError as e:
+        await data_service.update_knowledge_sync_status(
+            knowledge_id, SyncStatus.FAILED, error_message=str(e)
+        )
+    except Exception as e:
+        await data_service.update_knowledge_sync_status(
+            knowledge_id, SyncStatus.FAILED, error_message=f"Unexpected error during re-sync: {str(e)}"
+        )
+
+
 @router.post(
     "",
     response_model=KnowledgeDocumentResponse,
@@ -90,7 +136,7 @@ async def create_knowledge_document(
         
         # Format name for ElevenLabs as per user requirement: "Disease Name_Type"
         # Using string representation of document_type enum value
-        elevenlabs_doc_name = f"{doc.disease_name}_{doc.document_type.value}"
+        elevenlabs_doc_name = f"{doc.disease_name}_{doc.document_type}"
 
         # 2. Trigger background sync
         background_tasks.add_task(
@@ -136,6 +182,70 @@ async def get_knowledge_document(
             detail=f"Knowledge document {knowledge_id} not found",
         )
     return doc
+
+
+@router.put(
+    "/{knowledge_id}",
+    response_model=KnowledgeDocumentResponse,
+    responses={404: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+)
+async def update_knowledge_document(
+    knowledge_id: str,
+    update_data: KnowledgeDocumentUpdate,
+    background_tasks: BackgroundTasks,
+    data_service: Annotated[DataServiceInterface, Depends(get_data_service)],
+    elevenlabs_service: Annotated[ElevenLabsService, Depends(get_elevenlabs_service)],
+):
+    """Update a knowledge document.
+    
+    If disease_name or document_type is changed, it triggers a re-sync to ElevenLabs,
+    which involves deleting the old document and creating a new one with the updated name.
+    """
+    # 1. Get current doc
+    current_doc = await data_service.get_knowledge_document(knowledge_id)
+    if not current_doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Knowledge document {knowledge_id} not found",
+        )
+        
+    old_name = current_doc.disease_name
+    old_type = current_doc.document_type
+    
+    # 2. Update in database
+    updated_doc = await data_service.update_knowledge_document(knowledge_id, update_data)
+    if not updated_doc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update knowledge document",
+        )
+        
+    # 3. Check if re-sync is needed
+    # Compare with values from updated_doc as they are the source of truth now
+    new_name = updated_doc.disease_name
+    new_type = updated_doc.document_type
+    
+    # Check if either changed. Note: document_type can be str.
+    if new_name != old_name or new_type != old_type:
+        elevenlabs_doc_name = f"{new_name}_{new_type}"
+        
+        background_tasks.add_task(
+            resync_knowledge_to_elevenlabs,
+            knowledge_id,
+            current_doc.elevenlabs_document_id, # Pass OLD ID for deletion
+            updated_doc.raw_content,
+            elevenlabs_doc_name,
+            data_service,
+            elevenlabs_service,
+        )
+        
+        # Set status to syncing explicitly? The background task does it immediately.
+        # But for UI responsiveness, we might want to return the doc with syncing status?
+        # The background task updates it. 
+        # Ideally we return the doc state as it is NOW (which is likely PENDING/SYNCING if we set it, or just Completed if we don't)
+        # Re-sync task updates it.
+        
+    return updated_doc
 
 
 @router.delete(
@@ -200,7 +310,7 @@ async def retry_knowledge_sync(
     if doc.sync_status == SyncStatus.COMPLETED:
         return doc
 
-    elevenlabs_doc_name = f"{doc.disease_name}_{doc.document_type.value}"
+    elevenlabs_doc_name = f"{doc.disease_name}_{doc.document_type}"
 
     # Set status to PENDING immediately to clear error and show feedback
     await data_service.update_knowledge_sync_status(

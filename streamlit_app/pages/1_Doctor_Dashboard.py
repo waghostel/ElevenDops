@@ -13,7 +13,7 @@ from streamlit_app.services import (
     APIConnectionError,
     APIError,
     APITimeoutError,
-    BackendAPIClient,
+    get_backend_client,
     DashboardStats,
 )
 from streamlit_app.components.sidebar import render_sidebar
@@ -29,6 +29,7 @@ st.set_page_config(
 render_sidebar()
 
 
+@st.cache_data(ttl=10, show_spinner=False)
 def get_dashboard_stats() -> tuple[DashboardStats | None, str | None]:
     """Fetch dashboard stats from backend API.
 
@@ -36,7 +37,7 @@ def get_dashboard_stats() -> tuple[DashboardStats | None, str | None]:
         Tuple of (DashboardStats, None) if successful, or (None, error_message) if error occurred.
     """
     try:
-        client = BackendAPIClient()
+        client = get_backend_client()
         # Run async function in sync context
         return (asyncio.run(client.get_dashboard_stats()), None)
     except APIConnectionError as e:
@@ -74,7 +75,8 @@ def render_metric_cards(stats: DashboardStats) -> None:
 
     with col4:
         # Format last activity time
-        time_diff = datetime.now() - stats.last_activity
+        now = datetime.now(stats.last_activity.tzinfo) if stats.last_activity.tzinfo else datetime.now()
+        time_diff = now - stats.last_activity
         if time_diff.seconds < 60:
             last_activity_str = "Just now"
         elif time_diff.seconds < 3600:

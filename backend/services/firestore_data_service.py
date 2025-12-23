@@ -14,6 +14,7 @@ from backend.services.firestore_service import get_firestore_service
 from backend.models.schemas import (
     DashboardStatsResponse,
     KnowledgeDocumentCreate,
+    KnowledgeDocumentUpdate,
     KnowledgeDocumentResponse,
     PatientSessionResponse,
     SyncStatus,
@@ -64,7 +65,7 @@ class FirestoreDataService(DataServiceInterface):
             knowledge_id=doc_dict["knowledge_id"],
             doctor_id=doc_dict["doctor_id"],
             disease_name=doc_dict["disease_name"],
-            document_type=DocumentType(doc_dict["document_type"]),
+            document_type=doc_dict["document_type"],
             raw_content=doc_dict["raw_content"],
             sync_status=SyncStatus(doc_dict["sync_status"]),
             elevenlabs_document_id=doc_dict.get("elevenlabs_document_id"),
@@ -73,6 +74,7 @@ class FirestoreDataService(DataServiceInterface):
             sync_error_message=doc_dict.get("sync_error_message"),
             last_sync_attempt=doc_dict.get("last_sync_attempt"),
             sync_retry_count=doc_dict.get("sync_retry_count", 0),
+            modified_at=doc_dict.get("modified_at"),
         )
 
     def _doc_to_audio_metadata(self, doc_dict: dict) -> AudioMetadata:
@@ -264,7 +266,7 @@ class FirestoreDataService(DataServiceInterface):
                 "knowledge_id": knowledge_id,
                 "doctor_id": doc.doctor_id,
                 "disease_name": doc.disease_name,
-                "document_type": doc.document_type.value,
+                "document_type": doc.document_type.value if hasattr(doc.document_type, 'value') else doc.document_type,
                 "raw_content": doc.raw_content,
                 "sync_status": SyncStatus.PENDING.value,
                 "elevenlabs_document_id": None,
@@ -280,6 +282,41 @@ class FirestoreDataService(DataServiceInterface):
             return self._doc_to_knowledge_response(doc_data)
         except Exception as e:
             logger.error(f"Failed to create knowledge document: {e}")
+            raise
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((GoogleAPICallError, RetryError))
+    )
+    async def update_knowledge_document(
+        self, knowledge_id: str, update_data: KnowledgeDocumentUpdate
+    ) -> Optional[KnowledgeDocumentResponse]:
+        try:
+            doc_ref = self._db.collection(KNOWLEDGE_DOCUMENTS).document(knowledge_id)
+            doc_snap = doc_ref.get()
+            if not doc_snap.exists:
+                return None
+            
+            updates = update_data.model_dump(exclude_unset=True)
+            if not updates:
+                return self._doc_to_knowledge_response(doc_snap.to_dict())
+            
+            # Set modified_at
+            now = datetime.now()
+            updates["modified_at"] = now
+            
+            # If document_type matches an Enum value, store the value string
+            if "document_type" in updates and hasattr(updates["document_type"], "value"):
+                 updates["document_type"] = updates["document_type"].value
+            
+            doc_ref.update(updates)
+            
+            # Get updated
+            updated_snap = doc_ref.get()
+            return self._doc_to_knowledge_response(updated_snap.to_dict())
+        except Exception as e:
+            logger.error(f"Failed to update knowledge document {knowledge_id}: {e}")
             raise
 
     async def get_knowledge_documents(

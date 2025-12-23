@@ -14,6 +14,7 @@ from backend.config import get_settings
 from backend.models.schemas import (
     DashboardStatsResponse,
     KnowledgeDocumentCreate,
+    KnowledgeDocumentUpdate,
     KnowledgeDocumentResponse,
     PatientSessionResponse,
     SyncStatus,
@@ -42,6 +43,13 @@ class DataServiceInterface(ABC):
         self, doc: KnowledgeDocumentCreate
     ) -> KnowledgeDocumentResponse:
         """Create a new knowledge document."""
+        pass
+
+    @abstractmethod
+    async def update_knowledge_document(
+        self, knowledge_id: str, update_data: KnowledgeDocumentUpdate
+    ) -> Optional[KnowledgeDocumentResponse]:
+        """Update a knowledge document."""
         pass
 
     @abstractmethod
@@ -277,6 +285,27 @@ class MockDataService(DataServiceInterface):
         
         self._documents[knowledge_id] = new_doc
         return new_doc
+
+    async def update_knowledge_document(
+        self, knowledge_id: str, update_data: KnowledgeDocumentUpdate
+    ) -> Optional[KnowledgeDocumentResponse]:
+        """Update a knowledge document in memory."""
+        if knowledge_id not in self._documents:
+            return None
+            
+        doc = self._documents[knowledge_id]
+        
+        # Create a copy with updated fields
+        updated_fields = update_data.model_dump(exclude_unset=True)
+        if not updated_fields:
+            return doc
+            
+        # Create new instance with updated values
+        updated_doc = doc.model_copy(update=updated_fields)
+        updated_doc.modified_at = datetime.now()
+        
+        self._documents[knowledge_id] = updated_doc
+        return updated_doc
 
     async def get_knowledge_documents(
         self, doctor_id: Optional[str] = None

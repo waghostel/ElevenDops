@@ -1,0 +1,27 @@
+{
+  "enabled": true,
+  "name": "API Postman Testing",
+  "description": "Monitors API source code changes and automatically runs Postman collection tests to validate ElevenDops backend functionality",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "backend/**/*.py",
+      "backend/main.py",
+      "backend/config.py",
+      "backend/api/**/*.py",
+      "backend/services/**/*.py",
+      "backend/models/**/*.py",
+      "streamlit_app/**/*.py",
+      "pyproject.toml",
+      "requirements.txt",
+      ".env",
+      "docker-compose.dev.yml",
+      "Dockerfile"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "ElevenDops API source code or configuration has been modified. Please retrieve the contents of the .postman.json file. If the file does not exist or is empty, create a Postman collection for the ElevenDops medical assistant API. If it exists, get the collection ID and run the collection, showing me the results and propose fixes for any errors found."
+  }
+}

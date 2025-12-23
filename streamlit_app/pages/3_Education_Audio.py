@@ -38,6 +38,19 @@ if "voices" not in st.session_state:
     st.session_state.voices = []
 
 
+# Cached data fetching functions
+@st.cache_resource(ttl=30)
+def get_cached_documents():
+    """Fetch documents with caching (30s TTL)."""
+    return asyncio.run(client.get_knowledge_documents())
+
+
+@st.cache_resource(ttl=300)
+def get_cached_voices():
+    """Fetch voices with caching (5 min TTL - voices rarely change)."""
+    return asyncio.run(client.get_available_voices())
+
+
 def render_header():
     """Render page header."""
     st.title("🎧 Patient Education Audio")
@@ -50,19 +63,19 @@ def render_header():
     )
 
 
-async def load_documents() -> List[KnowledgeDocument]:
+def load_documents() -> List[KnowledgeDocument]:
     """Load available knowledge documents."""
     try:
-        return await client.get_knowledge_documents()
+        return get_cached_documents()
     except Exception as e:
         st.error(f"Unable to load documents. Please check your connection. (Error: {e})")
         return []
 
 
-async def load_voices() -> List[VoiceOption]:
+def load_voices() -> List[VoiceOption]:
     """Load available voices."""
     try:
-        return await client.get_available_voices()
+        return get_cached_voices()
     except Exception as e:
         st.error(f"Unable to load voice options. (Error: {e})")
         return []
@@ -163,7 +176,7 @@ async def render_audio_generation():
 
     # Load voices if not loaded
     if not st.session_state.voices:
-        st.session_state.voices = await load_voices()
+        st.session_state.voices = load_voices()
 
     if not st.session_state.voices:
         st.warning("No voices available. Check API connection.")
@@ -229,7 +242,7 @@ async def main():
     """Main page execution."""
     render_header()
     
-    documents = await load_documents()
+    documents = load_documents()
     
     await render_document_selection(documents)
     await render_script_editor()

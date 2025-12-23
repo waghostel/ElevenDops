@@ -22,37 +22,47 @@ st.markdown("Configure your AI assistants with medical knowledge bases and voice
 if "loading" not in st.session_state:
     st.session_state.loading = False
 
-async def load_data():
-    """Load initial data: knowledge documents, voices, agents."""
-    client = get_backend_client()
-    try:
-        # Load concurrently
-        docs_task = client.get_knowledge_documents()
-        voices_task = client.get_available_voices()
-        agents_task = client.get_agents()
-        
-        docs, voices, agents = await asyncio.gather(docs_task, voices_task, agents_task)
-        return docs, voices, agents
-    except APIError as e:
-        st.error(f"Failed to load data: {e.message}")
-        return [], [], []
-    except Exception as e:
-        st.error(f"An unexpected error occurred: {str(e)}")
-        return [], [], []
+# Initialize client
+client = get_backend_client()
 
-# Main event loop for async
-# Streamlit runs synchronous by default, so we wrap async calls
 
-# Load data on page load
-# We use a trick for async execution in Streamlit if not using `st.asyncio` (which isn't standard in all versions)
-# but `asyncio.run` works for simple scripts. 
-# Better: use a wrapper
+# Cached data fetching functions
+@st.cache_resource(ttl=30)
+def get_cached_documents():
+    """Fetch documents with caching (30s TTL)."""
+    return asyncio.run(client.get_knowledge_documents())
+
+
+@st.cache_resource(ttl=300)
+def get_cached_voices():
+    """Fetch voices with caching (5 min TTL)."""
+    return asyncio.run(client.get_available_voices())
+
+
+@st.cache_resource(ttl=30)
+def get_cached_agents():
+    """Fetch agents with caching (30s TTL)."""
+    return asyncio.run(client.get_agents())
+
+
 def run_async(coroutine):
+    """Helper to run async coroutines."""
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    return loop.run_until_complete(coroutine)
+    try:
+        return loop.run_until_complete(coroutine)
+    finally:
+        loop.close()
 
-docs, voices, agents = run_async(load_data())
+
+# Load data using cached functions
+try:
+    docs = get_cached_documents()
+    voices = get_cached_voices()
+    agents = get_cached_agents()
+except Exception as e:
+    st.error(f"Failed to load data: {str(e)}")
+    docs, voices, agents = [], [], []
 
 # Define style options
 STYLE_OPTIONS = {
@@ -121,6 +131,7 @@ with st.form("create_agent_form"):
                         answer_style=selected_style
                     ))
                 st.success(f"Agent '{name}' created successfully!")
+                get_cached_agents.clear()
                 st.rerun()
             except APIError as e:
                 st.error(f"Creation failed: {e.message}")
@@ -158,6 +169,7 @@ with st.container(border=True):
                         with st.spinner("Deleting agent..."):
                             run_async(client.delete_agent(agent.agent_id))
                         st.success("Agent deleted.")
+                        get_cached_agents.clear()
                         st.rerun()
                     except Exception as e:
                         st.error(f"Delete failed: {str(e)}")

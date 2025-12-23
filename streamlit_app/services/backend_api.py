@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import List, Optional
 
 import httpx
+import streamlit as st
 
 from streamlit_app.services.exceptions import (
     APIConnectionError,
@@ -175,6 +176,7 @@ class BackendAPIClient:
                     sync_error_message=data.get("sync_error_message"),
                     last_sync_attempt=datetime.fromisoformat(data["last_sync_attempt"]) if data.get("last_sync_attempt") else None,
                     sync_retry_count=data.get("sync_retry_count", 0),
+                    modified_at=datetime.fromisoformat(data["modified_at"]) if data.get("modified_at") else None,
                 )
         except httpx.ConnectError as e:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
@@ -211,6 +213,7 @@ class BackendAPIClient:
                         sync_error_message=d.get("sync_error_message"),
                         last_sync_attempt=datetime.fromisoformat(d["last_sync_attempt"]) if d.get("last_sync_attempt") else None,
                         sync_retry_count=d.get("sync_retry_count", 0),
+                        modified_at=datetime.fromisoformat(d["modified_at"]) if d.get("modified_at") else None,
                     )
                     for d in data["documents"]
                 ]
@@ -241,6 +244,53 @@ class BackendAPIClient:
                 status_code=e.response.status_code,
             ) from e
 
+    async def update_knowledge_document(
+        self, knowledge_id: str, disease_name: Optional[str] = None, document_type: Optional[str] = None
+    ) -> KnowledgeDocument:
+        """Update a knowledge document.
+        
+        Args:
+            knowledge_id: ID of the document.
+            disease_name: New disease name (optional).
+            document_type: New document type (optional).
+            
+        Returns:
+            Updated KnowledgeDocument object.
+        """
+        try:
+            payload = {}
+            if disease_name is not None:
+                payload["disease_name"] = disease_name
+            if document_type is not None:
+                payload["document_type"] = document_type
+                
+            async with self._get_client() as client:
+                response = await client.put(f"/api/knowledge/{knowledge_id}", json=payload)
+                response.raise_for_status()
+                data = response.json()
+                return KnowledgeDocument(
+                    knowledge_id=data["knowledge_id"],
+                    doctor_id=data["doctor_id"],
+                    disease_name=data["disease_name"],
+                    document_type=data["document_type"],
+                    raw_content=data["raw_content"],
+                    sync_status=data["sync_status"],
+                    elevenlabs_document_id=data["elevenlabs_document_id"],
+                    structured_sections=data.get("structured_sections"),
+                    created_at=datetime.fromisoformat(data["created_at"]),
+                    sync_error_message=data.get("sync_error_message"),
+                    last_sync_attempt=datetime.fromisoformat(data["last_sync_attempt"]) if data.get("last_sync_attempt") else None,
+                    sync_retry_count=data.get("sync_retry_count", 0),
+                    modified_at=datetime.fromisoformat(data["modified_at"]) if data.get("modified_at") else None,
+                )
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Update failed: {e.response.text}",
+                status_code=e.response.status_code,
+            ) from e
+
     async def retry_knowledge_sync(self, knowledge_id: str) -> KnowledgeDocument:
         """Retry syncing a knowledge document.
 
@@ -265,6 +315,7 @@ class BackendAPIClient:
                     sync_error_message=data.get("sync_error_message"),
                     last_sync_attempt=datetime.fromisoformat(data["last_sync_attempt"]) if data.get("last_sync_attempt") else None,
                     sync_retry_count=data.get("sync_retry_count", 0),
+                    modified_at=datetime.fromisoformat(data["modified_at"]) if data.get("modified_at") else None,
                 )
         except httpx.ConnectError as e:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
@@ -728,6 +779,7 @@ class BackendAPIClient:
 
 
 # Convenience function for getting a client instance
+@st.cache_resource
 def get_backend_client() -> BackendAPIClient:
     """Get a configured backend API client.
 
