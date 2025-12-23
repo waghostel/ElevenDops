@@ -330,9 +330,22 @@ class MockDataService(DataServiceInterface):
             return False
         
         doc = self._documents[knowledge_id]
-        object.__setattr__(doc, 'sync_status', status) # Use setattr for frozen models or just recreate
-        # Since pydantic models might be frozen or not, safer to recreate if they are immutable or frozen
-        # But looking at previous code it was creating a new object. Let's do that to be safe.
+        
+        # Calculate new retry count based on status (matching Firestore logic)
+        new_retry_count = doc.sync_retry_count
+        if status == SyncStatus.SYNCING:
+            new_retry_count = doc.sync_retry_count + 1
+        elif status == SyncStatus.PENDING:
+            new_retry_count = 0
+        
+        # Determine error message (matching Firestore logic)
+        new_error_message = None
+        if error_message:
+            new_error_message = error_message
+        elif status == SyncStatus.COMPLETED or status == SyncStatus.PENDING:
+            new_error_message = None
+        elif status == SyncStatus.FAILED:
+            new_error_message = doc.sync_error_message  # Keep existing if not provided
         
         updated_doc = KnowledgeDocumentResponse(
             knowledge_id=doc.knowledge_id,
@@ -343,24 +356,11 @@ class MockDataService(DataServiceInterface):
             sync_status=status,
             elevenlabs_document_id=elevenlabs_id if elevenlabs_id is not None else doc.elevenlabs_document_id,
             structured_sections=doc.structured_sections,
-            sync_error_message=error_message if error_message is not None else (doc.sync_error_message if status == SyncStatus.FAILED else None),
+            sync_error_message=new_error_message,
             last_sync_attempt=datetime.now(),
-            sync_retry_count=doc.sync_retry_count, # retry count logic needs to be handled by caller or separate update? 
-            # For this MVP, let's assume retry count is updated separately or we just keep it. 
-            # Actually caller usually handles retry loops. 
-            # If status becomes PENDING/SYNCING/COMPLETED we might want to reset error message? 
-            # My logic above: if error_message passed, use it. if Status FAILED and no error passed, keep old? 
-            # Better: if status != FAILED, clear error message? 
-            # The UI logic says "Clear previous sync_error_message before retry".
-            # Let's trust the caller to pass None if they want to clear it, or we clear it on success.
-            # If status is COMPLETED, error should be None.
+            sync_retry_count=new_retry_count,
             created_at=doc.created_at,
         )
-        # Refined logic for error message in replacement block:
-        # If status is COMPLETED, clear error.
-        # If error_message provided, set it.
-        if status == SyncStatus.COMPLETED:
-             updated_doc.sync_error_message = None
         
         self._documents[knowledge_id] = updated_doc
         return True

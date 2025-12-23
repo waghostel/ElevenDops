@@ -457,7 +457,9 @@ class ElevenLabsService:
         """
         if self.use_mock:
             logging.info(f"[MOCK] send_text_message called: agent={agent_id}, text={text[:50]}...")
-            return ("This is a mock response from the AI assistant.", b'')
+            # Return a minimal valid MP3 frame (silence) to prevent frontend audio errors
+            mock_audio = b'\xff\xfb\x90\x00' + b'\x00' * 417
+            return ("This is a mock response from the AI assistant.", mock_audio)
 
         try:
             # Get signed URL

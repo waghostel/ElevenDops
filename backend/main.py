@@ -47,6 +47,16 @@ app.include_router(agent_router)
 app.include_router(patient_router, prefix="/api/patient", tags=["patient"])
 app.include_router(conversation_router, prefix="/api/conversations", tags=["conversations"])
 
+# Mount static files for mock storage mode
+settings = get_settings()
+if settings.use_mock_storage:
+    from pathlib import Path
+    from fastapi.staticfiles import StaticFiles
+    
+    mock_storage_dir = Path("temp_storage") / settings.gcs_bucket_name
+    mock_storage_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/api/storage/files", StaticFiles(directory=str(mock_storage_dir)), name="mock_storage")
+
 
 @app.get("/")
 async def root():

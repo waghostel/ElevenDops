@@ -98,7 +98,11 @@ def test_script_generation_flow(mock_client):
         assert len(at.selectbox) >= 2, f"Audio section not rendered. Selectboxes: {len(at.selectbox)}"
         
         # Verify client call
-        mock_client.generate_script.assert_called_with("doc_1")
+        mock_client.generate_script.assert_called_with(
+            knowledge_id="doc_1",
+            model_name="gemini-2.5-flash",
+            custom_prompt=None
+        )
 
 def test_audio_generation_flow(mock_client):
     """Test selecting a voice and generating audio."""
@@ -118,9 +122,10 @@ def test_audio_generation_flow(mock_client):
         assert not at.error, f"Errors: {[e.value for e in at.error]}"
         assert not at.warning, f"Warnings: {[w.value for w in at.warning]}"
         
-        assert len(at.selectbox) >= 2
+        assert len(at.selectbox) >= 3
         # "Rachel" is at index 0 of the voices list (mocked)
-        at.selectbox[1].select("Rachel").run()
+        # selectbox[0] = document, selectbox[1] = AI model, selectbox[2] = voice
+        at.selectbox[2].select("Rachel").run()
         
         # 4. Generate Audio
         audio_btn = at.button(key="generate_audio_btn")
