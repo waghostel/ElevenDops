@@ -6,6 +6,7 @@ from knowledge documents using ElevenLabs TTS.
 
 import asyncio
 import logging
+import time
 from typing import List, Optional
 
 import streamlit as st
@@ -38,17 +39,9 @@ if "voices" not in st.session_state:
     st.session_state.voices = []
 
 
-# Cached data fetching functions
-@st.cache_resource(ttl=30)
-def get_cached_documents():
-    """Fetch documents with caching (30s TTL)."""
-    return asyncio.run(client.get_knowledge_documents())
-
-
-@st.cache_resource(ttl=300)
-def get_cached_voices():
-    """Fetch voices with caching (5 min TTL - voices rarely change)."""
-    return asyncio.run(client.get_available_voices())
+# Cache settings
+DOCUMENTS_CACHE_TTL = 30  # seconds
+VOICES_CACHE_TTL = 300  # 5 minutes
 
 
 def render_header():
@@ -63,19 +56,53 @@ def render_header():
     )
 
 
-def load_documents() -> List[KnowledgeDocument]:
-    """Load available knowledge documents."""
+async def load_documents_cached() -> List[KnowledgeDocument]:
+    """Load documents with session state caching (async-compatible)."""
+    cache_key = "_documents_cache"
+    cache_time_key = "_documents_cache_time"
+    
+    now = time.time()
+    
+    # Check if cache exists and is still valid
+    if (
+        cache_key in st.session_state
+        and cache_time_key in st.session_state
+        and (now - st.session_state[cache_time_key]) < DOCUMENTS_CACHE_TTL
+    ):
+        return st.session_state[cache_key]
+    
+    # Fetch fresh data
     try:
-        return get_cached_documents()
+        documents = await client.get_knowledge_documents()
+        st.session_state[cache_key] = documents
+        st.session_state[cache_time_key] = now
+        return documents
     except Exception as e:
         st.error(f"Unable to load documents. Please check your connection. (Error: {e})")
         return []
 
 
-def load_voices() -> List[VoiceOption]:
-    """Load available voices."""
+async def load_voices_cached() -> List[VoiceOption]:
+    """Load voices with session state caching (async-compatible)."""
+    cache_key = "_voices_cache"
+    cache_time_key = "_voices_cache_time"
+    
+    now = time.time()
+    
+    # Check if cache exists and is still valid
+    if (
+        cache_key in st.session_state
+        and cache_time_key in st.session_state
+        and (now - st.session_state[cache_time_key]) < VOICES_CACHE_TTL
+    ):
+        return st.session_state[cache_key]
+    
+    # Fetch fresh data
     try:
-        return get_cached_voices()
+        voices = await client.get_available_voices()
+        st.session_state[cache_key] = voices
+        st.session_state[cache_time_key] = now
+        return voices
     except Exception as e:
         st.error(f"Unable to load voice options. (Error: {e})")
         return []
@@ -176,7 +203,7 @@ async def render_audio_generation():
 
     # Load voices if not loaded
     if not st.session_state.voices:
-        st.session_state.voices = load_voices()
+        st.session_state.voices = await load_voices_cached()
 
     if not st.session_state.voices:
         st.warning("No voices available. Check API connection.")
@@ -242,7 +269,7 @@ async def main():
     """Main page execution."""
     render_header()
     
-    documents = load_documents()
+    documents = await load_documents_cached()
     
     await render_document_selection(documents)
     await render_script_editor()

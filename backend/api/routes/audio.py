@@ -89,7 +89,7 @@ async def get_audio_files(
 ):
     """Get audio files for a knowledge document."""
     try:
-        audio_files = service.get_audio_files(knowledge_id=knowledge_id)
+        audio_files = await service.get_audio_files(knowledge_id=knowledge_id)
         return AudioListResponse(
             audio_files=audio_files,
             total_count=len(audio_files)
