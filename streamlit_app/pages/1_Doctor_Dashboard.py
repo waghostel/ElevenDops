@@ -29,7 +29,7 @@ st.set_page_config(
 render_sidebar()
 
 
-@st.cache_data(ttl=10, show_spinner=False)
+@st.cache_resource(ttl=10)
 def get_dashboard_stats() -> tuple[DashboardStats | None, str | None]:
     """Fetch dashboard stats from backend API.
 
