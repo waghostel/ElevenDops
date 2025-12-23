@@ -325,17 +325,28 @@ class BackendAPIClient:
                 status_code=e.response.status_code,
             ) from e
 
-    async def generate_script(self, knowledge_id: str) -> ScriptResponse:
+    async def generate_script(
+        self, 
+        knowledge_id: str,
+        model_name: str = "gemini-2.5-flash",
+        custom_prompt: Optional[str] = None
+    ) -> ScriptResponse:
         """Generate a script from a knowledge document.
 
         Args:
             knowledge_id: ID of the knowledge document.
+            model_name: Gemini model to use.
+            custom_prompt: Optional custom prompt.
 
         Returns:
             ScriptResponse object.
         """
         try:
-            payload = {"knowledge_id": knowledge_id}
+            payload = {
+                "knowledge_id": knowledge_id,
+                "model_name": model_name,
+                "custom_prompt": custom_prompt
+            }
             async with self._get_client() as client:
                 response = await client.post("/api/audio/generate-script", json=payload)
                 response.raise_for_status()
@@ -344,6 +355,7 @@ class BackendAPIClient:
                     script=data["script"],
                     knowledge_id=data["knowledge_id"],
                     generated_at=datetime.fromisoformat(data["generated_at"]),
+                    model_used=data.get("model_used", "legacy")
                 )
         except httpx.ConnectError as e:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e

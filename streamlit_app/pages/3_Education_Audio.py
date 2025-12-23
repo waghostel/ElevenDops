@@ -37,6 +37,10 @@ if "selected_voice_id" not in st.session_state:
     st.session_state.selected_voice_id = None
 if "voices" not in st.session_state:
     st.session_state.voices = []
+if "selected_llm_model" not in st.session_state:
+    st.session_state.selected_llm_model = "gemini-2.5-flash"
+if "custom_prompt" not in st.session_state:
+    st.session_state.custom_prompt = None
 
 
 # Cache settings
@@ -112,9 +116,16 @@ async def generate_script(knowledge_id: str):
     """Generate script from document."""
     try:
         with st.spinner("Generating script with AI..."):
-            response = await client.generate_script(knowledge_id)
+            model = st.session_state.selected_llm_model
+            prompt = st.session_state.custom_prompt
+            
+            response = await client.generate_script(
+                knowledge_id=knowledge_id,
+                model_name=model,
+                custom_prompt=prompt
+            )
             st.session_state.generated_script = response.script
-            st.toast("Script generated successfully!", icon="📝")
+            st.toast(f"Script generated successfully using {response.model_used}!", icon="📝")
     except Exception as e:
         st.error(f"Script generation failed. Please try again. (Error: {e})")
 
@@ -166,6 +177,47 @@ async def render_document_selection(documents: List[KnowledgeDocument]):
             st.markdown(selected_doc.raw_content)
 
 
+@st.dialog("Customize Prompt")
+def render_prompt_editor_dialog():
+    """Render dialog to customize script generation prompt."""
+    st.markdown("Customize the instructions for the AI script writer.")
+    
+    # Default text to show if no custom prompt set yet
+    default_text = (
+        st.session_state.custom_prompt 
+        if st.session_state.custom_prompt 
+        else """# Role
+You are a medical education script writer specializing in creating voice-optimized content.
+
+# Goal
+Generate a patient education script from the provided medical knowledge document.
+
+# Guidelines
+- Write in a conversational, warm tone
+- Use short, clear sentences
+- Include natural pauses using punctuation
+- Avoid complex medical jargon"""
+    )
+
+    new_prompt = st.text_area(
+        "Prompt Content", 
+        value=default_text,
+        height=300
+    )
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Reset to Default", use_container_width=True):
+            st.session_state.custom_prompt = None
+            st.rerun()
+            
+    with col2:
+        if st.button("Save Changes", type="primary", use_container_width=True):
+            st.session_state.custom_prompt = new_prompt
+            # st.dialog automatically handles closing on rerun usually
+            st.rerun()
+
+
 async def render_script_editor():
     """Render script generation and editing section."""
     st.subheader("2. Script Editor")
@@ -177,7 +229,19 @@ async def render_script_editor():
     col1, col2 = st.columns([1, 3])
     
     with col1:
-        if st.button("✨ Generate Script", key="generate_script_btn"):
+        st.session_state.selected_llm_model = st.selectbox(
+            "AI Model",
+            options=["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"],
+            index=1, # Default to gemini-2.5-flash
+            help="Select the AI model for script generation"
+        )
+        
+        if st.button("⚙️ Customize Prompt", use_container_width=True):
+            render_prompt_editor_dialog()
+            
+        st.divider()
+
+        if st.button("✨ Generate Script", key="generate_script_btn", type="primary", use_container_width=True):
             await generate_script(st.session_state.selected_document.knowledge_id)
 
     if st.session_state.generated_script:

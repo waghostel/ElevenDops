@@ -32,12 +32,20 @@ async def generate_script(
 ):
     """Generate script from knowledge document."""
     try:
-        script = await service.generate_script(knowledge_id=request.knowledge_id)
-        return ScriptGenerateResponse(
-            script=script,
+        result = await service.generate_script(
             knowledge_id=request.knowledge_id,
+            model_name=request.model_name,
+            custom_prompt=request.custom_prompt
+        )
+        return ScriptGenerateResponse(
+            script=result["script"],
+            knowledge_id=request.knowledge_id,
+            model_used=result["model_used"],
             generated_at=datetime.utcnow(),
         )
+    except ValueError as e:
+        # Document not found
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         logging.error(f"Script generation failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -115,6 +115,8 @@ class ScriptGenerateRequest(BaseModel):
     """Request model for script generation."""
 
     knowledge_id: str = Field(..., description="ID of the knowledge document")
+    model_name: str = Field(default="gemini-2.5-flash", description="Gemini model to use")
+    custom_prompt: Optional[str] = Field(None, description="Custom prompt for generation")
 
 
 class ScriptGenerateResponse(BaseModel):
@@ -122,6 +124,7 @@ class ScriptGenerateResponse(BaseModel):
 
     script: str = Field(..., description="Generated script text")
     knowledge_id: str = Field(..., description="Source document ID")
+    model_used: str = Field(default="legacy", description="Model used for generation")
     generated_at: datetime = Field(..., description="Generation timestamp")
 
 

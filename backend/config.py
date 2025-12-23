@@ -99,6 +99,12 @@ class Settings(BaseSettings):
         default=None,
         description="Google Cloud project ID",
     )
+    
+    # Google AI configuration
+    google_api_key: str | None = Field(
+        default=None,
+        description="Google API key for Gemini models",
+    )
 
     # CORS configuration
     cors_origins: str = Field(
@@ -239,3 +245,32 @@ def initialize_config() -> Settings:
     settings = get_settings()
     validate_critical_config(settings)
     return settings
+
+
+# Gemini model configurations
+GEMINI_MODELS = {
+    "gemini-2.5-pro": "gemini-2.5-pro-preview-06-05", # Highest quality
+    "gemini-2.5-flash": "gemini-2.5-flash-preview-05-20", # Balanced (default)
+    "gemini-2.0-flash": "gemini-2.0-flash" # Fastest
+}
+
+from pathlib import Path
+
+def get_default_script_prompt() -> str:
+    """Load default script generation prompt from config file.
+    
+    Returns:
+        str: Default prompt text
+    """
+    try:
+        prompt_path = Path(__file__).parent / "config" / "default_script_prompt.txt"
+        if not prompt_path.exists():
+            # Fallback if file doesn't exist (e.g. in tests)
+            logger.warning(f"Default prompt file not found at {prompt_path}, using built-in fallback")
+            return "You are a medical script writer. Generate a patient education script."
+            
+        with open(prompt_path, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        logger.error(f"Failed to load default script prompt: {e}")
+        return "You are a medical script writer. Generate a patient education script."

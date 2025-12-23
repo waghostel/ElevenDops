@@ -10,6 +10,9 @@ from backend.services.elevenlabs_service import ElevenLabsService, get_elevenlab
 from backend.services.storage_service import StorageService, get_storage_service
 from backend.services.firestore_data_service import FirestoreDataService
 
+from backend.services.script_generation_service import ScriptGenerationService
+from backend.config import get_default_script_prompt
+
 # In-memory storage is removed in favor of FirestoreDataService
 
 class AudioService:
@@ -19,7 +22,8 @@ class AudioService:
         self, 
         elevenlabs_service: Optional[ElevenLabsService] = None,
         storage_service: Optional[StorageService] = None,
-        data_service: Optional[FirestoreDataService] = None
+        data_service: Optional[FirestoreDataService] = None,
+        script_service: Optional[ScriptGenerationService] = None
     ):
         """Initialize audio service.
         
@@ -32,15 +36,23 @@ class AudioService:
         self.storage_service = storage_service or get_storage_service()
         # FirestoreDataService is a singleton class, so we can instantiate it directly if not provided
         self.data_service = data_service or FirestoreDataService()
+        self.script_service = script_service or ScriptGenerationService()
 
-    async def generate_script(self, knowledge_id: str) -> str:
+    async def generate_script(
+        self, 
+        knowledge_id: str, 
+        model_name: str = "gemini-2.5-flash",
+        custom_prompt: Optional[str] = None
+    ) -> dict:
         """Generate a script from a knowledge document.
         
         Args:
             knowledge_id: ID of the knowledge document.
+            model_name: Gemini model to use.
+            custom_prompt: Optional custom prompt.
             
         Returns:
-            str: Generated script content.
+            dict: {"script": str, "model_used": str}
             
         Raises:
             ValueError: If knowledge document not found.
@@ -52,22 +64,36 @@ class AudioService:
             logging.warning(f"Knowledge document not found: {knowledge_id}")
             raise ValueError(f"Knowledge document {knowledge_id} not found")
             
-        # MVP: Generate template-based script using the document content
-        # We take the disease name and raw content to create a simple script
-        script_content = f"Patient Education Script for {doc.disease_name}:\n\n"
+        # Use AI Script Generation Service
+        prompt = custom_prompt or get_default_script_prompt()
         
-        # Add intro if available in structured sections, else first 500 chars
-        if doc.structured_sections and "Introduction" in doc.structured_sections:
-            script_content += f"{doc.structured_sections['Introduction']}\n\n"
-        else:
-            # Fallback to raw content truncation
-            limit = 1000
-            content_snippet = doc.raw_content[:limit]
-            if len(doc.raw_content) > limit:
-                content_snippet += "..."
-            script_content += content_snippet
+        try:
+            result = await self.script_service.generate_script(
+                knowledge_content=doc.raw_content,
+                model_name=model_name,
+                prompt=prompt
+            )
+            return {
+                "script": result["script"],
+                "model_used": result["model_used"]
+            }
+        except Exception as e:
+            logging.error(f"AI generation failed, falling back to legacy template: {e}")
+             # Fallback logic (legacy)
+            script_content = f"Patient Education Script for {doc.disease_name}:\n\n"
+            if doc.structured_sections and "Introduction" in doc.structured_sections:
+                script_content += f"{doc.structured_sections['Introduction']}\n\n"
+            else:
+                limit = 1000
+                content_snippet = doc.raw_content[:limit]
+                if len(doc.raw_content) > limit:
+                    content_snippet += "..."
+                script_content += content_snippet
             
-        return script_content
+            return {
+                "script": script_content,
+                "model_used": "legacy_fallback"
+            }
 
     async def generate_audio(self, script: str, voice_id: str, knowledge_id: str) -> AudioMetadata:
         """Generate audio from a script.

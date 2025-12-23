@@ -64,6 +64,7 @@ class ScriptResponse:
     script: str
     knowledge_id: str
     generated_at: datetime
+    model_used: str = "legacy"
 
 
 @dataclass
