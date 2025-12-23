@@ -174,7 +174,7 @@ async def test_last_activity_logic():
 async def test_error_fallback():
     """Validates Property 5: Error fallback returns valid response."""
     
-    mock_db = AsyncMock()
+    mock_db = MagicMock()
     # Simulate DB error
     mock_db.collection.side_effect = Exception("Firestore Connection Error")
     

@@ -85,5 +85,20 @@ Review conversation transcripts to identify popular topics, queries and areas wh
 
 ## Enterprise features
 
-Non-enterprise accounts have a maximum of 20MB or 300k characters.
 Need higher limits? [Contact our sales team](https://elevenlabs.io/contact-sales) to discuss enterprise plans with expanded knowledge base capabilities.
+
+# Delete Document
+
+```python
+from elevenlabs import ElevenLabs
+client = ElevenLabs(
+  base_url="https://api.elevenlabs.io"
+)
+client.conversational_ai.delete_knowledge_base_document(
+    document_id="document_id"
+)
+```
+
+## Response
+
+Returns `200 OK` on success.

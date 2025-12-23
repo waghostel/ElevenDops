@@ -175,6 +175,29 @@ if (-not $fastApiStill -and -not $streamlitStill) {
 }
 
 Write-Host ""
+
+# Stop Docker emulators
+Write-Host "🐳 Stopping Docker emulators..." -ForegroundColor Blue
+try {
+    $dockerInfo = docker info 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "   ℹ️  Docker is not running. No emulators to stop." -ForegroundColor Gray
+    } else {
+        # Check if emulators are running
+        $runningContainers = docker-compose -f docker-compose.dev.yml ps -q 2>&1
+        if ($runningContainers) {
+            Write-Host "   🛑 Stopping emulators..." -ForegroundColor Yellow
+            docker-compose -f docker-compose.dev.yml down 2>&1 | Out-Null
+            Write-Host "   ✅ Emulators stopped successfully" -ForegroundColor Green
+        } else {
+            Write-Host "   ℹ️  No emulators running" -ForegroundColor Gray
+        }
+    }
+} catch {
+    Write-Host "   ⚠️  Could not stop emulators: $_" -ForegroundColor Yellow
+}
+
+Write-Host ""
 Write-Host "📝 Next steps:" -ForegroundColor Blue
 Write-Host "   To start servers: .\scripts\start_server.ps1" -ForegroundColor Cyan
 Write-Host "   To check ports: netstat -an | findstr :$FastAPIPort" -ForegroundColor Cyan

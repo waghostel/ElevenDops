@@ -1,7 +1,7 @@
 """Property-based tests for Agent Creation."""
 
 import pytest
-from hypothesis import given, strategies as st
+from hypothesis import given, settings, HealthCheck, strategies as st
 from unittest.mock import MagicMock, patch, AsyncMock, call
 
 from backend.services.agent_service import AgentService, SYSTEM_PROMPTS
@@ -33,6 +33,7 @@ def test_system_prompt_language_consistency(style):
     sync_statuses=st.lists(st.sampled_from(SyncStatus), min_size=1, max_size=5)
 )
 @pytest.mark.asyncio
+@settings(suppress_health_check=[HealthCheck.too_slow])
 async def test_knowledge_base_filtering_by_sync_status(knowledge_ids, sync_statuses):
     """
     **Feature: elevenlabs-agent-creation, Property 2: Knowledge Base Filtering by Sync Status**

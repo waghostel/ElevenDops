@@ -33,17 +33,19 @@ function Kill-ProcessOnPort {
                             Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
                             Start-Sleep -Milliseconds 200
                         }
-                    } catch {
+                    }
+                    catch {
                         Write-Host "   ⚠️  Could not kill process PID: $pid" -ForegroundColor Red
                     }
                 }
             }
         }
-    } catch {
+    }
+    catch {
         # Fallback to Get-NetTCPConnection
         try {
             $processes = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue | 
-                        Select-Object -ExpandProperty OwningProcess -Unique
+            Select-Object -ExpandProperty OwningProcess -Unique
             
             if ($processes) {
                 Write-Host "⚠️  Found processes on port $Port (via NetTCP)" -ForegroundColor Yellow
@@ -55,12 +57,14 @@ function Kill-ProcessOnPort {
                             Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
                             Start-Sleep -Milliseconds 200
                         }
-                    } catch {
+                    }
+                    catch {
                         Write-Host "   ⚠️  Could not kill process PID: $pid" -ForegroundColor Red
                     }
                 }
             }
-        } catch {
+        }
+        catch {
             # Silent fallback
         }
     }
@@ -78,11 +82,13 @@ function Kill-ProcessOnPort {
             foreach ($pid in $pids) {
                 try {
                     Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
-                } catch { }
+                }
+                catch { }
             }
             Start-Sleep -Milliseconds 500
         }
-    } catch { }
+    }
+    catch { }
     
     Write-Host "✅ Port $Port should now be available" -ForegroundColor Green
 }
@@ -92,7 +98,8 @@ function Test-Poetry {
     try {
         $null = Get-Command poetry -ErrorAction Stop
         return $true
-    } catch {
+    }
+    catch {
         return $false
     }
 }
@@ -112,9 +119,95 @@ if (Test-Path ".env") {
             [Environment]::SetEnvironmentVariable($matches[1], $matches[2], "Process")
         }
     }
-} else {
+}
+else {
     Write-Host "⚠️  No .env file found. Using default configuration." -ForegroundColor Yellow
     Write-Host "   Copy .env.example to .env to customize settings." -ForegroundColor Yellow
+}
+
+Write-Host ""
+
+# Default to Mock Mode unless Docker creates success path
+$Script:UseFirestore = "false"
+$Script:UseGcs = "false"
+$Script:UseMockData = "true" 
+$Script:UseMockStorage = "true"
+$Script:FirestoreHost = $null
+$Script:StorageHost = $null
+
+# Start Docker emulators
+Write-Host "🐳 Starting Docker emulators..." -ForegroundColor Blue
+try {
+    $dockerInfo = docker info 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "⚠️  Docker is not running. Emulators will not be started." -ForegroundColor Yellow
+        Write-Host "   The backend may fail to connect to Firestore/GCS." -ForegroundColor Yellow
+        throw "Docker is not running"
+    }
+    else {
+        Write-Host "   ✅ Docker is running" -ForegroundColor Green
+        
+        # Check if emulators are already running
+        $existingContainers = docker-compose -f docker-compose.dev.yml ps -q 2>&1
+        if ($existingContainers) {
+            Write-Host "   🔄 Emulators already running, restarting..." -ForegroundColor Yellow
+            docker-compose -f docker-compose.dev.yml restart 2>&1 | Out-Null
+        }
+        else {
+            Write-Host "   🚀 Starting emulators..." -ForegroundColor Blue
+            docker-compose -f docker-compose.dev.yml up -d 2>&1 | Out-Null
+        }
+        
+        # Wait for emulators to be ready
+        Write-Host "   ⏳ Waiting for emulators to initialize..." -ForegroundColor Yellow
+        Start-Sleep -Seconds 3
+        
+        # Update variables for Emulator Mode
+        $Script:FirestoreHost = "localhost:8080"
+        $Script:StorageHost = "http://localhost:4443"
+        $Script:UseFirestore = "true"
+        $Script:UseGcs = "true"
+        $Script:UseMockData = "false"
+        $Script:UseMockStorage = "false"
+        
+        # Still set process env vars for local context (if needed by other calls)
+        [Environment]::SetEnvironmentVariable("FIRESTORE_EMULATOR_HOST", $Script:FirestoreHost, "Process")
+        [Environment]::SetEnvironmentVariable("STORAGE_EMULATOR_HOST", $Script:StorageHost, "Process")
+        [Environment]::SetEnvironmentVariable("USE_FIRESTORE_EMULATOR", $Script:UseFirestore, "Process")
+        [Environment]::SetEnvironmentVariable("USE_GCS_EMULATOR", $Script:UseGcs, "Process")
+        [Environment]::SetEnvironmentVariable("GOOGLE_CLOUD_PROJECT", "elevenlabs-local", "Process")
+        [Environment]::SetEnvironmentVariable("USE_MOCK_DATA", $Script:UseMockData, "Process")
+        [Environment]::SetEnvironmentVariable("USE_MOCK_STORAGE", $Script:UseMockStorage, "Process")
+        
+        Write-Host "   ✅ Emulators started successfully" -ForegroundColor Green
+        Write-Host "      Firestore: http://localhost:8080" -ForegroundColor Cyan
+        Write-Host "      GCS: http://localhost:4443" -ForegroundColor Cyan
+    }
+}
+catch {
+    Write-Host "⚠️  Could not start emulators: $_" -ForegroundColor Yellow
+    Write-Host "   Checking for Local Mock Mode fallback..." -ForegroundColor Yellow
+    
+    # Enable Mock Mode (Variables already set to safe defaults at top, but being explicit here)
+    Write-Host "   🔧 Enabling Local Mock Mode (No Docker required)..." -ForegroundColor Blue
+    
+    $Script:UseMockData = "true"
+    $Script:UseMockStorage = "true"
+    $Script:UseFirestore = "false"
+    $Script:UseGcs = "false"
+    $Script:FirestoreHost = $null
+    $Script:StorageHost = $null
+    
+    [Environment]::SetEnvironmentVariable("USE_MOCK_DATA", "true", "Process")
+    [Environment]::SetEnvironmentVariable("USE_MOCK_STORAGE", "true", "Process")
+    [Environment]::SetEnvironmentVariable("USE_FIRESTORE_EMULATOR", "false", "Process")
+    [Environment]::SetEnvironmentVariable("USE_GCS_EMULATOR", "false", "Process")
+    [Environment]::SetEnvironmentVariable("FIRESTORE_EMULATOR_HOST", $null, "Process")
+    [Environment]::SetEnvironmentVariable("STORAGE_EMULATOR_HOST", $null, "Process")
+    
+    Write-Host "   ✅ Local Mock Mode Enabled" -ForegroundColor Green
+    Write-Host "      Data: In-Memory Mock" -ForegroundColor Cyan
+    Write-Host "      Storage: Local File System (temp_storage/)" -ForegroundColor Cyan
 }
 
 Write-Host ""
@@ -132,14 +225,25 @@ $fastApiJob = Start-Job -ScriptBlock {
     param($port)
     Set-Location $using:PWD
     
+    # Set emulator environment variables from parent scope variables
+    [Environment]::SetEnvironmentVariable("FIRESTORE_EMULATOR_HOST", $using:FirestoreHost, "Process")
+    [Environment]::SetEnvironmentVariable("STORAGE_EMULATOR_HOST", $using:StorageHost, "Process")
+    [Environment]::SetEnvironmentVariable("USE_FIRESTORE_EMULATOR", $using:UseFirestore, "Process")
+    [Environment]::SetEnvironmentVariable("USE_GCS_EMULATOR", $using:UseGcs, "Process")
+    [Environment]::SetEnvironmentVariable("GOOGLE_CLOUD_PROJECT", "elevenlabs-local", "Process")
+    [Environment]::SetEnvironmentVariable("USE_MOCK_DATA", $using:UseMockData, "Process")
+    [Environment]::SetEnvironmentVariable("USE_MOCK_STORAGE", $using:UseMockStorage, "Process")
+    
     # Add more verbose output for debugging
     Write-Host "FastAPI Job: Starting uvicorn on port $port"
     Write-Host "FastAPI Job: Current directory: $(Get-Location)"
-    Write-Host "FastAPI Job: Python path: $(poetry run python -c 'import sys; print(sys.executable)')"
+    Write-Host "FastAPI Job: USE_MOCK_DATA = $using:UseMockData"
+    Write-Host "FastAPI Job: USE_MOCK_STORAGE = $using:UseMockStorage"
     
     try {
-        poetry run uvicorn backend.main:app --host 0.0.0.0 --port $port --reload
-    } catch {
+        poetry run uvicorn backend.main:app --host localhost --port $port --reload
+    }
+    catch {
         Write-Host "FastAPI Job Error: $_"
         throw
     }
@@ -157,23 +261,26 @@ $maxAttempts = 6
 while ($attempts -lt $maxAttempts -and -not $fastApiRunning) {
     $attempts++
     try {
-        Write-Host "   🔍 Attempt $attempts/$maxAttempts: Testing FastAPI connection..." -ForegroundColor Yellow
+        Write-Host "   🔍 Attempt $attempts/${maxAttempts}: Testing FastAPI connection..." -ForegroundColor Yellow
         $response = Invoke-WebRequest -Uri "http://localhost:$FastAPIPort/" -TimeoutSec 3 -UseBasicParsing -ErrorAction SilentlyContinue
         if ($response.StatusCode -eq 200) {
             $fastApiRunning = $true
             Write-Host "✅ FastAPI backend started successfully" -ForegroundColor Green
         }
-    } catch {
+    }
+    catch {
         if ($attempts -eq $maxAttempts) {
             Write-Host "❌ FastAPI backend failed to start after $maxAttempts attempts" -ForegroundColor Red
             Write-Host "   📋 FastAPI Job Output:" -ForegroundColor Yellow
             $jobOutput = Receive-Job -Job $fastApiJob -Keep
             if ($jobOutput) {
                 $jobOutput | ForEach-Object { Write-Host "   $_" -ForegroundColor Gray }
-            } else {
+            }
+            else {
                 Write-Host "   No output from FastAPI job" -ForegroundColor Gray
             }
-        } else {
+        }
+        else {
             Start-Sleep -Seconds 2
         }
     }
@@ -184,7 +291,7 @@ Write-Host "🎨 Starting Streamlit frontend on port $StreamlitPort..." -Foregro
 $streamlitJob = Start-Job -ScriptBlock {
     param($port)
     Set-Location $using:PWD
-    poetry run streamlit run streamlit_app/app.py --server.port $port --server.address 0.0.0.0
+    poetry run streamlit run streamlit_app/app.py --server.port $port --server.address localhost
 } -ArgumentList $StreamlitPort
 
 # Wait for Streamlit to start
@@ -198,7 +305,8 @@ try {
         $streamlitRunning = $true
         Write-Host "✅ Streamlit frontend started successfully" -ForegroundColor Green
     }
-} catch {
+}
+catch {
     Write-Host "❌ Streamlit frontend failed to start" -ForegroundColor Red
 }
 
@@ -210,11 +318,14 @@ Write-Host ""
 
 if ($fastApiRunning -and $streamlitRunning) {
     Write-Host "� Both servers are rrunning successfully!" -ForegroundColor Green
-} elseif ($fastApiRunning) {
+}
+elseif ($fastApiRunning) {
     Write-Host "⚠️  Only FastAPI is running. Check Streamlit logs." -ForegroundColor Yellow
-} elseif ($streamlitRunning) {
+}
+elseif ($streamlitRunning) {
     Write-Host "⚠️  Only Streamlit is running. Check FastAPI logs." -ForegroundColor Yellow
-} else {
+}
+else {
     Write-Host "❌ Both servers failed to start. Check the logs." -ForegroundColor Red
 }
 
@@ -227,9 +338,9 @@ Write-Host ""
 
 # Store job IDs for the stop script
 $jobIds = @{
-    FastAPI = $fastApiJob.Id
-    Streamlit = $streamlitJob.Id
-    FastAPIPort = $FastAPIPort
+    FastAPI       = $fastApiJob.Id
+    Streamlit     = $streamlitJob.Id
+    FastAPIPort   = $FastAPIPort
     StreamlitPort = $StreamlitPort
 }
 $jobIds | ConvertTo-Json | Out-File -FilePath "scripts/.server_jobs.json" -Encoding UTF8

@@ -13,14 +13,15 @@ from backend.api.routes.agent import router as agent_router
 from backend.api.routes.patient import router as patient_router
 from backend.api.routes.conversation import router as conversation_router
 
+from backend.config import get_settings
+
 # Application configuration
 APP_TITLE = "ElevenDops Backend API"
 APP_DESCRIPTION = "Backend API for ElevenDops intelligent medical assistant system"
 APP_VERSION = "0.1.0"
 
-# CORS configuration - configurable via environment
-DEFAULT_ORIGINS = ["http://localhost:8501", "http://127.0.0.1:8501"]
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", ",".join(DEFAULT_ORIGINS)).split(",")
+# CORS configuration - managed by centralized config
+CORS_ORIGINS = get_settings().get_cors_origins_list()
 
 app = FastAPI(
     title=APP_TITLE,

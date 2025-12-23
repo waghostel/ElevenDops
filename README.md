@@ -65,6 +65,20 @@ poetry run uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
 poetry run streamlit run streamlit_app/app.py --server.port 8501
 ```
 
+### 3a. Server Management (Recommended for Windows)
+
+Using the PowerShell scripts in `scripts/` provides advanced management features including auto-detection of Docker for emulator support.
+
+```powershell
+# Start servers (Auto-detects Docker/Mock Mode)
+.\scripts\start_server.ps1
+
+# Stop servers
+.\scripts\stop_server.ps1
+```
+
+See [Server Modes & Configuration](docs/SERVER_MODES.md) for details on switching between Local Mock Mode and Docker Emulator Mode.
+
 ### 4. Access the Application
 
 - **Streamlit Frontend**: http://localhost:8501

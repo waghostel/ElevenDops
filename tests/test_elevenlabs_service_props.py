@@ -68,7 +68,7 @@ async def test_retry_on_transient_error(mock_elevenlabs_client):
     # but explicit patching of wait is cleaner. 
     # However, for simplicity here, we'll just let it run or patch sleep.
     
-    mock_elevenlabs_client.conversational_ai.add_to_knowledge_base.side_effect = [
+    mock_elevenlabs_client.conversational_ai.knowledge_base.documents.create_from_file.side_effect = [
         Exception("500 Server Error"),
         Exception("502 Bad Gateway"), 
         mock_response
@@ -78,27 +78,27 @@ async def test_retry_on_transient_error(mock_elevenlabs_client):
         doc_id = service.create_document("text", "name")
     
     assert doc_id == "el_doc_success"
-    assert mock_elevenlabs_client.conversational_ai.add_to_knowledge_base.call_count == 3
+    assert mock_elevenlabs_client.conversational_ai.knowledge_base.documents.create_from_file.call_count == 3
 
 @pytest.mark.asyncio
 async def test_no_retry_on_permanent_error(mock_elevenlabs_client):
     """Test that create_document does not retry on permanent errors."""
     service = ElevenLabsService()
     
-    mock_elevenlabs_client.conversational_ai.add_to_knowledge_base.side_effect = Exception("401 Unauthorized")
+    mock_elevenlabs_client.conversational_ai.knowledge_base.documents.create_from_file.side_effect = Exception("401 Unauthorized")
     
     with pytest.raises(ElevenLabsSyncError) as exc_info:
         service.create_document("text", "name")
     
     assert exc_info.value.error_type == ElevenLabsErrorType.AUTH_ERROR
-    assert mock_elevenlabs_client.conversational_ai.add_to_knowledge_base.call_count == 1
+    assert mock_elevenlabs_client.conversational_ai.knowledge_base.documents.create_from_file.call_count == 1
 
 @pytest.mark.asyncio
 async def test_max_retries_exceeded(mock_elevenlabs_client):
     """Test failure after max retries."""
     service = ElevenLabsService()
     
-    mock_elevenlabs_client.conversational_ai.add_to_knowledge_base.side_effect = Exception("500 Server Error")
+    mock_elevenlabs_client.conversational_ai.knowledge_base.documents.create_from_file.side_effect = Exception("500 Server Error")
     
     # tenacity defaults: stop_after_attempt(3)
     with pytest.raises(ElevenLabsSyncError) as exc_info:
@@ -106,7 +106,7 @@ async def test_max_retries_exceeded(mock_elevenlabs_client):
              service.create_document("text", "name")
              
     assert exc_info.value.error_type == ElevenLabsErrorType.SERVER_ERROR
-    assert mock_elevenlabs_client.conversational_ai.add_to_knowledge_base.call_count == 3
+    assert mock_elevenlabs_client.conversational_ai.knowledge_base.documents.create_from_file.call_count == 3
 
 @pytest.mark.asyncio
 async def test_should_retry_helper():

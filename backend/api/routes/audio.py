@@ -32,7 +32,7 @@ async def generate_script(
 ):
     """Generate script from knowledge document."""
     try:
-        script = service.generate_script(knowledge_id=request.knowledge_id)
+        script = await service.generate_script(knowledge_id=request.knowledge_id)
         return ScriptGenerateResponse(
             script=script,
             knowledge_id=request.knowledge_id,
@@ -57,7 +57,7 @@ async def generate_audio(
 ):
     """Generate audio from script."""
     try:
-        metadata = service.generate_audio(
+        metadata = await service.generate_audio(
             script=request.script,
             voice_id=request.voice_id,
             knowledge_id=request.knowledge_id,

@@ -15,7 +15,7 @@ def test_settings_defaults():
     # Create settings without environment variables
     # We clear the relevant env vars to test defaults
     with patch.dict(os.environ, {}, clear=True):
-        settings = Settings()
+        settings = Settings(_env_file=None)
         
         # Verify defaults enabling local development
         assert settings.use_firestore_emulator is True

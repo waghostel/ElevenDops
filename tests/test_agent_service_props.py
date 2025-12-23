@@ -40,13 +40,13 @@ def test_answer_style_mapping(style):
     assert isinstance(prompt, str)
     assert len(prompt) > 0
     
-    # Check for style-specific keywords
+    # Check for style-specific keywords (Traditional Chinese)
     if style == AnswerStyle.PROFESSIONAL:
-        assert "professional" in prompt.lower()
+        assert "專業" in prompt or "醫療" in prompt
     elif style == AnswerStyle.FRIENDLY:
-        assert "friendly" in prompt.lower()
+        assert "親切" in prompt or "友善" in prompt
     elif style == AnswerStyle.EDUCATIONAL:
-        assert "educational" in prompt.lower()
+        assert "衛教" in prompt or "教導" in prompt
 
 
 @pytest.mark.asyncio

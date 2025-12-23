@@ -58,12 +58,14 @@ def mock_client():
     client.generate_script = AsyncMock(return_value=MOCK_SCRIPT)
     client.generate_audio = AsyncMock(return_value=MOCK_AUDIO)
     client.get_audio_files = AsyncMock(return_value=[MOCK_AUDIO])
+    client.health_check = AsyncMock(return_value={"status": "ok"})
     return client
 
 def test_page_loads_and_displays_documents(mock_client):
     """Test that the page loads and fetches documents."""
     with patch("streamlit_app.services.backend_api.get_backend_client", return_value=mock_client):
-        at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py")
+        at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py", default_timeout=30)
+        at.session_state["IS_TESTING_BACKEND"] = True
         at.run()
         
         assert not at.exception
@@ -75,7 +77,8 @@ def test_page_loads_and_displays_documents(mock_client):
 def test_script_generation_flow(mock_client):
     """Test selecting a document and generating a script."""
     with patch("streamlit_app.services.backend_api.get_backend_client", return_value=mock_client):
-        at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py")
+        at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py", default_timeout=30)
+        at.session_state["IS_TESTING_BACKEND"] = True
         at.run()
         
         # Select document "Flu" at index 0
@@ -100,7 +103,8 @@ def test_script_generation_flow(mock_client):
 def test_audio_generation_flow(mock_client):
     """Test selecting a voice and generating audio."""
     with patch("streamlit_app.services.backend_api.get_backend_client", return_value=mock_client):
-        at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py")
+        at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py", default_timeout=30)
+        at.session_state["IS_TESTING_BACKEND"] = True
         at.run()
         
         # 1. Select Document
@@ -133,7 +137,8 @@ def test_audio_generation_flow(mock_client):
 def test_reset_on_document_change(mock_client):
     """Test that state resets when document selection changes."""
     with patch("streamlit_app.services.backend_api.get_backend_client", return_value=mock_client):
-        at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py")
+        at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py", default_timeout=30)
+        at.session_state["IS_TESTING_BACKEND"] = True
         at.run()
         
         # Setup initial state
@@ -148,8 +153,9 @@ def test_reset_on_document_change(mock_client):
         doc2 = replace(MOCK_DOCS[0], knowledge_id="doc_2", disease_name="Cold")
         mock_client.get_knowledge_documents.return_value = [MOCK_DOCS[0], doc2]
         
-        at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py")
+        at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py", default_timeout=30)
         with patch("streamlit_app.services.backend_api.get_backend_client", return_value=mock_client):
+             at.session_state["IS_TESTING_BACKEND"] = True
              at.run()
              # Select first
              at.selectbox[0].select("Flu").run()

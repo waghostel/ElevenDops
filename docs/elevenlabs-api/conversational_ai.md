@@ -32,12 +32,36 @@ Send non-interrupting contextual information to update the conversation state.
 ```json
 {
   "type": "contextual_update",
-  "text": "User clicked on pricing page"
+  "text": "User clicked on pricing page",
+  "try_trigger_generation": true
 }
 ```
 
+> [!NOTE] > `try_trigger_generation` may be used to force audio generation for the text event.
+
 Use cases:
 
-- Updating user status or preferences (e.g. "Patient selected generic symptoms")
-- Providing environmental context
 - Adding background information
+
+# Get Signed URL
+
+Used for securing the WebSocket connection by generating a time-limited URL.
+
+```python
+from elevenlabs import ElevenLabs
+client = ElevenLabs(
+  base_url="https://api.elevenlabs.io"
+)
+response = client.conversational_ai.get_signed_url(
+    agent_id="agent_id"
+)
+print(response.signed_url)
+```
+
+## Response
+
+```json
+{
+  "signed_url": "wss://api.elevenlabs.io/v1/convai/conversation?agent_id=...&token=..."
+}
+```

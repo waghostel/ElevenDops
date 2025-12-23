@@ -106,7 +106,7 @@ class TestCriticalConfigValidation:
             },
             clear=True,
         ):
-            settings = Settings()
+            settings = Settings(_env_file=None)
             with pytest.raises(ConfigurationError) as exc_info:
                 validate_critical_config(settings)
             assert "ELEVENLABS_API_KEY" in exc_info.value.missing_vars
@@ -121,7 +121,7 @@ class TestCriticalConfigValidation:
             },
             clear=True,
         ):
-            settings = Settings()
+            settings = Settings(_env_file=None)
             with pytest.raises(ConfigurationError) as exc_info:
                 validate_critical_config(settings)
             assert "GOOGLE_CLOUD_PROJECT" in exc_info.value.missing_vars
@@ -133,7 +133,7 @@ class TestCriticalConfigValidation:
             {"APP_ENV": "production"},
             clear=True,
         ):
-            settings = Settings()
+            settings = Settings(_env_file=None)
             with pytest.raises(ConfigurationError) as exc_info:
                 validate_critical_config(settings)
             assert "ELEVENLABS_API_KEY" in exc_info.value.missing_vars

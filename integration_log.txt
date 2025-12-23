@@ -1,0 +1,248 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.0, pytest-8.4.2, pluggy-1.6.0
+rootdir: C:\Users\Cheney\Documents\Github\ElevenDops
+configfile: pyproject.toml
+plugins: anyio-4.12.0, hypothesis-6.148.7, asyncio-0.24.0
+asyncio: mode=Mode.AUTO, default_loop_scope=None
+collected 4 items
+
+tests\test_education_audio_integration.py FFFF                           [100%]
+
+================================== FAILURES ===================================
+___________________ test_page_loads_and_displays_documents ____________________
+
+mock_client = <MagicMock id='2393419022608'>
+
+    def test_page_loads_and_displays_documents(mock_client):
+        """Test that the page loads and fetches documents."""
+        with patch("streamlit_app.services.get_backend_client", return_value=mock_client):
+            at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py")
+>           at.run()
+
+tests\test_education_audio_integration.py:67: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\..\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\testing\v1\app_test.py:397: in run
+    return self._tree.run(timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\testing\v1\element_tree.py:1984: in run
+    return self._runner._run(widget_states, timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\testing\v1\app_test.py:360: in _run
+    self._tree = script_runner.run(
+..\..\..\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\testing\v1\local_script_runner.py:128: in run
+    require_widgets_deltas(self, timeout)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+runner = LocalScriptRunner(forward_msg_queue=<streamlit.runtime.forward_msg_queue.ForwardMsgQueue object at 0x0000022D42E42E10>...d Time\', \'Taipei Daylight Time\')"
+}
+}, {}, {'client_state': page_script_hash: "190a31559a2b69823f42318b67b9caf2"
+}])
+timeout = 3
+
+    def require_widgets_deltas(runner: LocalScriptRunner, timeout: float = 3) -> None:
+        """Wait for the given ScriptRunner to emit a completion event. If the timeout
+        is reached, the runner will be shutdown and an error will be thrown.
+        """
+    
+        t0 = time.time()
+        while time.time() - t0 < timeout:
+            time.sleep(0.001)
+            if runner.script_stopped():
+                return
+    
+        # If we get here, the runner hasn't yet completed before our
+        # timeout. Create an error string for debugging.
+        err_string = f"AppTest script run timed out after {timeout}(s)"
+    
+        # Shutdown the runner before throwing an error, so that the script
+        # doesn't hang forever.
+        runner.request_stop()
+        runner.join()
+    
+>       raise RuntimeError(err_string)
+E       RuntimeError: AppTest script run timed out after 3(s)
+
+..\..\..\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\testing\v1\local_script_runner.py:176: RuntimeError
+---------------------------- Captured stderr call -----------------------------
+2025-12-22 15:33:16.492 WARNING streamlit.runtime.scriptrunner_utils.script_run_context: Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+_________________________ test_script_generation_flow _________________________
+
+mock_client = <MagicMock id='2393423006672'>
+
+    def test_script_generation_flow(mock_client):
+        """Test selecting a document and generating a script."""
+        with patch("streamlit_app.services.get_backend_client", return_value=mock_client):
+            at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py")
+>           at.run()
+
+tests\test_education_audio_integration.py:79: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\..\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\testing\v1\app_test.py:397: in run
+    return self._tree.run(timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\testing\v1\element_tree.py:1984: in run
+    return self._runner._run(widget_states, timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\testing\v1\app_test.py:360: in _run
+    self._tree = script_runner.run(
+..\..\..\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\testing\v1\local_script_runner.py:128: in run
+    require_widgets_deltas(self, timeout)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+runner = LocalScriptRunner(forward_msg_queue=<streamlit.runtime.forward_msg_queue.ForwardMsgQueue object at 0x0000022D431AB790>...d Time\', \'Taipei Daylight Time\')"
+}
+}, {}, {'client_state': page_script_hash: "190a31559a2b69823f42318b67b9caf2"
+}])
+timeout = 3
+
+    def require_widgets_deltas(runner: LocalScriptRunner, timeout: float = 3) -> None:
+        """Wait for the given ScriptRunner to emit a completion event. If the timeout
+        is reached, the runner will be shutdown and an error will be thrown.
+        """
+    
+        t0 = time.time()
+        while time.time() - t0 < timeout:
+            time.sleep(0.001)
+            if runner.script_stopped():
+                return
+    
+        # If we get here, the runner hasn't yet completed before our
+        # timeout. Create an error string for debugging.
+        err_string = f"AppTest script run timed out after {timeout}(s)"
+    
+        # Shutdown the runner before throwing an error, so that the script
+        # doesn't hang forever.
+        runner.request_stop()
+        runner.join()
+    
+>       raise RuntimeError(err_string)
+E       RuntimeError: AppTest script run timed out after 3(s)
+
+..\..\..\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\testing\v1\local_script_runner.py:176: RuntimeError
+---------------------------- Captured stderr call -----------------------------
+2025-12-22 15:33:27.585 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+_________________________ test_audio_generation_flow __________________________
+
+mock_client = <MagicMock id='2393423393872'>
+
+    def test_audio_generation_flow(mock_client):
+        """Test selecting a voice and generating audio."""
+        with patch("streamlit_app.services.get_backend_client", return_value=mock_client):
+            at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py")
+>           at.run()
+
+tests\test_education_audio_integration.py:104: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\..\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\testing\v1\app_test.py:397: in run
+    return self._tree.run(timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\testing\v1\element_tree.py:1984: in run
+    return self._runner._run(widget_states, timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\testing\v1\app_test.py:360: in _run
+    self._tree = script_runner.run(
+..\..\..\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\testing\v1\local_script_runner.py:128: in run
+    require_widgets_deltas(self, timeout)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+runner = LocalScriptRunner(forward_msg_queue=<streamlit.runtime.forward_msg_queue.ForwardMsgQueue object at 0x0000022D43263690>...d Time\', \'Taipei Daylight Time\')"
+}
+}, {}, {'client_state': page_script_hash: "190a31559a2b69823f42318b67b9caf2"
+}])
+timeout = 3
+
+    def require_widgets_deltas(runner: LocalScriptRunner, timeout: float = 3) -> None:
+        """Wait for the given ScriptRunner to emit a completion event. If the timeout
+        is reached, the runner will be shutdown and an error will be thrown.
+        """
+    
+        t0 = time.time()
+        while time.time() - t0 < timeout:
+            time.sleep(0.001)
+            if runner.script_stopped():
+                return
+    
+        # If we get here, the runner hasn't yet completed before our
+        # timeout. Create an error string for debugging.
+        err_string = f"AppTest script run timed out after {timeout}(s)"
+    
+        # Shutdown the runner before throwing an error, so that the script
+        # doesn't hang forever.
+        runner.request_stop()
+        runner.join()
+    
+>       raise RuntimeError(err_string)
+E       RuntimeError: AppTest script run timed out after 3(s)
+
+..\..\..\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\testing\v1\local_script_runner.py:176: RuntimeError
+---------------------------- Captured stderr call -----------------------------
+2025-12-22 15:33:37.993 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+________________________ test_reset_on_document_change ________________________
+
+mock_client = <MagicMock id='2393423397776'>
+
+    def test_reset_on_document_change(mock_client):
+        """Test that state resets when document selection changes."""
+        with patch("streamlit_app.services.get_backend_client", return_value=mock_client):
+            at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py")
+>           at.run()
+
+tests\test_education_audio_integration.py:137: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\..\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\testing\v1\app_test.py:397: in run
+    return self._tree.run(timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\testing\v1\element_tree.py:1984: in run
+    return self._runner._run(widget_states, timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\testing\v1\app_test.py:360: in _run
+    self._tree = script_runner.run(
+..\..\..\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\testing\v1\local_script_runner.py:128: in run
+    require_widgets_deltas(self, timeout)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+runner = LocalScriptRunner(forward_msg_queue=<streamlit.runtime.forward_msg_queue.ForwardMsgQueue object at 0x0000022D43297750>...d Time\', \'Taipei Daylight Time\')"
+}
+}, {}, {'client_state': page_script_hash: "190a31559a2b69823f42318b67b9caf2"
+}])
+timeout = 3
+
+    def require_widgets_deltas(runner: LocalScriptRunner, timeout: float = 3) -> None:
+        """Wait for the given ScriptRunner to emit a completion event. If the timeout
+        is reached, the runner will be shutdown and an error will be thrown.
+        """
+    
+        t0 = time.time()
+        while time.time() - t0 < timeout:
+            time.sleep(0.001)
+            if runner.script_stopped():
+                return
+    
+        # If we get here, the runner hasn't yet completed before our
+        # timeout. Create an error string for debugging.
+        err_string = f"AppTest script run timed out after {timeout}(s)"
+    
+        # Shutdown the runner before throwing an error, so that the script
+        # doesn't hang forever.
+        runner.request_stop()
+        runner.join()
+    
+>       raise RuntimeError(err_string)
+E       RuntimeError: AppTest script run timed out after 3(s)
+
+..\..\..\AppData\Local\pypoetry\Cache\virtualenvs\elevendops-GNMsTc5F-py3.11\Lib\site-packages\streamlit\testing\v1\local_script_runner.py:176: RuntimeError
+---------------------------- Captured stderr call -----------------------------
+2025-12-22 15:33:48.408 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+============================== warnings summary ===============================
+tests/test_education_audio_integration.py::test_page_loads_and_displays_documents
+tests/test_education_audio_integration.py::test_reset_on_document_change
+  C:\Users\Cheney\Documents\Github\ElevenDops\streamlit_app\components\sidebar.py:119: DeprecationWarning: There is no current event loop
+    loop = asyncio.get_event_loop()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_education_audio_integration.py::test_page_loads_and_displays_documents
+FAILED tests/test_education_audio_integration.py::test_script_generation_flow
+FAILED tests/test_education_audio_integration.py::test_audio_generation_flow
+FAILED tests/test_education_audio_integration.py::test_reset_on_document_change
+======================= 4 failed, 2 warnings in 44.88s ========================

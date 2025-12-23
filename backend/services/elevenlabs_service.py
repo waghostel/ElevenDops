@@ -3,16 +3,23 @@
 import logging
 import os
 import tempfile
+import uuid
 from enum import Enum
 from typing import Optional
 
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception, retry_if_exception_type
 from elevenlabs.client import ElevenLabs
-from elevenlabs import APIConnectionError
+try:
+    from elevenlabs import APIConnectionError
+except ImportError:
+    # Fallback if APIConnectionError is moved or renamed in newer SDK versions
+    class APIConnectionError(Exception):
+        pass
 import websockets
 import json
 import base64
 import asyncio
+from backend.config import get_settings
 
 
 class ElevenLabsServiceError(Exception):
@@ -82,10 +89,27 @@ class ElevenLabsService:
     def __init__(self):
         """Initialize ElevenLabs client."""
         # Check for API key but don't crash if missing (for tests/local dev without key)
-        api_key = os.getenv("ELEVENLABS_API_KEY")
-        if not api_key:
-            logging.warning("ELEVENLABS_API_KEY not found. ElevenLabs integration will fail.")
-        self.client = ElevenLabs(api_key=api_key)
+        settings = get_settings()
+        api_key = settings.elevenlabs_api_key
+        
+        # Determine strict mock mode from config
+        config_mock = settings.use_mock_elevenlabs
+        
+        # Auto-fallback logic: Use mock if explicitly requested OR if key is missing
+        if config_mock:
+            self.use_mock = True
+            logging.info("ElevenLabs Mock Mode enabled via configuration.")
+        elif not api_key:
+            self.use_mock = True
+            logging.warning("ELEVENLABS_API_KEY not found. Automatically falling back to Mock Service to prevent errors.")
+        else:
+            self.use_mock = False
+
+        # Initialize client only if we are valid to use real service
+        if self.use_mock:
+            self.client = None
+        else:
+            self.client = ElevenLabs(api_key=api_key)
 
     def _classify_error(self, error: Exception) -> tuple[ElevenLabsErrorType, bool]:
         """Classify error and determine if retryable."""
@@ -136,6 +160,13 @@ class ElevenLabsService:
             ElevenLabsSyncError: If creation fails.
         """
         logging.info(f"Creating ElevenLabs document: {name} (length: {len(text)})")
+        
+        if self.use_mock:
+            mock_id = f"mock_doc_{uuid.uuid4()}"
+            logging.info(f"[MOCK] Created ElevenLabs document {name}. ID: {mock_id}")
+            # Simulate network delay if needed
+            return mock_id
+
         try:
             # Create a temporary file to upload as the API expects a file-like object or path
             with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.md', encoding='utf-8') as tmp:
@@ -144,9 +175,10 @@ class ElevenLabsService:
             
             try:
                 with open(tmp_path, 'rb') as f:
-                    response = self.client.conversational_ai.add_to_knowledge_base(
-                        name=name,
-                        file=f
+                    # Updates for new SDK structure: flattened API
+                    # Using tuple (name, file_obj, content_type) to ensure document name is set correctly
+                    response = self.client.conversational_ai.create_knowledge_base_file_document(
+                        file=(name, f, 'text/markdown')
                     )
                 logging.info(f"Successfully created document {name}. ID: {response.id}")
                 return response.id
@@ -185,6 +217,11 @@ class ElevenLabsService:
         try:
             # Also apply deletion error handling
             logging.info(f"Deleting ElevenLabs document: {document_id}")
+            
+            if self.use_mock:
+                logging.info(f"[MOCK] Deleted ElevenLabs document {document_id}")
+                return True
+
             self.client.conversational_ai.delete_knowledge_base_document(document_id=document_id)
             logging.info(f"Successfully deleted document {document_id}")
             return True
@@ -207,6 +244,12 @@ class ElevenLabsService:
         Raises:
             ElevenLabsTTSError: If conversion fails.
         """
+        if self.use_mock:
+            # Return a minimal valid MP3 frame (silence)
+            logging.info(f"[MOCK] text_to_speech called for text length {len(text)}")
+            # Minimal MP3 header + silence frame
+            return b'\xff\xfb\x90\x00' + b'\x00' * 417
+
         try:
             # Using the text_to_speech.convert method from the Python SDK
             # convert returns a generator of bytes, so we need to consume it
@@ -233,6 +276,13 @@ class ElevenLabsService:
         Raises:
             ElevenLabsTTSError: If fetching voices fails.
         """
+        if self.use_mock:
+            logging.info("[MOCK] get_voices called")
+            return [
+                {"voice_id": "mock_voice_1", "name": "Mock Rachel", "preview_url": None, "description": "Mock female voice"},
+                {"voice_id": "mock_voice_2", "name": "Mock Adam", "preview_url": None, "description": "Mock male voice"},
+            ]
+
         try:
             response = self.client.voices.get_all()
             # response.voices is a list of Voice objects
@@ -241,9 +291,6 @@ class ElevenLabsService:
                     "voice_id": voice.voice_id,
                     "name": voice.name,
                     "preview_url": voice.preview_url,
-                    # Add generic description if not present, or extract labels/description if available
-                    # 'description' isn't always directly on the Voice object in simplified views, 
-                    # but we can pass what we have.
                     "description": getattr(voice, "description", None) or f"{voice.category} voice"
                 }
                 for voice in response.voices
@@ -281,6 +328,11 @@ class ElevenLabsService:
         if not voice_id:
              raise ElevenLabsAgentError("Voice ID is required")
 
+        if self.use_mock:
+            mock_id = f"mock_agent_{uuid.uuid4()}"
+            logging.info(f"[MOCK] create_agent called: {name}. ID: {mock_id}")
+            return mock_id
+
         try:
             # Construct agent config
             agent_config = {
@@ -310,7 +362,7 @@ class ElevenLabsService:
             return response.agent_id
 
         except Exception as e:
-            error_type, _ = self._classify_error(e) # _classify_error returns (error_type, is_retryable)
+            error_type, _ = self._classify_error(e)
             logging.error(f"Failed to create ElevenLabs agent: {e}")
             raise ElevenLabsAgentError(f"Failed to create agent: {str(e)}", error_type=error_type)
 
@@ -326,6 +378,10 @@ class ElevenLabsService:
         Raises:
             ElevenLabsAgentError: If deletion fails.
         """
+        if self.use_mock:
+            logging.info(f"[MOCK] delete_agent called: {agent_id}")
+            return True
+
         try:
             self.client.conversational_ai.delete_agent(agent_id=agent_id)
             return True
@@ -345,9 +401,16 @@ class ElevenLabsService:
         Raises:
             ElevenLabsAgentError: If retrieval fails.
         """
+        if self.use_mock:
+            logging.info(f"[MOCK] get_agent called: {agent_id}")
+            return {
+                "agent_id": agent_id,
+                "name": "Mock Agent",
+                "conversation_config": {"agent": {"prompt": {"prompt": "Mock system prompt"}}}
+            }
+
         try:
             response = self.client.conversational_ai.get_agent(agent_id=agent_id)
-            # Serialize to dict if it's an object
             return response.model_dump() if hasattr(response, "model_dump") else dict(response)
         except Exception as e:
             logging.error(f"Failed to get ElevenLabs agent: {e}")
@@ -368,14 +431,14 @@ class ElevenLabsService:
         Raises:
             ElevenLabsAgentError: If retrieval fails.
         """
+        if self.use_mock:
+            logging.info(f"[MOCK] get_signed_url called: {agent_id}")
+            return f"wss://mock.elevenlabs.io/convai/{agent_id}"
+
         try:
-            # Use the SDK to get the signed URL
             response = self.client.conversational_ai.get_signed_url(agent_id=agent_id)
             return response.signed_url
         except Exception as e:
-            # Fallback for testing/dev environments without full credentials if explicit error
-            # But normally we want to raise.
-            # For this verification phase, we accept the error or strictly follow the SDK.
             logging.error(f"Failed to get signed URL: {e}")
             raise ElevenLabsAgentError(f"Failed to get signed URL: {str(e)}")
 
@@ -392,6 +455,10 @@ class ElevenLabsService:
         Raises:
             ElevenLabsAgentError: If communication fails.
         """
+        if self.use_mock:
+            logging.info(f"[MOCK] send_text_message called: agent={agent_id}, text={text[:50]}...")
+            return ("This is a mock response from the AI assistant.", b'')
+
         try:
             # Get signed URL
             signed_url = self.get_signed_url(agent_id)

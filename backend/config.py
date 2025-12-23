@@ -8,7 +8,7 @@ import logging
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     )
 
     # GCS Configuration
+    use_mock_storage: bool = Field(
+        default=False,
+        description="Use local file system mock instead of GCS (for testing)",
+    )
     use_gcs_emulator: bool = Field(
         default=True,
         description="Use GCS Emulator for local development",
@@ -84,6 +88,10 @@ class Settings(BaseSettings):
     elevenlabs_api_key: str | None = Field(
         default=None,
         description="ElevenLabs API key",
+    )
+    use_mock_elevenlabs: bool = Field(
+        default=False,
+        description="Use mock ElevenLabs service (for testing without API key)",
     )
 
     # Google Cloud configuration (critical for production)
@@ -126,6 +134,21 @@ class Settings(BaseSettings):
         if not origins:
             raise ValueError("At least one CORS origin must be specified")
         return ",".join(origins)
+
+    @model_validator(mode='after')
+    def enforce_emulator_priority(self) -> 'Settings':
+        """Ensure emulators take precedence over mock mode."""
+        if self.use_firestore_emulator:
+            if self.use_mock_data:
+                logger.warning("Overriding use_mock_data=True because use_firestore_emulator is True")
+            self.use_mock_data = False
+            
+        if self.use_gcs_emulator:
+            if self.use_mock_storage:
+                logger.warning("Overriding use_mock_storage=True because use_gcs_emulator is True")
+            self.use_mock_storage = False
+            
+        return self
 
     def get_cors_origins_list(self) -> list[str]:
         """Get CORS origins as a list."""
