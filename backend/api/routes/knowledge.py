@@ -126,7 +126,7 @@ async def create_knowledge_document(
 ):
     """Create a new knowledge document and sync to ElevenLabs.
     
-    The document name in ElevenLabs will be formatted as "{disease_name}_{document_type}".
+    The document name in ElevenLabs will be formatted as "{disease_name}_{tag1_tag2...}".
     The content will be parsed into structured sections for future retrieval.
     """
     try:
@@ -134,9 +134,9 @@ async def create_knowledge_document(
         # DataService automatically parses structured_sections now.
         created_doc = await data_service.create_knowledge_document(doc)
         
-        # Format name for ElevenLabs as per user requirement: "Disease Name_Type"
-        # Using string representation of document_type enum value
-        elevenlabs_doc_name = f"{doc.disease_name}_{doc.document_type}"
+        # Format name for ElevenLabs: "Disease Name_tag1_tag2..."
+        tags_str = "_".join(doc.tags)
+        elevenlabs_doc_name = f"{doc.disease_name}_{tags_str}"
 
         # 2. Trigger background sync
         background_tasks.add_task(
@@ -198,7 +198,7 @@ async def update_knowledge_document(
 ):
     """Update a knowledge document.
     
-    If disease_name or document_type is changed, it triggers a re-sync to ElevenLabs,
+    If disease_name or tags are changed, it triggers a re-sync to ElevenLabs,
     which involves deleting the old document and creating a new one with the updated name.
     """
     # 1. Get current doc
@@ -210,7 +210,7 @@ async def update_knowledge_document(
         )
         
     old_name = current_doc.disease_name
-    old_type = current_doc.document_type
+    old_tags = set(current_doc.tags)
     
     # 2. Update in database
     updated_doc = await data_service.update_knowledge_document(knowledge_id, update_data)
@@ -223,11 +223,12 @@ async def update_knowledge_document(
     # 3. Check if re-sync is needed
     # Compare with values from updated_doc as they are the source of truth now
     new_name = updated_doc.disease_name
-    new_type = updated_doc.document_type
+    new_tags = set(updated_doc.tags)
     
-    # Check if either changed. Note: document_type can be str.
-    if new_name != old_name or new_type != old_type:
-        elevenlabs_doc_name = f"{new_name}_{new_type}"
+    # Check if either changed
+    if new_name != old_name or new_tags != old_tags:
+        tags_str = "_".join(updated_doc.tags)
+        elevenlabs_doc_name = f"{new_name}_{tags_str}"
         
         background_tasks.add_task(
             resync_knowledge_to_elevenlabs,
@@ -310,7 +311,8 @@ async def retry_knowledge_sync(
     if doc.sync_status == SyncStatus.COMPLETED:
         return doc
 
-    elevenlabs_doc_name = f"{doc.disease_name}_{doc.document_type}"
+    tags_str = "_".join(doc.tags)
+    elevenlabs_doc_name = f"{doc.disease_name}_{tags_str}"
 
     # Set status to PENDING immediately to clear error and show feedback
     await data_service.update_knowledge_sync_status(

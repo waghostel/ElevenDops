@@ -141,14 +141,14 @@ class BackendAPIClient:
             ) from e
 
     async def upload_knowledge(
-        self, content: str, disease_name: str, document_type: str
+        self, content: str, disease_name: str, tags: List[str]
     ) -> KnowledgeDocument:
         """Upload a knowledge document.
         
         Args:
             content: The document content.
             disease_name: Name of the disease.
-            document_type: Type of document.
+            tags: List of document tags.
 
         Returns:
             KnowledgeDocument object.
@@ -156,7 +156,7 @@ class BackendAPIClient:
         try:
             payload = {
                 "disease_name": disease_name,
-                "document_type": document_type,
+                "tags": tags,
                 "raw_content": content,
             }
             async with self._get_client() as client:
@@ -167,7 +167,7 @@ class BackendAPIClient:
                     knowledge_id=data["knowledge_id"],
                     doctor_id=data["doctor_id"],
                     disease_name=data["disease_name"],
-                    document_type=data["document_type"],
+                    tags=data["tags"],
                     raw_content=data["raw_content"],
                     sync_status=data["sync_status"],
                     elevenlabs_document_id=data["elevenlabs_document_id"],
@@ -204,7 +204,7 @@ class BackendAPIClient:
                         knowledge_id=d["knowledge_id"],
                         doctor_id=d["doctor_id"],
                         disease_name=d["disease_name"],
-                        document_type=d["document_type"],
+                        tags=d["tags"],
                         raw_content=d["raw_content"],
                         sync_status=d["sync_status"],
                         elevenlabs_document_id=d["elevenlabs_document_id"],
@@ -245,14 +245,14 @@ class BackendAPIClient:
             ) from e
 
     async def update_knowledge_document(
-        self, knowledge_id: str, disease_name: Optional[str] = None, document_type: Optional[str] = None
+        self, knowledge_id: str, disease_name: Optional[str] = None, tags: Optional[List[str]] = None
     ) -> KnowledgeDocument:
         """Update a knowledge document.
         
         Args:
             knowledge_id: ID of the document.
             disease_name: New disease name (optional).
-            document_type: New document type (optional).
+            tags: New document tags (optional).
             
         Returns:
             Updated KnowledgeDocument object.
@@ -261,8 +261,8 @@ class BackendAPIClient:
             payload = {}
             if disease_name is not None:
                 payload["disease_name"] = disease_name
-            if document_type is not None:
-                payload["document_type"] = document_type
+            if tags is not None:
+                payload["tags"] = tags
                 
             async with self._get_client() as client:
                 response = await client.put(f"/api/knowledge/{knowledge_id}", json=payload)
@@ -272,7 +272,7 @@ class BackendAPIClient:
                     knowledge_id=data["knowledge_id"],
                     doctor_id=data["doctor_id"],
                     disease_name=data["disease_name"],
-                    document_type=data["document_type"],
+                    tags=data["tags"],
                     raw_content=data["raw_content"],
                     sync_status=data["sync_status"],
                     elevenlabs_document_id=data["elevenlabs_document_id"],
@@ -306,7 +306,7 @@ class BackendAPIClient:
                     knowledge_id=data["knowledge_id"],
                     doctor_id=data["doctor_id"],
                     disease_name=data["disease_name"],
-                    document_type=data["document_type"],
+                    tags=data["tags"],
                     raw_content=data["raw_content"],
                     sync_status=data["sync_status"],
                     elevenlabs_document_id=data["elevenlabs_document_id"],

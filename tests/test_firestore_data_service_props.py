@@ -10,7 +10,7 @@ from hypothesis.strategies import composite
 from backend.services.data_service import get_data_service, DataServiceInterface, MockDataService
 from backend.services.firestore_data_service import FirestoreDataService
 from backend.models.schemas import (
-    KnowledgeDocumentCreate, DocumentType, SyncStatus,
+    KnowledgeDocumentCreate, SyncStatus, DEFAULT_DOCUMENT_TAGS,
     AudioMetadata, AgentResponse, AnswerStyle,
     PatientSessionResponse, ConversationDetailSchema, ConversationMessageSchema,
     ConversationSummarySchema, KnowledgeDocumentResponse
@@ -19,7 +19,7 @@ import uuid
 
 # --- Strategies ---
 
-s_document_type = st.sampled_from(list(DocumentType))
+s_tags = st.lists(st.sampled_from(DEFAULT_DOCUMENT_TAGS), min_size=1, max_size=3)
 s_sync_status = st.sampled_from(list(SyncStatus))
 s_answer_style = st.sampled_from(list(AnswerStyle))
 
@@ -27,7 +27,7 @@ s_answer_style = st.sampled_from(list(AnswerStyle))
 def s_knowledge_document_create(draw):
     return KnowledgeDocumentCreate(
         disease_name=draw(st.text(min_size=1, max_size=50)),
-        document_type=draw(s_document_type),
+        tags=draw(s_tags),
         raw_content=draw(st.text(min_size=10, max_size=1000)),
         doctor_id=draw(st.text(min_size=1, max_size=20))
     )

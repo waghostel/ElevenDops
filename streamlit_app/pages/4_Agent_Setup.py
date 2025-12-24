@@ -80,7 +80,7 @@ with st.form("create_agent_form"):
     # Knowledge Selection
     st.subheader("Select Knowledge")
     if docs:
-        doc_options = {doc.knowledge_id: f"{doc.disease_name} ({doc.document_type})" for doc in docs}
+        doc_options = {doc.knowledge_id: f"{doc.disease_name} ({', '.join(doc.tags)})" for doc in docs}
         selected_doc_ids = st.multiselect(
             "Link Knowledge Documents",
             options=list(doc_options.keys()),
@@ -175,3 +175,4 @@ with st.container(border=True):
                         st.error(f"Delete failed: {str(e)}")
 
 render_footer()
+

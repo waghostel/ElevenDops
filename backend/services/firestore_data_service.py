@@ -18,7 +18,6 @@ from backend.models.schemas import (
     KnowledgeDocumentResponse,
     PatientSessionResponse,
     SyncStatus,
-    DocumentType,
     ConversationSummarySchema,
     ConversationDetailSchema,
     ConversationMessageSchema,
@@ -65,7 +64,7 @@ class FirestoreDataService(DataServiceInterface):
             knowledge_id=doc_dict["knowledge_id"],
             doctor_id=doc_dict["doctor_id"],
             disease_name=doc_dict["disease_name"],
-            document_type=doc_dict["document_type"],
+            tags=doc_dict.get("tags", []),
             raw_content=doc_dict["raw_content"],
             sync_status=SyncStatus(doc_dict["sync_status"]),
             elevenlabs_document_id=doc_dict.get("elevenlabs_document_id"),
@@ -266,7 +265,7 @@ class FirestoreDataService(DataServiceInterface):
                 "knowledge_id": knowledge_id,
                 "doctor_id": doc.doctor_id,
                 "disease_name": doc.disease_name,
-                "document_type": doc.document_type.value if hasattr(doc.document_type, 'value') else doc.document_type,
+                "tags": doc.tags,
                 "raw_content": doc.raw_content,
                 "sync_status": SyncStatus.PENDING.value,
                 "elevenlabs_document_id": None,
@@ -305,10 +304,6 @@ class FirestoreDataService(DataServiceInterface):
             # Set modified_at
             now = datetime.now()
             updates["modified_at"] = now
-            
-            # If document_type matches an Enum value, store the value string
-            if "document_type" in updates and hasattr(updates["document_type"], "value"):
-                 updates["document_type"] = updates["document_type"].value
             
             doc_ref.update(updates)
             

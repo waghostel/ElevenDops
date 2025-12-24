@@ -34,7 +34,7 @@ class KnowledgeDocument:
         knowledge_id: Unique document ID.
         doctor_id: ID of the uploading doctor.
         disease_name: Name of the disease.
-        document_type: Type of the document.
+        tags: List of document tags.
         raw_content: Content of the document.
         sync_status: Sync status with ElevenLabs.
         elevenlabs_document_id: Document ID in ElevenLabs.
@@ -45,7 +45,7 @@ class KnowledgeDocument:
     knowledge_id: str
     doctor_id: str
     disease_name: str
-    document_type: str
+    tags: List[str]
     raw_content: str
     sync_status: str
     elevenlabs_document_id: Optional[str]

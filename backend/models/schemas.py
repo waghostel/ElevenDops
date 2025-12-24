@@ -31,14 +31,16 @@ class ErrorResponse(BaseModel):
     error_code: str = Field(..., description="Error code identifier")
 
 
-class DocumentType(str, Enum):
-    """Type of knowledge document."""
-
-    FAQ = "faq"
-    POST_CARE = "post_care"
-    PRECAUTIONS = "precautions"
-    # We kept Enum for backward compatibility and standard suggestions, 
-    # but models will use str to allow custom types.
+# Default document tags for knowledge documents
+DEFAULT_DOCUMENT_TAGS = [
+    "before_visit",
+    "diagnosis",
+    "procedure",
+    "post_care",
+    "medication",
+    "warning_signs",
+    "faq",
+]
 
 
 class SyncStatus(str, Enum):
@@ -54,7 +56,7 @@ class KnowledgeDocumentCreate(BaseModel):
     """Request model for creating a knowledge document."""
 
     disease_name: str = Field(..., min_length=1, max_length=100, description="Name of the disease")
-    document_type: str = Field(..., description="Type of the document (standard or custom)")
+    tags: List[str] = Field(default_factory=lambda: ["faq"], description="List of document tags")
     raw_content: str = Field(
         ..., min_length=1, max_length=300000, description="Content of the document (~300KB limit)"
     )
@@ -68,12 +70,20 @@ class KnowledgeDocumentCreate(BaseModel):
             raise ValueError("Disease name cannot be empty or whitespace only")
         return v
 
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, v: List[str]) -> List[str]:
+        """Validate that tags list is not empty."""
+        if not v:
+            raise ValueError("At least one tag is required")
+        return v
+
 
 class KnowledgeDocumentUpdate(BaseModel):
     """Request model for updating a knowledge document."""
 
     disease_name: Optional[str] = Field(None, min_length=1, max_length=100, description="Name of the disease")
-    document_type: Optional[str] = Field(None, description="Type of the document")
+    tags: Optional[List[str]] = Field(None, description="List of document tags")
     
     @field_validator("disease_name")
     @classmethod
@@ -83,6 +93,14 @@ class KnowledgeDocumentUpdate(BaseModel):
             raise ValueError("Disease name cannot be empty or whitespace only")
         return v
 
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        """Validate that tags list is not empty if provided."""
+        if v is not None and not v:
+            raise ValueError("Tags list cannot be empty if provided")
+        return v
+
 
 class KnowledgeDocumentResponse(BaseModel):
     """Response model for knowledge document."""
@@ -90,7 +108,7 @@ class KnowledgeDocumentResponse(BaseModel):
     knowledge_id: str = Field(..., description="Unique document ID")
     doctor_id: str = Field(..., description="ID of the uploading doctor")
     disease_name: str = Field(..., description="Name of the disease")
-    document_type: str = Field(..., description="Type of the document")
+    tags: List[str] = Field(..., description="List of document tags")
     raw_content: str = Field(..., description="Content of the document")
     sync_status: SyncStatus = Field(..., description="Sync status with ElevenLabs")
     elevenlabs_document_id: Optional[str] = Field(None, description="Document ID in ElevenLabs")

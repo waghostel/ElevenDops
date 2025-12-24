@@ -1,7 +1,7 @@
 """Property tests for knowledge document models."""
 
 from hypothesis import given, strategies as st
-from backend.models.schemas import KnowledgeDocumentCreate, DocumentType, SyncStatus, KnowledgeDocumentResponse
+from backend.models.schemas import KnowledgeDocumentCreate, SyncStatus, KnowledgeDocumentResponse, DEFAULT_DOCUMENT_TAGS
 import pytest
 from pydantic import ValidationError
 from datetime import datetime
@@ -17,22 +17,34 @@ def test_knowledge_document_create_validation(text):
         with pytest.raises(ValidationError):
             KnowledgeDocumentCreate(
                 disease_name=text,
-                document_type=DocumentType.FAQ,
+                tags=["faq"],
                 raw_content="Valid content"
             )
 
-@given(st.sampled_from(DocumentType))
-def test_document_type_validity(doc_type):
+@given(st.lists(st.sampled_from(DEFAULT_DOCUMENT_TAGS), min_size=1, max_size=3))
+def test_tags_validity(tags):
     """
     **Feature: upload-knowledge-page, Property 9: Document Schema Completeness**
-    Validates that all enum values are accepted.
+    Validates that all default tag values are accepted.
     """
     doc = KnowledgeDocumentCreate(
         disease_name="Test Disease",
-        document_type=doc_type,
+        tags=tags,
         raw_content="Test content"
     )
-    assert doc.document_type == doc_type
+    assert doc.tags == tags
+
+def test_empty_tags_rejected():
+    """
+    **Feature: upload-knowledge-page, Property: Tags Validation**
+    Validates that empty tags list is rejected.
+    """
+    with pytest.raises(ValidationError):
+        KnowledgeDocumentCreate(
+            disease_name="Test Disease",
+            tags=[],
+            raw_content="Test content"
+        )
 
 @given(st.sampled_from(SyncStatus))
 def test_sync_status_validity(status):
@@ -53,7 +65,7 @@ def test_structured_sections_validation(sections):
         knowledge_id="test_id",
         doctor_id="doc_id",
         disease_name="test",
-        document_type=DocumentType.FAQ,
+        tags=["faq"],
         raw_content="content",
         sync_status=SyncStatus.PENDING,
         elevenlabs_document_id=None,

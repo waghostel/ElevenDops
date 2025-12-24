@@ -4,6 +4,7 @@ from streamlit_app.services.backend_api import get_backend_client
 from streamlit_app.services.exceptions import APIError
 from streamlit_app.components.sidebar import render_sidebar
 from streamlit_app.components.footer import render_footer
+from backend.models.schemas import DEFAULT_DOCUMENT_TAGS
 
 st.set_page_config(page_title="Upload Knowledge", page_icon="📚", layout="wide")
 
@@ -41,26 +42,13 @@ with col_header:
         )
     
     with col2:
-        type_options = ["faq", "post_care", "precautions", "Custom"]
-        selected_type = st.selectbox(
-            "Document Type",
-            options=type_options,
-            format_func=lambda x: x if x == "Custom" else x.replace("_", " ").title(),
-            key=f"document_type_{st.session_state.upload_form_id}"
+        selected_tags = st.multiselect(
+            "Document Tags",
+            options=DEFAULT_DOCUMENT_TAGS,
+            default=["faq"],
+            format_func=lambda x: x.replace("_", " ").title(),
+            key=f"document_tags_{st.session_state.upload_form_id}"
         )
-        
-        # Always show text input, but disable it if not "Custom"
-        custom_type_val = st.text_input(
-            "Custom Type Name",
-            placeholder="e.g., Patient Guide",
-            disabled=(selected_type != "Custom"),
-            key=f"document_type_custom_{st.session_state.upload_form_id}"
-        )
-
-        if selected_type == "Custom":
-            document_type = custom_type_val
-        else:
-            document_type = selected_type
     
     
     uploaded_file = st.file_uploader(
@@ -77,6 +65,8 @@ if submitted:
     
     if not disease_name or not disease_name.strip():
         st.error("Please enter a disease name.")
+    elif not selected_tags:
+        st.error("Please select at least one tag.")
     elif not uploaded_file:
         st.error("Please upload a file.")
     else:
@@ -92,7 +82,7 @@ if submitted:
                     doc = asyncio.run(client.upload_knowledge(
                         content=content,
                         disease_name=disease_name.strip(),
-                        document_type=document_type
+                        tags=selected_tags
                     ))
                     st.success(f"Document '{disease_name}' uploaded successfully! Sync status: {doc.sync_status}")
                     
@@ -129,7 +119,7 @@ with st.container(border=True):
                 data.append({
                     "ID": doc.knowledge_id,
                     "Disease": doc.disease_name,
-                    "Type": doc.document_type,
+                    "Tags": ", ".join(doc.tags),
                     "Created At": doc.created_at.strftime("%Y-%m-%d %H:%M"),
                     "Modified At": doc.modified_at.strftime("%Y-%m-%d %H:%M") if doc.modified_at else "-",
                     "Sync Status": doc.sync_status
@@ -149,62 +139,27 @@ with st.container(border=True):
                         with edit_col1:
                             new_name = st.text_input("Disease Name", value=doc.disease_name, key=f"edit_name_{doc.knowledge_id}")
                         with edit_col2:
-                            # Determine current selection for selectbox
-                            current_type_val = doc.document_type
-                            std_types = ["faq", "post_care", "precautions"]
-                            
-                            # If current type is custom (not in std), set selection to 'Custom'
-                            select_idx = 0
-                            if current_type_val in std_types:
-                                select_idx = std_types.index(current_type_val)
-                                sel_val = current_type_val
-                                is_custom = False
-                            else:
-                                sel_val = "Custom"
-                                is_custom = True
-                            
-                            edit_type_opts = std_types + ["Custom"]
-                            # Find index of sel_val in edit_type_opts
-                            if sel_val in edit_type_opts:
-                                default_idx = edit_type_opts.index(sel_val)
-                            else:
-                                default_idx = 3 # Custom
-                            
-                            new_type_sel = st.selectbox(
-                                "Document Type", 
-                                options=edit_type_opts,
-                                format_func=lambda x: x if x == "Custom" else x.replace("_", " ").title(),
-                                index=default_idx,
-                                key=f"edit_type_sel_{doc.knowledge_id}"
+                            new_tags = st.multiselect(
+                                "Document Tags",
+                                options=DEFAULT_DOCUMENT_TAGS,
+                                default=doc.tags,
+                                format_func=lambda x: x.replace("_", " ").title(),
+                                key=f"edit_tags_{doc.knowledge_id}"
                             )
-                            
-                            # If it was already custom, prefill with current value.
-                            prefill = doc.document_type if is_custom else ""
-                            
-                            custom_type_input = st.text_input(
-                                "Custom Type", 
-                                value=prefill, 
-                                disabled=(new_type_sel != "Custom"),
-                                key=f"edit_type_custom_{doc.knowledge_id}"
-                            )
-                            
-                            final_new_type = new_type_sel
-                            if new_type_sel == "Custom":
-                                final_new_type = custom_type_input
 
                         btn_c1, btn_c2 = st.columns([1, 6])
                         with btn_c1:
                             if st.button("Save", key=f"save_{doc.knowledge_id}", type="primary"):
                                 if not new_name.strip():
                                     st.error("Disease name required")
-                                elif not final_new_type.strip():
-                                    st.error("Document type required")
+                                elif not new_tags:
+                                    st.error("At least one tag required")
                                 else:
                                     try:
                                         asyncio.run(client.update_knowledge_document(
                                             doc.knowledge_id, 
                                             disease_name=new_name.strip(),
-                                            document_type=final_new_type.strip()
+                                            tags=new_tags
                                         ))
                                         st.session_state.editing_doc_id = None
                                         get_cached_documents.clear()
@@ -221,7 +176,7 @@ with st.container(border=True):
                     # Normal Display Row
                     col1, col2, col3, col4, col5 = st.columns([3, 2, 1, 1, 1])
                     with col1:
-                        st.text(f"{doc.disease_name} ({doc.document_type})")
+                        st.text(f"{doc.disease_name} ({', '.join(doc.tags)})")
                     
                     with col2:
                         # Status display with color and retry count

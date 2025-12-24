@@ -3,7 +3,7 @@
 import pytest
 from hypothesis import given, strategies as st
 from backend.services.data_service import MockDataService
-from backend.models.schemas import KnowledgeDocumentCreate, DocumentType, SyncStatus
+from backend.models.schemas import KnowledgeDocumentCreate, SyncStatus, DEFAULT_DOCUMENT_TAGS
 
 @pytest.mark.asyncio
 async def test_knowledge_id_uniqueness():
@@ -13,7 +13,7 @@ async def test_knowledge_id_uniqueness():
     service = MockDataService()
     doc_create = KnowledgeDocumentCreate(
         disease_name="Test",
-        document_type=DocumentType.FAQ,
+        tags=["faq"],
         raw_content="Test content"
     )
     
@@ -31,7 +31,7 @@ async def test_document_metadata_persistence():
     service = MockDataService()
     doc_create = KnowledgeDocumentCreate(
         disease_name="Specific Name",
-        document_type=DocumentType.POST_CARE,
+        tags=["post_care", "faq"],
         raw_content="Content"
     )
     
@@ -39,7 +39,7 @@ async def test_document_metadata_persistence():
     retrieved = await service.get_knowledge_document(created.knowledge_id)
     
     assert retrieved.disease_name == "Specific Name"
-    assert retrieved.document_type == DocumentType.POST_CARE
+    assert retrieved.tags == ["post_care", "faq"]
 
 @pytest.mark.asyncio
 async def test_structured_parsing():
@@ -60,7 +60,7 @@ async def test_structured_parsing():
     
     doc_create = KnowledgeDocumentCreate(
         disease_name="Parsing Test",
-        document_type=DocumentType.FAQ,
+        tags=["faq"],
         raw_content=markdown
     )
     
@@ -70,3 +70,24 @@ async def test_structured_parsing():
     # Assuming simple parser logic
     assert "Header 1" in created.structured_sections
     assert "Section 1 content" in created.structured_sections["Header 1"]
+
+@pytest.mark.asyncio
+async def test_multiple_tags_persistence():
+    """
+    **Feature: upload-knowledge-page, Property: Multiple Tags Support**
+    Verifies that documents can have multiple tags.
+    """
+    service = MockDataService()
+    doc_create = KnowledgeDocumentCreate(
+        disease_name="Multi-Tag Test",
+        tags=["before_visit", "diagnosis", "procedure"],
+        raw_content="Content with multiple tags"
+    )
+    
+    created = await service.create_knowledge_document(doc_create)
+    retrieved = await service.get_knowledge_document(created.knowledge_id)
+    
+    assert len(retrieved.tags) == 3
+    assert "before_visit" in retrieved.tags
+    assert "diagnosis" in retrieved.tags
+    assert "procedure" in retrieved.tags

@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from backend.services.data_service import get_data_service
 from backend.models.schemas import (
-    KnowledgeDocumentCreate, DocumentType, SyncStatus,
+    KnowledgeDocumentCreate, SyncStatus,
     AgentResponse, AnswerStyle,
     PatientSessionResponse, ConversationDetailSchema, ConversationMessageSchema,
     AudioMetadata
@@ -31,7 +31,7 @@ async def test_complete_firestore_workflow():
     doc_create = KnowledgeDocumentCreate(
         doctor_id="doc_integration_test",
         disease_name="Integrationitis",
-        document_type=DocumentType.POST_CARE,
+        tags=["post_care"],
         raw_content="# Treatment\nTake two integration tests and call me in the morning."
     )
     doc = await service.create_knowledge_document(doc_create)
