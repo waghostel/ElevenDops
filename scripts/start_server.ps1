@@ -147,20 +147,84 @@ try {
     else {
         Write-Host "   ✅ Docker is running" -ForegroundColor Green
         
-        # Check if emulators are already running
-        $existingContainers = docker-compose -f docker-compose.dev.yml ps -q 2>&1
-        if ($existingContainers) {
-            Write-Host "   🔄 Emulators already running, restarting..." -ForegroundColor Yellow
-            docker-compose -f docker-compose.dev.yml restart 2>&1 | Out-Null
-        }
-        else {
-            Write-Host "   🚀 Starting emulators..." -ForegroundColor Blue
-            docker-compose -f docker-compose.dev.yml up -d 2>&1 | Out-Null
+        # Always use 'up -d' which is idempotent (starts or recreates containers as needed)
+        Write-Host "   🚀 Starting/ensuring emulators are running..." -ForegroundColor Blue
+        $startOutput = docker-compose -f docker-compose.dev.yml up -d 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "   ⚠️  Docker-compose up failed:" -ForegroundColor Yellow
+            Write-Host "   $startOutput" -ForegroundColor Gray
+            throw "Failed to start emulators"
         }
         
-        # Wait for emulators to be ready
+        # Wait for emulators to be ready and verify they're running
         Write-Host "   ⏳ Waiting for emulators to initialize..." -ForegroundColor Yellow
-        Start-Sleep -Seconds 3
+        Start-Sleep -Seconds 5
+        
+        # Verify containers are actually running using docker ps
+        $maxRetries = 10
+        $retryCount = 0
+        $emulatorsReady = $false
+        
+        while ($retryCount -lt $maxRetries -and -not $emulatorsReady) {
+            $retryCount++
+            
+            # Use docker ps to check for running containers from our compose file
+            $runningContainers = docker ps --filter "name=elevendops" --format "{{.Names}}" 2>&1
+            $containerList = @($runningContainers -split "`n" | Where-Object { $_ -match "elevendops" })
+            
+            if ($containerList.Count -ge 2) {
+                $emulatorsReady = $true
+                Write-Host "   ✅ Both emulator containers are running" -ForegroundColor Green
+                foreach ($container in $containerList) {
+                    Write-Host "      - $container" -ForegroundColor Cyan
+                }
+            }
+            else {
+                Write-Host "   ⏳ Waiting for containers... ($retryCount/$maxRetries) - found $($containerList.Count)" -ForegroundColor Yellow
+                Start-Sleep -Seconds 2
+            }
+        }
+        
+        if (-not $emulatorsReady) {
+            Write-Host "   ⚠️  Not all emulators started properly" -ForegroundColor Yellow
+            $containerStatus = docker ps -a --filter "name=elevendops" --format "table {{.Names}}\t{{.Status}}" 2>&1
+            Write-Host "   Container status:" -ForegroundColor Gray
+            Write-Host "   $containerStatus" -ForegroundColor Gray
+            throw "Emulators failed to start properly"
+        }
+        
+        # Test emulator connectivity
+        Write-Host "   🔍 Testing emulator connectivity..." -ForegroundColor Blue
+        
+        # Test Firestore emulator
+        $firestoreOk = $false
+        try {
+            $firestoreResponse = Invoke-WebRequest -Uri "http://localhost:8080/" -TimeoutSec 5 -UseBasicParsing -ErrorAction SilentlyContinue
+            if ($firestoreResponse.StatusCode -eq 200 -or $firestoreResponse.StatusCode -eq 404) {
+                $firestoreOk = $true
+                Write-Host "      ✅ Firestore emulator responding" -ForegroundColor Green
+            }
+        }
+        catch {
+            Write-Host "      ⚠️  Firestore emulator not responding yet" -ForegroundColor Yellow
+        }
+        
+        # Test GCS emulator
+        $gcsOk = $false
+        try {
+            $gcsResponse = Invoke-WebRequest -Uri "http://localhost:4443/storage/v1/b" -TimeoutSec 5 -UseBasicParsing -ErrorAction SilentlyContinue
+            if ($gcsResponse.StatusCode -eq 200) {
+                $gcsOk = $true
+                Write-Host "      ✅ GCS emulator responding" -ForegroundColor Green
+            }
+        }
+        catch {
+            Write-Host "      ⚠️  GCS emulator not responding yet" -ForegroundColor Yellow
+        }
+        
+        if (-not $firestoreOk -or -not $gcsOk) {
+            Write-Host "   ⚠️  Some emulators may not be fully ready. Continuing anyway..." -ForegroundColor Yellow
+        }
         
         # Update variables for Emulator Mode
         $Script:FirestoreHost = "localhost:8080"

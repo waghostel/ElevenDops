@@ -129,6 +129,9 @@ Complete REST API documentation for MVP1 backend.
 - **LOCAL_DEVELOPMENT.md** - Local development setup guide
 - **DATA_STORAGE_ARCHITECTURE.md** - Firestore data structure details
 - **elevenlabs_pricing_strategy.md** - ElevenLabs pricing information
+- **LANGSMITH_DEBUG_INTEGRATION.md** - LangSmith debugging and tracing guide
+- **DEBUG_API_REFERENCE.md** - Debug API endpoints documentation
+- **LANGSMITH_QUICK_REFERENCE.md** - Quick commands and workflows for debugging
 
 ### User Requirements
 - **user-need/phase1-user-need.md** - Phase 1 system requirements (Chinese)
@@ -167,6 +170,15 @@ Complete REST API documentation for MVP1 backend.
 **Learn about services**
 → See [MVP1_ARCHITECTURE.md](MVP1_ARCHITECTURE.md) component breakdown
 
+**Debug and trace workflows**
+→ Read [LANGSMITH_DEBUG_INTEGRATION.md](LANGSMITH_DEBUG_INTEGRATION.md)
+
+**Use debug API endpoints**
+→ See [DEBUG_API_REFERENCE.md](DEBUG_API_REFERENCE.md)
+
+**Quick debug commands**
+→ Check [LANGSMITH_QUICK_REFERENCE.md](LANGSMITH_QUICK_REFERENCE.md)
+
 ---
 
 ## 📋 Documentation Map
@@ -183,6 +195,12 @@ MVP1 Documentation
 │   └── Technical design and implementation
 ├── MVP1_API_REFERENCE.md
 │   └── REST API endpoint documentation
+├── LANGSMITH_DEBUG_INTEGRATION.md
+│   └── LangSmith debugging and tracing guide
+├── DEBUG_API_REFERENCE.md
+│   └── Debug API endpoints documentation
+├── LANGSMITH_QUICK_REFERENCE.md
+│   └── Quick debug commands and workflows
 └── MVP1_INDEX.md (this file)
     └── Navigation guide for all documentation
 ```
@@ -265,9 +283,12 @@ Backend REST API for business logic.
 | MVP1_SETUP_GUIDE.md | 1.0 | 2024-12-21 | ✅ Complete |
 | MVP1_QUICK_REFERENCE.md | 1.0 | 2024-12-21 | ✅ Complete |
 | MVP1_IMPLEMENTATION_SUMMARY.md | 1.0 | 2024-12-21 | ✅ Complete |
-| MVP1_ARCHITECTURE.md | 1.0 | 2024-12-21 | ✅ Complete |
-| MVP1_API_REFERENCE.md | 1.0 | 2024-12-21 | ✅ Complete |
-| MVP1_INDEX.md | 1.0 | 2024-12-21 | ✅ Complete |
+| MVP1_ARCHITECTURE.md | 1.1 | 2024-12-24 | ✅ Updated |
+| MVP1_API_REFERENCE.md | 1.1 | 2024-12-24 | ✅ Updated |
+| LANGSMITH_DEBUG_INTEGRATION.md | 1.0 | 2024-12-24 | ✅ Complete |
+| DEBUG_API_REFERENCE.md | 1.0 | 2024-12-24 | ✅ Complete |
+| LANGSMITH_QUICK_REFERENCE.md | 1.0 | 2024-12-24 | ✅ Complete |
+| MVP1_INDEX.md | 1.2 | 2024-12-24 | ✅ Updated |
 
 ---
 

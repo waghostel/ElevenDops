@@ -593,6 +593,65 @@ GET /api/dashboard/stats
 
 ---
 
+### Debug Endpoints
+
+#### Debug Service Health Check
+```
+GET /api/debug/health
+```
+
+**Response (200):**
+```json
+{
+  "status": "healthy",
+  "langsmith_configured": true,
+  "langsmith_available": true,
+  "project": "elevendops-langgraph-debug",
+  "trace_level": "info"
+}
+```
+
+---
+
+#### Debug Script Generation
+```
+POST /api/debug/script-generation
+```
+
+**Request Body:**
+```json
+{
+  "knowledge_content": "Medical knowledge content",
+  "prompt": "Generate script about diabetes care",
+  "model_name": "gemini-2.0-flash",
+  "debug_level": "info",
+  "session_name": "debug-session"
+}
+```
+
+**Response (200):**
+```json
+{
+  "trace_id": "trace_abc123",
+  "session_id": "session_xyz789",
+  "execution_status": "completed",
+  "generated_script": "Generated script content...",
+  "steps": [
+    {
+      "step_id": "step_1",
+      "node_name": "prepare_context",
+      "duration_ms": 5000
+    }
+  ],
+  "total_duration_ms": 15000,
+  "langsmith_url": "https://smith.langchain.com/..."
+}
+```
+
+**Note**: For complete debug API documentation, see [DEBUG_API_REFERENCE.md](DEBUG_API_REFERENCE.md)
+
+---
+
 ## Error Codes
 
 | Code | HTTP Status | Description |

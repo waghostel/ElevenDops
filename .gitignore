@@ -57,18 +57,45 @@ Thumbs.db
 
 # Hypothesis testing
 .hypothesis/
+hypothesis_cache/
 
 # Test outputs
-test_output.txt
+test_output*.txt
 *.test.log
+*_test_*.txt
+*_errors.txt
+*_output*.txt
+integration_*.log
+integration_*.txt
+full_test_output.txt
+frontend_props_errors.txt
+TEST_ERROR_REPORT.md
 
 # Logs
 *.log
 logs/
+debug_*.log
 
 # Temporary files
 tmp/
 temp/
+temp_storage/
+
+# Debug/Development scripts
+check_*.py
+debug_*.py
+repro_*.py
+
+# Node.js (for langsmith-studio)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Postman collections (may contain sensitive data)
+*.postman.json
+.postman.json
 
 # Cloud/Docker
 .dockerignore

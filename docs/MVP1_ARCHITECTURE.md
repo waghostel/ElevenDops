@@ -30,9 +30,14 @@ Comprehensive technical architecture documentation for ElevenDops MVP1.
 │  │   Routes     │  │   Routes     │  │   Routes     │             │
 │  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘             │
 │         │                 │                 │                     │
-└─────────┼─────────────────┼─────────────────┼─────────────────────┘
-          │                 │                 │
-┌─────────▼─────────────────▼─────────────────▼─────────────────────┐
+│  ┌──────────────┐  ┌──────────────────────────────────────────┐   │
+│  │    Debug     │  │         LangSmith Integration            │   │
+│  │   Routes     │  │         (Tracing & Debugging)            │   │
+│  └──────┬───────┘  └──────┬───────────────────────────────────┘   │
+│         │                 │                                       │
+└─────────┼─────────────────┼─────────────────────────────────────────┘
+          │                 │
+┌─────────▼─────────────────▼─────────────────────────────────────────┐
 │                    Service Layer (Python)                          │
 │                                                                     │
 │  ┌──────────────────────────────────────────────────────────────┐ │
@@ -41,6 +46,20 @@ Comprehensive technical architecture documentation for ElevenDops MVP1.
 │  │  - Agents API                                                │ │
 │  │  - Text-to-Speech API                                        │ │
 │  │  - Conversational AI WebSocket                               │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+│                                                                     │
+│  ┌──────────────────────────────────────────────────────────────┐ │
+│  │  LangSmith Tracer Service                                    │ │
+│  │  - Workflow tracing and debugging                            │ │
+│  │  - Session management                                        │ │
+│  │  - Graceful degradation                                      │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+│                                                                     │
+│  ┌──────────────────────────────────────────────────────────────┐ │
+│  │  LangGraph Workflow Service                                  │ │
+│  │  - Script generation workflow                                │ │
+│  │  - Traced workflow execution                                 │ │
+│  │  - Node-level tracing                                        │ │
 │  └──────────────────────────────────────────────────────────────┘ │
 │                                                                     │
 │  ┌──────────────────────────────────────────────────────────────┐ │
@@ -73,6 +92,15 @@ Comprehensive technical architecture documentation for ElevenDops MVP1.
     │ localhost:   │      │ api.eleven   │      │ localhost:   │
     │ 8080         │      │ labs.io      │      │ 4443         │
     └──────────────┘      └──────────────┘      └──────────────┘
+                                 │
+                                 ▼
+                          ┌──────────────┐
+                          │  LangSmith   │
+                          │  Cloud API   │
+                          │              │
+                          │ smith.lang   │
+                          │ chain.com    │
+                          └──────────────┘
 ```
 
 ## Component Breakdown
@@ -109,7 +137,8 @@ backend/api/
 │   ├── agent.py          # Agent management endpoints
 │   ├── patient.py        # Patient conversation endpoints
 │   ├── conversation.py   # Conversation logs endpoints
-│   └── dashboard.py      # Dashboard statistics endpoints
+│   ├── dashboard.py      # Dashboard statistics endpoints
+│   └── debug.py          # Debug and tracing endpoints
 └── models/
     ├── knowledge.py      # Knowledge Pydantic schemas
     ├── audio.py          # Audio Pydantic schemas
@@ -194,6 +223,39 @@ class StorageService:
     - delete_audio()
     - get_audio_url()
     - ensure_bucket_exists()
+```
+
+#### LangSmith Tracer Service
+```python
+# backend/services/langsmith_tracer.py
+
+class LangSmithTracer:
+    # Tracing Management
+    - initialize_tracing()
+    - is_available()
+    - create_traced_workflow()
+    
+    # Session Management
+    - start_trace_session()
+    - end_trace_session()
+    - get_session()
+    - list_sessions()
+    - add_trace_to_session()
+```
+
+#### LangGraph Workflow Service
+```python
+# backend/services/langgraph_workflow.py
+
+# Traced Workflow Functions
+- run_traced_workflow()
+- create_script_generation_graph()
+- trace_node()
+
+# Workflow Components
+- prepare_context_node()
+- generate_script_node()
+- post_process_node()
 ```
 
 #### Conversation Service

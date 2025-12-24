@@ -5,6 +5,7 @@ pydantic-settings for environment variable loading with sensible defaults.
 """
 
 import logging
+import os
 from functools import lru_cache
 from typing import Literal
 
@@ -106,6 +107,24 @@ class Settings(BaseSettings):
         description="Google API key for Gemini models",
     )
 
+    # LangSmith configuration
+    langsmith_api_key: str | None = Field(
+        default=None,
+        description="LangSmith API key for tracing and debugging",
+    )
+    langsmith_project: str = Field(
+        default="elevendops-langgraph-debug",
+        description="LangSmith project name for trace organization",
+    )
+    langsmith_tracing_enabled: bool = Field(
+        default=True,
+        description="Enable LangSmith tracing (requires API key)",
+    )
+    langsmith_trace_level: Literal["debug", "info", "error"] = Field(
+        default="info",
+        description="LangSmith trace verbosity level",
+    )
+
     # CORS configuration
     cors_origins: str = Field(
         default="http://localhost:8501,http://127.0.0.1:8501",
@@ -164,6 +183,28 @@ class Settings(BaseSettings):
         """Check if running in production environment."""
         return self.app_env == "production"
 
+    def is_langsmith_configured(self) -> bool:
+        """Check if LangSmith is properly configured and ready to use.
+        
+        Returns:
+            True if API key is set and tracing is enabled.
+        """
+        return (
+            self.langsmith_api_key is not None 
+            and self.langsmith_tracing_enabled
+        )
+
+    def configure_langsmith_environment(self) -> None:
+        """Set LangSmith environment variables for the langsmith library.
+        
+        The langsmith library reads configuration from environment variables.
+        This method sets them based on our Settings.
+        """
+        if self.langsmith_api_key:
+            os.environ["LANGCHAIN_API_KEY"] = self.langsmith_api_key
+            os.environ["LANGCHAIN_PROJECT"] = self.langsmith_project
+            os.environ["LANGCHAIN_TRACING_V2"] = str(self.langsmith_tracing_enabled).lower()
+
     def log_configuration_warnings(self) -> None:
         """Log warnings for missing non-critical configuration."""
         if self.elevenlabs_api_key is None:
@@ -179,6 +220,17 @@ class Settings(BaseSettings):
         if self.debug and self.is_production():
             logger.warning(
                 "DEBUG mode is enabled in production. This is not recommended."
+            )
+
+    def log_langsmith_warnings(self) -> None:
+        """Log warnings for LangSmith configuration."""
+        if self.langsmith_api_key is None:
+            logger.warning(
+                "LANGSMITH_API_KEY not set. LangGraph tracing will be disabled."
+            )
+        elif not self.langsmith_tracing_enabled:
+            logger.info(
+                "LangSmith tracing is disabled via LANGSMITH_TRACING_ENABLED."
             )
 
 

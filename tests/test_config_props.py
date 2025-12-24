@@ -197,3 +197,109 @@ class TestSettingsMethods:
             settings = Settings()
             origins = settings.get_cors_origins_list()
             assert origins == ["http://a.com", "http://b.com", "http://c.com"]
+
+
+class TestLangSmithConfigurationBasedTracing:
+    """Property 2: Configuration-Based Tracing.
+    
+    Feature: langsmith-debug-integration
+    Validates: Requirements 4.1, 4.2, 4.5
+    
+    For any environment configuration, when LangSmith API key is provided
+    the system should enable tracing, and when tracing is disabled the
+    system should still execute workflows successfully.
+    """
+
+    def test_langsmith_disabled_when_no_api_key(self) -> None:
+        """Test that LangSmith is not configured without API key."""
+        with patch.dict(os.environ, {}, clear=True):
+            settings = Settings()
+            assert settings.is_langsmith_configured() is False
+
+    def test_langsmith_enabled_when_api_key_provided(self) -> None:
+        """Test that LangSmith is configured when API key is provided."""
+        with patch.dict(
+            os.environ,
+            {"LANGSMITH_API_KEY": "test-api-key"},
+        ):
+            settings = Settings()
+            assert settings.is_langsmith_configured() is True
+
+    def test_langsmith_disabled_when_tracing_disabled(self) -> None:
+        """Test that LangSmith is not configured when tracing is disabled."""
+        with patch.dict(
+            os.environ,
+            {
+                "LANGSMITH_API_KEY": "test-api-key",
+                "LANGSMITH_TRACING_ENABLED": "false",
+            },
+        ):
+            settings = Settings()
+            assert settings.is_langsmith_configured() is False
+
+    def test_default_langsmith_project_name(self) -> None:
+        """Test that default LangSmith project is elevendops-langgraph-debug."""
+        with patch.dict(os.environ, {}, clear=True):
+            settings = Settings()
+            assert settings.langsmith_project == "elevendops-langgraph-debug"
+
+    def test_langsmith_project_name_override(self) -> None:
+        """Test that LangSmith project name can be overridden."""
+        with patch.dict(
+            os.environ,
+            {"LANGSMITH_PROJECT": "custom-project"},
+        ):
+            settings = Settings()
+            assert settings.langsmith_project == "custom-project"
+
+    def test_default_langsmith_tracing_enabled(self) -> None:
+        """Test that LangSmith tracing is enabled by default."""
+        with patch.dict(os.environ, {}, clear=True):
+            settings = Settings()
+            assert settings.langsmith_tracing_enabled is True
+
+    def test_default_langsmith_trace_level(self) -> None:
+        """Test that default trace level is info."""
+        with patch.dict(os.environ, {}, clear=True):
+            settings = Settings()
+            assert settings.langsmith_trace_level == "info"
+
+    @given(trace_level=st.sampled_from(["debug", "info", "error"]))
+    @hypothesis_settings(max_examples=3)
+    def test_valid_trace_levels_accepted(self, trace_level: str) -> None:
+        """Property: Any valid trace level is accepted."""
+        with patch.dict(os.environ, {"LANGSMITH_TRACE_LEVEL": trace_level}):
+            settings = Settings()
+            assert settings.langsmith_trace_level == trace_level
+
+    def test_configure_langsmith_environment_sets_vars(self) -> None:
+        """Test that configure_langsmith_environment sets env vars."""
+        with patch.dict(
+            os.environ,
+            {
+                "LANGSMITH_API_KEY": "test-key",
+                "LANGSMITH_PROJECT": "test-project",
+                "LANGSMITH_TRACING_ENABLED": "true",
+            },
+        ):
+            settings = Settings()
+            settings.configure_langsmith_environment()
+            
+            assert os.environ.get("LANGCHAIN_API_KEY") == "test-key"
+            assert os.environ.get("LANGCHAIN_PROJECT") == "test-project"
+            assert os.environ.get("LANGCHAIN_TRACING_V2") == "true"
+
+    def test_configure_langsmith_environment_skips_without_key(self) -> None:
+        """Test that configure_langsmith_environment skips when no API key."""
+        # Clear any previous LANGCHAIN_API_KEY
+        env_to_clear = {k: "" for k in os.environ if k.startswith("LANGCHAIN_")}
+        with patch.dict(os.environ, env_to_clear, clear=False):
+            for k in env_to_clear:
+                os.environ.pop(k, None)
+            
+            settings = Settings()
+            settings.configure_langsmith_environment()
+            
+            # Should not set LANGCHAIN_API_KEY
+            assert os.environ.get("LANGCHAIN_API_KEY") is None
+

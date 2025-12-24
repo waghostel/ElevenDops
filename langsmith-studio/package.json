@@ -1,0 +1,19 @@
+{
+  "name": "langsmith-studio",
+  "version": "1.0.0",
+  "description": "Local LangSmith Studio for debugging ElevenDops LangGraph workflows",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node src/index.js",
+    "test": "node src/test-connection.js",
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "langsmith": "^0.2.0"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

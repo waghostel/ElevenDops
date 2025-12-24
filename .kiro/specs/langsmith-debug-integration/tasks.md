@@ -12,7 +12,7 @@ This implementation plan converts the LangSmith debugging design into discrete c
   - Set up project-specific tracing configuration
   - _Requirements: 1.2, 4.1, 4.2_
 
-- [ ]* 1.1 Write property test for configuration-based tracing
+- [ ] 1.1 Write property test for configuration-based tracing
   - **Property 2: Configuration-Based Tracing**
   - **Validates: Requirements 4.1, 4.2, 4.5**
 
@@ -22,7 +22,7 @@ This implementation plan converts the LangSmith debugging design into discrete c
     - Add graceful degradation when LangSmith is unavailable
     - _Requirements: 1.2, 4.3_
 
-  - [ ]* 2.2 Write property test for graceful degradation
+  - [ ] 2.2 Write property test for graceful degradation
     - **Property 4: Graceful Degradation**
     - **Validates: Requirements 4.3**
 
@@ -31,7 +31,7 @@ This implementation plan converts the LangSmith debugging design into discrete c
     - Add session persistence and retrieval functionality
     - _Requirements: 2.5_
 
-  - [ ]* 2.4 Write property test for session persistence
+  - [ ] 2.4 Write property test for session persistence
     - **Property 7: Session Persistence**
     - **Validates: Requirements 2.5**
 
@@ -42,7 +42,7 @@ This implementation plan converts the LangSmith debugging design into discrete c
     - Capture timing information for each step
     - _Requirements: 1.1, 1.4, 5.3_
 
-  - [ ]* 3.2 Write property test for trace data completeness
+  - [ ] 3.2 Write property test for trace data completeness
     - **Property 1: Trace Data Completeness**
     - **Validates: Requirements 1.1, 1.4, 1.5**
 
@@ -51,7 +51,7 @@ This implementation plan converts the LangSmith debugging design into discrete c
     - Capture stack traces and execution context
     - _Requirements: 1.3, 3.2_
 
-  - [ ]* 3.4 Write property test for error capture completeness
+  - [ ] 3.4 Write property test for error capture completeness
     - **Property 3: Error Capture Completeness**
     - **Validates: Requirements 1.3, 3.2**
 
@@ -65,11 +65,11 @@ This implementation plan converts the LangSmith debugging design into discrete c
     - Return trace IDs for Studio examination
     - _Requirements: 3.1, 3.3, 3.4_
 
-  - [ ]* 5.2 Write property test for debug API trace ID return
+  - [ ] 5.2 Write property test for debug API trace ID return
     - **Property 5: Debug API Trace ID Return**
     - **Validates: Requirements 3.3**
 
-  - [ ]* 5.3 Write property test for input validation consistency
+  - [ ] 5.3 Write property test for input validation consistency
     - **Property 6: Input Validation Consistency**
     - **Validates: Requirements 3.4**
 
@@ -78,7 +78,7 @@ This implementation plan converts the LangSmith debugging design into discrete c
     - Add session listing and management endpoints
     - _Requirements: 3.5_
 
-  - [ ]* 5.5 Write unit tests for debug endpoints
+  - [ ] 5.5 Write unit tests for debug endpoints
     - Test synchronous and asynchronous execution endpoints
     - Test error handling and response formatting
     - _Requirements: 3.5_
@@ -89,7 +89,7 @@ This implementation plan converts the LangSmith debugging design into discrete c
     - Add environment-based trace level configuration
     - _Requirements: 4.4_
 
-  - [ ]* 6.2 Write property test for trace level configuration
+  - [ ] 6.2 Write property test for trace level configuration
     - **Property 9: Trace Level Configuration**
     - **Validates: Requirements 4.4**
 
@@ -98,7 +98,7 @@ This implementation plan converts the LangSmith debugging design into discrete c
     - Include timing data in trace metadata
     - _Requirements: 5.3_
 
-  - [ ]* 6.4 Write property test for performance timing collection
+  - [ ] 6.4 Write property test for performance timing collection
     - **Property 8: Performance Timing Collection**
     - **Validates: Requirements 5.3**
 
@@ -108,7 +108,7 @@ This implementation plan converts the LangSmith debugging design into discrete c
     - Configure studio connection to backend API
     - _Requirements: 2.1_
 
-  - [ ]* 7.2 Write integration test for Studio connectivity
+  - [ ] 7.2 Write integration test for Studio connectivity
     - Test Studio connection to local LangGraph application
     - _Requirements: 2.1_
 
@@ -124,7 +124,7 @@ This implementation plan converts the LangSmith debugging design into discrete c
     - Ensure Studio can access all debugging features
     - _Requirements: 1.1, 2.1, 3.1_
 
-  - [ ]* 8.2 Write integration tests for end-to-end workflow
+  - [ ] 8.2 Write integration tests for end-to-end workflow
     - Test complete workflow execution with LangSmith integration
     - Test Studio visualization of workflow execution
     - _Requirements: 1.1, 2.1, 3.1_
