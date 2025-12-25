@@ -29,6 +29,7 @@ class ErrorResponse(BaseModel):
 
     detail: str = Field(..., description="Error message detail")
     error_code: str = Field(..., description="Error code identifier")
+    retryable: bool = Field(default=False, description="Whether the operation is retryable")
 
 
 # Default document tags for knowledge documents
@@ -144,6 +145,9 @@ class ScriptGenerateResponse(BaseModel):
     knowledge_id: str = Field(..., description="Source document ID")
     model_used: str = Field(default="legacy", description="Model used for generation")
     generated_at: datetime = Field(..., description="Generation timestamp")
+    generation_error: Optional[str] = Field(
+        None, description="Error message if AI generation failed and fallback was used"
+    )
 
 
 class AudioGenerateRequest(BaseModel):

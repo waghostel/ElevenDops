@@ -6,7 +6,8 @@ with the FastAPI backend without exposing API logic in the UI layer.
 
 import os
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, AsyncGenerator
+import json
 
 import httpx
 import streamlit as st
@@ -34,6 +35,7 @@ from streamlit_app.services.models import (
 # Default configuration
 DEFAULT_BACKEND_URL = "http://localhost:8000"
 DEFAULT_TIMEOUT = 10.0  # seconds
+LLM_TIMEOUT = 90.0  # Extended timeout for LLM generation (large documents can take 60+ seconds)
 
 
 class BackendAPIClient:
@@ -59,7 +61,8 @@ class BackendAPIClient:
                 BACKEND_API_URL environment variable or localhost default.
             timeout: Request timeout in seconds.
         """
-        self.base_url = base_url or os.getenv("BACKEND_API_URL", DEFAULT_BACKEND_URL)
+        # Use 'or' chain to handle None and empty string
+        self.base_url = base_url or os.getenv("BACKEND_API_URL") or DEFAULT_BACKEND_URL
         self.timeout = timeout
 
     def _get_client(self) -> httpx.AsyncClient:
@@ -72,6 +75,38 @@ class BackendAPIClient:
             base_url=self.base_url,
             timeout=httpx.Timeout(self.timeout),
         )
+
+    def _get_llm_client(self) -> httpx.AsyncClient:
+        """Create an async HTTP client with extended timeout for LLM operations.
+
+        LLM operations can take much longer for large documents (60+ seconds),
+        so we use a separate client with an extended timeout.
+
+        Returns:
+            Configured httpx.AsyncClient instance with LLM-appropriate timeout.
+        """
+        return httpx.AsyncClient(
+            base_url=self.base_url,
+            timeout=httpx.Timeout(LLM_TIMEOUT),
+        )
+
+    def _parse_error_message(self, response: httpx.Response) -> str:
+        """Parse error message from response.
+        
+        Args:
+            response: The HTTP response.
+            
+        Returns:
+            String error message, preferring 'detail' from JSON.
+        """
+        try:
+            data = response.json()
+            # If it's our structured error response, it has 'detail'
+            if isinstance(data, dict) and "detail" in data:
+                return data["detail"]
+            return response.text
+        except Exception:
+            return response.text
 
     async def health_check(self) -> dict:
         """Check the health of the backend API.
@@ -95,7 +130,7 @@ class BackendAPIClient:
             raise APITimeoutError(f"Health check timed out: {e}") from e
         except httpx.HTTPStatusError as e:
             raise APIError(
-                message=f"Health check failed: {e.response.text}",
+                message=f"Health check failed: {self._parse_error_message(e.response)}",
                 status_code=e.response.status_code,
             ) from e
 
@@ -131,7 +166,7 @@ class BackendAPIClient:
             ) from e
         except httpx.HTTPStatusError as e:
             raise APIError(
-                message=f"Failed to get dashboard stats: {e.response.text}",
+                message=f"Failed to get dashboard stats: {self._parse_error_message(e.response)}",
                 status_code=e.response.status_code,
             ) from e
         except (KeyError, ValueError) as e:
@@ -184,7 +219,7 @@ class BackendAPIClient:
             raise APITimeoutError(f"Upload timed out: {e}") from e
         except httpx.HTTPStatusError as e:
             raise APIError(
-                message=f"Upload failed: {e.response.text}",
+                message=f"Upload failed: {self._parse_error_message(e.response)}",
                 status_code=e.response.status_code,
             ) from e
     
@@ -221,7 +256,7 @@ class BackendAPIClient:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
         except httpx.HTTPStatusError as e:
             raise APIError(
-                message=f"Failed to get documents: {e.response.text}",
+                message=f"Failed to get documents: {self._parse_error_message(e.response)}",
                 status_code=e.response.status_code,
             ) from e
 
@@ -240,7 +275,7 @@ class BackendAPIClient:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
         except httpx.HTTPStatusError as e:
             raise APIError(
-                message=f"Delete failed: {e.response.text}",
+                message=f"Delete failed: {self._parse_error_message(e.response)}",
                 status_code=e.response.status_code,
             ) from e
 
@@ -287,7 +322,7 @@ class BackendAPIClient:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
         except httpx.HTTPStatusError as e:
             raise APIError(
-                message=f"Update failed: {e.response.text}",
+                message=f"Update failed: {self._parse_error_message(e.response)}",
                 status_code=e.response.status_code,
             ) from e
 
@@ -321,7 +356,7 @@ class BackendAPIClient:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
         except httpx.HTTPStatusError as e:
             raise APIError(
-                message=f"Retry sync failed: {e.response.text}",
+                message=f"Retry sync failed: {self._parse_error_message(e.response)}",
                 status_code=e.response.status_code,
             ) from e
 
@@ -347,7 +382,8 @@ class BackendAPIClient:
                 "model_name": model_name,
                 "custom_prompt": custom_prompt
             }
-            async with self._get_client() as client:
+            # Use extended timeout client for LLM operations
+            async with self._get_llm_client() as client:
                 response = await client.post("/api/audio/generate-script", json=payload)
                 response.raise_for_status()
                 data = response.json()
@@ -355,15 +391,71 @@ class BackendAPIClient:
                     script=data["script"],
                     knowledge_id=data["knowledge_id"],
                     generated_at=datetime.fromisoformat(data["generated_at"]),
-                    model_used=data.get("model_used", "legacy")
+                    model_used=data.get("model_used", "legacy"),
+                    generation_error=data.get("generation_error")
                 )
         except httpx.ConnectError as e:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.TimeoutException as e:
+            raise APITimeoutError(
+                f"Script generation timed out after {LLM_TIMEOUT}s. "
+                "The document may be too large. Try using a smaller document or a faster model."
+            ) from e
         except httpx.HTTPStatusError as e:
             raise APIError(
-                message=f"Script generation failed: {e.response.text}",
+                message=f"Script generation failed: {self._parse_error_message(e.response)}",
                 status_code=e.response.status_code,
             ) from e
+
+    async def generate_script_stream(
+        self,
+        knowledge_id: str,
+        model_name: str = "gemini-2.5-flash",
+        custom_prompt: Optional[str] = None
+    ) -> AsyncGenerator[dict, None]:
+        """Stream script generation with Server-Sent Events.
+        
+        This method streams tokens as they are generated, keeping the
+        connection alive and providing real-time feedback. This avoids
+        timeout issues with large documents.
+        
+        Args:
+            knowledge_id: ID of the knowledge document.
+            model_name: Gemini model to use.
+            custom_prompt: Optional custom prompt.
+            
+        Yields:
+            dict events with type: 'token', 'complete', or 'error'
+        """
+        payload = {
+            "knowledge_id": knowledge_id,
+            "model_name": model_name,
+            "custom_prompt": custom_prompt
+        }
+        
+        try:
+            async with self._get_llm_client() as client:
+                async with client.stream(
+                    "POST",
+                    "/api/audio/generate-script-stream",
+                    json=payload
+                ) as response:
+                    response.raise_for_status()
+                    
+                    async for line in response.aiter_lines():
+                        # Parse SSE format: "data: {...}"
+                        if line.startswith("data: "):
+                            try:
+                                data = json.loads(line[6:])
+                                yield data
+                            except json.JSONDecodeError:
+                                continue
+        except httpx.ConnectError as e:
+            yield {"type": "error", "message": f"Connection failed: {e}"}
+        except httpx.TimeoutException as e:
+            yield {"type": "error", "message": f"Request timed out: {e}"}
+        except httpx.HTTPStatusError as e:
+            yield {"type": "error", "message": f"HTTP error: {self._parse_error_message(e.response)}"}
 
     async def generate_audio(self, knowledge_id: str, script: str, voice_id: str) -> AudioResponse:
         """Generate audio from a script.
@@ -399,7 +491,7 @@ class BackendAPIClient:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
         except httpx.HTTPStatusError as e:
             raise APIError(
-                message=f"Audio generation failed: {e.response.text}",
+                message=f"Audio generation failed: {self._parse_error_message(e.response)}",
                 status_code=e.response.status_code,
             ) from e
 
@@ -433,7 +525,7 @@ class BackendAPIClient:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
         except httpx.HTTPStatusError as e:
             raise APIError(
-                message=f"Failed to fetch audio history: {e.response.text}",
+                message=f"Failed to fetch audio history: {self._parse_error_message(e.response)}",
                 status_code=e.response.status_code,
             ) from e
 
@@ -461,7 +553,7 @@ class BackendAPIClient:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
         except httpx.HTTPStatusError as e:
             raise APIError(
-                message=f"Failed to fetch voices: {e.response.text}",
+                message=f"Failed to fetch voices: {self._parse_error_message(e.response)}",
                 status_code=e.response.status_code,
             ) from e
 
@@ -511,7 +603,7 @@ class BackendAPIClient:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
         except httpx.HTTPStatusError as e:
             raise APIError(
-                message=f"Failed to create agent: {e.response.text}",
+                message=f"Failed to create agent: {self._parse_error_message(e.response)}",
                 status_code=e.response.status_code,
             ) from e
 
@@ -543,7 +635,7 @@ class BackendAPIClient:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
         except httpx.HTTPStatusError as e:
             raise APIError(
-                message=f"Failed to get agents: {e.response.text}",
+                message=f"Failed to get agents: {self._parse_error_message(e.response)}",
                 status_code=e.response.status_code,
             ) from e
 
@@ -565,7 +657,7 @@ class BackendAPIClient:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
         except httpx.HTTPStatusError as e:
             raise APIError(
-                message=f"Failed to delete agent: {e.response.text}",
+                message=f"Failed to delete agent: {self._parse_error_message(e.response)}",
                 status_code=e.response.status_code,
             ) from e
 
@@ -596,7 +688,7 @@ class BackendAPIClient:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
         except httpx.HTTPStatusError as e:
             raise APIError(
-                message=f"Failed to create session: {e.response.text}",
+                message=f"Failed to create session: {self._parse_error_message(e.response)}",
                 status_code=e.response.status_code,
             ) from e
 
@@ -629,7 +721,7 @@ class BackendAPIClient:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
         except httpx.HTTPStatusError as e:
             raise APIError(
-                message=f"Failed to send message: {e.response.text}",
+                message=f"Failed to send message: {self._parse_error_message(e.response)}",
                 status_code=e.response.status_code,
             ) from e
 
@@ -651,7 +743,7 @@ class BackendAPIClient:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
         except httpx.HTTPStatusError as e:
             raise APIError(
-                message=f"Failed to end session: {e.response.text}",
+                message=f"Failed to end session: {self._parse_error_message(e.response)}",
                 status_code=e.response.status_code,
             ) from e
 
@@ -714,7 +806,7 @@ class BackendAPIClient:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
         except httpx.HTTPStatusError as e:
             raise APIError(
-                message=f"Failed to get conversation logs: {e.response.text}",
+                message=f"Failed to get conversation logs: {self._parse_error_message(e.response)}",
                 status_code=e.response.status_code,
             ) from e
 
@@ -766,7 +858,7 @@ class BackendAPIClient:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
         except httpx.HTTPStatusError as e:
             raise APIError(
-                message=f"Failed to get conversation detail: {e.response.text}",
+                message=f"Failed to get conversation detail: {self._parse_error_message(e.response)}",
                 status_code=e.response.status_code,
             ) from e
 
@@ -785,13 +877,12 @@ class BackendAPIClient:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
         except httpx.HTTPStatusError as e:
             raise APIError(
-                message=f"Failed to get statistics: {e.response.text}",
+                message=f"Failed to get statistics: {self._parse_error_message(e.response)}",
                 status_code=e.response.status_code,
             ) from e
 
 
 # Convenience function for getting a client instance
-@st.cache_resource
 def get_backend_client() -> BackendAPIClient:
     """Get a configured backend API client.
 

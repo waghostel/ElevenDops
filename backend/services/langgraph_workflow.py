@@ -1,8 +1,9 @@
-from typing import TypedDict, Optional, Any, Callable
+from typing import TypedDict, Optional, Any, Callable, AsyncGenerator
 from langgraph.graph import StateGraph, END
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
 import logging
+import os
 import time
 import traceback
 import functools
@@ -246,10 +247,20 @@ async def generate_script_node(state: ScriptGenerationState) -> dict:
                  return {"generated_script": f"Mock script generated for model {model_name}"}
              return {"error": "Google API key not configured"}
 
+        # Debug: Log key status (masked)
+        masked_key = f"{api_key[:4]}...{api_key[-4:]}" if api_key else "None"
+        logger.info(f"Initiating ChatGoogleGenerativeAI with model: {model_name}, Key: {masked_key}")
+        
+        # Explicitly set env var as fallback for the library
+        if api_key:
+            os.environ["GOOGLE_API_KEY"] = api_key
+
         llm = ChatGoogleGenerativeAI(
             model=model_name,
             google_api_key=api_key,
-            temperature=0.7
+            temperature=0.7,
+            timeout=30,  # 30 second timeout for API calls
+            max_retries=2,  # Retry on transient failures
         )
         
         # Determine strictness? For now simple prompt
@@ -258,11 +269,36 @@ async def generate_script_node(state: ScriptGenerationState) -> dict:
             HumanMessage(content=f"Here is the knowledge document content:\n\n{content}")
         ]
         
-        response = await llm.ainvoke(messages)
+        # Use asyncio timeout as additional protection
+        import asyncio
+        try:
+            response = await asyncio.wait_for(
+                llm.ainvoke(messages),
+                timeout=35.0  # Slightly longer than LLM timeout to let it handle retries
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"Gemini API timeout after 35s for model {model_name}")
+            return {
+                "error": f"API timeout: Model '{model_name}' did not respond within 35 seconds. "
+                         "Please verify your API key or try a different model."
+            }
         return {"generated_script": response.content}
     except Exception as e:
-        logger.error(f"Script generation failed: {e}")
-        return {"error": str(e)}
+        # Improved error handling with detailed logging and meaningful error messages
+        error_type = type(e).__name__
+        error_msg = str(e)
+        error_repr = repr(e)
+        
+        # Log full traceback for server-side debugging
+        logger.error(f"Script generation failed with {error_type}: {error_msg}", exc_info=True)
+        
+        # Return meaningful error message
+        if error_msg:
+            return {"error": f"{error_type}: {error_msg}"}
+        elif error_repr:
+            return {"error": f"{error_type}: {error_repr}"}
+        else:
+            return {"error": f"Unknown error of type {error_type}. Check server logs for details."}
 
 
 def post_process_node(state: ScriptGenerationState) -> dict:
@@ -385,3 +421,101 @@ async def run_traced_workflow(
     finally:
         set_current_trace(None)
 
+
+def post_process_script(script: str) -> str:
+    """Post-process a generated script by removing markdown code blocks.
+    
+    Args:
+        script: Raw script content from LLM.
+        
+    Returns:
+        Cleaned script content.
+    """
+    if script.startswith("```"):
+        script = script.split("\n", 1)[1] if "\n" in script else script[3:]
+        if script.endswith("```"):
+            script = script.rsplit("\n", 1)[0] if "\n" in script else script[:-3]
+    return script.strip()
+
+
+async def generate_script_stream(
+    knowledge_content: str,
+    prompt: str,
+    model_name: str,
+) -> AsyncGenerator[dict, None]:
+    """Stream script generation tokens from the LLM.
+    
+    This function streams tokens as they are generated, keeping the connection
+    alive and providing real-time feedback. This avoids timeout issues with
+    large documents that may take 60+ seconds to process.
+    
+    Args:
+        knowledge_content: The knowledge document content to process.
+        prompt: The system prompt for script generation.
+        model_name: The Gemini model to use.
+        
+    Yields:
+        dict events with one of these types:
+        - {"type": "token", "content": "..."} - Partial content chunk
+        - {"type": "complete", "script": "...", "model_used": "..."} - Final result
+        - {"type": "error", "message": "..."} - Error occurred
+    """
+    settings = get_settings()
+    api_key = settings.google_api_key
+    
+    # Handle missing API key
+    if not api_key:
+        if settings.use_mock_data:
+            # Mock streaming for testing
+            mock_script = f"Mock streaming script generated for model {model_name}"
+            for word in mock_script.split():
+                yield {"type": "token", "content": word + " "}
+            yield {"type": "complete", "script": mock_script, "model_used": model_name}
+            return
+        yield {"type": "error", "message": "Google API key not configured"}
+        return
+    
+    # Log masked key for debugging
+    masked_key = f"{api_key[:4]}...{api_key[-4:]}" if api_key else "None"
+    logger.info(f"Starting streaming generation with model: {model_name}, Key: {masked_key}")
+    
+    # Set env var as fallback for the library
+    os.environ["GOOGLE_API_KEY"] = api_key
+    
+    try:
+        llm = ChatGoogleGenerativeAI(
+            model=model_name,
+            google_api_key=api_key,
+            temperature=0.7,
+            streaming=True,  # Enable streaming mode
+        )
+        
+        messages = [
+            SystemMessage(content=prompt),
+            HumanMessage(content=f"Here is the knowledge document content:\n\n{knowledge_content}")
+        ]
+        
+        full_content = ""
+        chunk_count = 0
+        
+        async for chunk in llm.astream(messages):
+            if chunk.content:
+                full_content += chunk.content
+                chunk_count += 1
+                yield {"type": "token", "content": chunk.content}
+        
+        logger.info(f"Streaming complete: {chunk_count} chunks, {len(full_content)} chars total")
+        
+        # Post-process and yield final result
+        processed_script = post_process_script(full_content)
+        yield {
+            "type": "complete",
+            "script": processed_script,
+            "model_used": model_name
+        }
+        
+    except Exception as e:
+        error_type = type(e).__name__
+        error_msg = str(e) if str(e) else repr(e)
+        logger.error(f"Streaming generation failed: {error_type}: {error_msg}", exc_info=True)
+        yield {"type": "error", "message": f"{error_type}: {error_msg}"}

@@ -38,7 +38,7 @@ if "selected_voice_id" not in st.session_state:
 if "voices" not in st.session_state:
     st.session_state.voices = []
 if "selected_llm_model" not in st.session_state:
-    st.session_state.selected_llm_model = "gemini-2.5-flash"
+    st.session_state.selected_llm_model = "gemini-2.5-flash-lite"
 if "custom_prompt" not in st.session_state:
     st.session_state.custom_prompt = None
 
@@ -113,21 +113,80 @@ async def load_voices_cached() -> List[VoiceOption]:
 
 
 async def generate_script(knowledge_id: str):
-    """Generate script from document."""
+    """Generate script from document using streaming for real-time feedback."""
+    model = st.session_state.selected_llm_model
+    prompt = st.session_state.custom_prompt
+    
+    # Create placeholders for streaming display
+    progress_placeholder = st.empty()
+    script_placeholder = st.empty()
+    status_placeholder = st.empty()
+    
+    full_script = ""
+    final_model_used = ""
+    
     try:
-        with st.spinner("Generating script with AI..."):
-            model = st.session_state.selected_llm_model
-            prompt = st.session_state.custom_prompt
+        status_placeholder.info("🚀 Starting AI script generation...")
+        
+        async for event in client.generate_script_stream(
+            knowledge_id=knowledge_id,
+            model_name=model,
+            custom_prompt=prompt
+        ):
+            event_type = event.get("type")
             
-            response = await client.generate_script(
-                knowledge_id=knowledge_id,
-                model_name=model,
-                custom_prompt=prompt
-            )
-            st.session_state.generated_script = response.script
-            st.toast(f"Script generated successfully using {response.model_used}!", icon="📝")
+            if event_type == "token":
+                # Append token and update display
+                full_script += event.get("content", "")
+                script_placeholder.text_area(
+                    "📝 Generating script...",
+                    value=full_script,
+                    height=400,
+                    disabled=True,
+                    key=f"streaming_script_{len(full_script)}"
+                )
+                status_placeholder.caption(f"⏳ Generating... ({len(full_script):,} characters)")
+                
+            elif event_type == "complete":
+                # Generation complete
+                final_script = event.get("script", full_script)
+                final_model_used = event.get("model_used", model)
+                
+                st.session_state.generated_script = final_script
+                
+                # Clear streaming placeholders
+                progress_placeholder.empty()
+                script_placeholder.empty()
+                status_placeholder.empty()
+                
+                st.toast(f"✅ Script generated using {final_model_used}!", icon="📝")
+                st.rerun()
+                
+            elif event_type == "error":
+                # Error occurred during generation
+                error_msg = event.get("message", "Unknown error")
+                status_placeholder.empty()
+                script_placeholder.empty()
+                
+                # If we have partial content, offer to use it
+                if full_script:
+                    st.warning(
+                        f"⚠️ Generation interrupted: {error_msg}\n\n"
+                        f"Partial content ({len(full_script):,} chars) has been preserved."
+                    )
+                    st.session_state.generated_script = full_script
+                else:
+                    st.error(f"Script generation failed: {error_msg}")
+                return
+                
     except Exception as e:
-        st.error(f"Script generation failed. Please try again. (Error: {e})")
+        # Clean up placeholders on error
+        progress_placeholder.empty()
+        script_placeholder.empty()
+        status_placeholder.empty()
+        
+        error_msg = str(e) if str(e) else repr(e)
+        st.error(f"Script generation failed: {error_msg}")
 
 
 async def generate_audio(knowledge_id: str, script: str, voice_id: str):
@@ -231,8 +290,8 @@ async def render_script_editor():
     with col1:
         st.session_state.selected_llm_model = st.selectbox(
             "AI Model",
-            options=["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"],
-            index=1, # Default to gemini-2.5-flash
+            options=["gemini-2.5-flash", "gemini-2.5-pro", "gemini-1.5-flash", "gemini-3.0-pro"],
+            index=0, # Default to gemini-2.5-flash
             help="Select the AI model for script generation"
         )
         
@@ -249,7 +308,7 @@ async def render_script_editor():
         edited_script = st.text_area(
             "Script Content",
             value=st.session_state.generated_script,
-            height=300,
+            height=600,
             label_visibility="collapsed",
             key="script_editor_area"
         )

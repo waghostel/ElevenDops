@@ -73,8 +73,19 @@ from fastapi.responses import JSONResponse
 async def global_exception_handler(request: Request, exc: Exception):
     """Global exception handler for unexpected errors."""
     import logging
-    logging.error(f"Global exception: {exc}", exc_info=True)
+    from backend.utils.errors import get_error_response, map_exception_to_status_code
+    
+    # Determine status code and response content
+    status_code = map_exception_to_status_code(exc)
+    error_response = get_error_response(exc)
+
+    # Log based on severity
+    if status_code >= 500:
+        logging.error(f"Global exception: {exc}", exc_info=True)
+    else:
+        logging.warning(f"Handled exception: {exc} (Status: {status_code})")
+
     return JSONResponse(
-        status_code=500,
-        content={"detail": "An unexpected error occurred. Please contact support.", "error_code": "INTERNAL_SERVER_ERROR"},
+        status_code=status_code,
+        content=error_response,
     )

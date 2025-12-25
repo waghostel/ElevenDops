@@ -58,12 +58,24 @@ class TestClientConfiguration:
             client = BackendAPIClient(base_url=explicit_url)
             assert client.base_url == explicit_url
 
+    def test_client_uses_default_url_when_env_is_empty_string(self) -> None:
+        """Test that client uses default URL when env var is empty string."""
+        with patch.dict(os.environ, {"BACKEND_API_URL": ""}):
+            client = BackendAPIClient()
+            assert client.base_url == DEFAULT_BACKEND_URL
+
     @given(timeout=st.floats(min_value=0.1, max_value=60.0))
     @settings(max_examples=10)
     def test_client_accepts_custom_timeout(self, timeout: float) -> None:
         """Property: Client accepts any positive timeout value."""
         client = BackendAPIClient(timeout=timeout)
         assert client.timeout == timeout
+
+    def test_client_configures_base_url_in_httpx(self) -> None:
+        """Regression test: httpx client must be configured with base_url."""
+        client = BackendAPIClient(base_url="http://test-server:8000")
+        httpx_client = client._get_client()
+        assert str(httpx_client.base_url) == "http://test-server:8000"
 
 
 class TestAPIErrorHandling:

@@ -177,7 +177,7 @@ class ElevenLabsService:
                 with open(tmp_path, 'rb') as f:
                     # Updates for new SDK structure: flattened API
                     # Using tuple (name, file_obj, content_type) to ensure document name is set correctly
-                    response = self.client.conversational_ai.create_knowledge_base_file_document(
+                    response = self.client.conversational_ai.knowledge_base.documents.create_from_file(
                         file=(name, f, 'text/markdown')
                     )
                 logging.info(f"Successfully created document {name}. ID: {response.id}")
@@ -222,7 +222,7 @@ class ElevenLabsService:
                 logging.info(f"[MOCK] Deleted ElevenLabs document {document_id}")
                 return True
 
-            self.client.conversational_ai.delete_knowledge_base_document(document_id=document_id)
+            self.client.conversational_ai.knowledge_base.documents.delete(document_id=document_id)
             logging.info(f"Successfully deleted document {document_id}")
             return True
         except Exception as e:
@@ -349,7 +349,7 @@ class ElevenLabsService:
                      {"id": kb_id} for kb_id in knowledge_base_ids
                  ]
                  
-            response = self.client.conversational_ai.create_agent(
+            response = self.client.conversational_ai.agents.create(
                 name=name,
                 conversation_config={
                     "agent": agent_config,
@@ -383,7 +383,7 @@ class ElevenLabsService:
             return True
 
         try:
-            self.client.conversational_ai.delete_agent(agent_id=agent_id)
+            self.client.conversational_ai.agents.delete(agent_id=agent_id)
             return True
         except Exception as e:
             logging.error(f"Failed to delete ElevenLabs agent: {e}")
@@ -410,7 +410,7 @@ class ElevenLabsService:
             }
 
         try:
-            response = self.client.conversational_ai.get_agent(agent_id=agent_id)
+            response = self.client.conversational_ai.agents.get(agent_id=agent_id)
             return response.model_dump() if hasattr(response, "model_dump") else dict(response)
         except Exception as e:
             logging.error(f"Failed to get ElevenLabs agent: {e}")
@@ -436,7 +436,7 @@ class ElevenLabsService:
             return f"wss://mock.elevenlabs.io/convai/{agent_id}"
 
         try:
-            response = self.client.conversational_ai.get_signed_url(agent_id=agent_id)
+            response = self.client.conversational_ai.conversations.get_signed_url(agent_id=agent_id)
             return response.signed_url
         except Exception as e:
             logging.error(f"Failed to get signed URL: {e}")

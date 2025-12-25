@@ -20,7 +20,7 @@ MOCK_DOCS = [
         knowledge_id="doc_1",
         doctor_id="doc",
         disease_name="Flu",
-        document_type="Guide",
+        tags=["Guide"],
         raw_content="Flu guide content",
         sync_status="COMPLETED",
         elevenlabs_document_id="el_1",
@@ -100,7 +100,7 @@ def test_script_generation_flow(mock_client):
         # Verify client call
         mock_client.generate_script.assert_called_with(
             knowledge_id="doc_1",
-            model_name="gemini-2.5-flash",
+            model_name="gemini-2.5-flash-lite",
             custom_prompt=None
         )
 

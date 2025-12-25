@@ -1,0 +1,6 @@
+{
+    "disease_name": "Test Cataract",
+    "raw_content": "Cataracts cause cloudy vision. Treatment is surgery.",
+    "tags": ["test"],
+    "doctor_id": "test"
+}

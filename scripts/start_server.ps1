@@ -93,10 +93,10 @@ function Kill-ProcessOnPort {
     Write-Host "✅ Port $Port should now be available" -ForegroundColor Green
 }
 
-# Function to check if Poetry is installed
-function Test-Poetry {
+# Function to check if uv is installed
+function Test-Uv {
     try {
-        $null = Get-Command poetry -ErrorAction Stop
+        $null = Get-Command uv -ErrorAction Stop
         return $true
     }
     catch {
@@ -104,10 +104,10 @@ function Test-Poetry {
     }
 }
 
-# Check Poetry installation
-if (-not (Test-Poetry)) {
-    Write-Host "❌ Poetry is not installed. Please install it first." -ForegroundColor Red
-    Write-Host "   Install with: pip install poetry" -ForegroundColor Red
+# Check uv installation
+if (-not (Test-Uv)) {
+    Write-Host "❌ uv is not installed. Please install it first." -ForegroundColor Red
+    Write-Host "   Install with: pip install uv" -ForegroundColor Red
     exit 1
 }
 
@@ -290,6 +290,7 @@ $envUseMockData = $Script:UseMockData
 $envUseMockStorage = $Script:UseMockStorage
 $envFirestoreHost = $Script:FirestoreHost
 $envStorageHost = $Script:StorageHost
+$envGoogleApiKey = $env:GOOGLE_API_KEY
 
 # Start FastAPI server
 Write-Host "🔧 Starting FastAPI backend on port $FastAPIPort..." -ForegroundColor Blue
@@ -306,6 +307,7 @@ $fastApiJob = Start-Job -ScriptBlock {
     [Environment]::SetEnvironmentVariable("GOOGLE_CLOUD_PROJECT", "elevenlabs-local", "Process")
     [Environment]::SetEnvironmentVariable("USE_MOCK_DATA", $using:envUseMockData, "Process")
     [Environment]::SetEnvironmentVariable("USE_MOCK_STORAGE", $using:envUseMockStorage, "Process")
+    [Environment]::SetEnvironmentVariable("GOOGLE_API_KEY", $using:envGoogleApiKey, "Process")
     
     # Add more verbose output for debugging
     Write-Host "FastAPI Job: Starting uvicorn on port $port"
@@ -315,7 +317,7 @@ $fastApiJob = Start-Job -ScriptBlock {
     Write-Host "FastAPI Job: USE_FIRESTORE_EMULATOR = $using:envUseFirestore"
     
     try {
-        poetry run uvicorn backend.main:app --host localhost --port $port --reload
+        uv run uvicorn backend.main:app --host localhost --port $port --reload
     }
     catch {
         Write-Host "FastAPI Job Error: $_"
@@ -365,7 +367,7 @@ Write-Host "🎨 Starting Streamlit frontend on port $StreamlitPort..." -Foregro
 $streamlitJob = Start-Job -ScriptBlock {
     param($port)
     Set-Location $using:PWD
-    poetry run streamlit run streamlit_app/app.py --server.port $port --server.address localhost
+    uv run streamlit run streamlit_app/app.py --server.port $port --server.address localhost
 } -ArgumentList $StreamlitPort
 
 # Wait for Streamlit to start

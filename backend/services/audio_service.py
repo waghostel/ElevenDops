@@ -3,7 +3,7 @@
 import logging
 import uuid
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, AsyncGenerator
 
 from backend.models.schemas import AudioMetadata, VoiceOption
 from backend.services.elevenlabs_service import ElevenLabsService, get_elevenlabs_service
@@ -11,7 +11,7 @@ from backend.services.storage_service import StorageService, get_storage_service
 from backend.services.firestore_data_service import FirestoreDataService
 
 from backend.services.script_generation_service import ScriptGenerationService
-from backend.config import get_default_script_prompt
+from backend.config import get_default_script_prompt, GEMINI_MODELS
 
 # In-memory storage is removed in favor of FirestoreDataService
 
@@ -67,10 +67,13 @@ class AudioService:
         # Use AI Script Generation Service
         prompt = custom_prompt or get_default_script_prompt()
         
+        # Map friendly name to API model name
+        api_model_name = GEMINI_MODELS.get(model_name, model_name)
+        
         try:
             result = await self.script_service.generate_script(
                 knowledge_content=doc.raw_content,
-                model_name=model_name,
+                model_name=api_model_name, 
                 prompt=prompt
             )
             return {
@@ -78,13 +81,19 @@ class AudioService:
                 "model_used": result["model_used"]
             }
         except Exception as e:
-            logging.error(f"AI generation failed, falling back to legacy template: {e}")
-             # Fallback logic (legacy)
+            # Capture detailed error info for user feedback
+            error_type = type(e).__name__
+            error_msg = str(e) if str(e) else repr(e)
+            generation_error = f"{error_type}: {error_msg}" if error_msg else error_type
+            
+            logging.error(f"AI generation failed, falling back to legacy template. Error: {generation_error}")
+            
+            # Fallback logic (legacy)
             script_content = f"Patient Education Script for {doc.disease_name}:\n\n"
             if doc.structured_sections and "Introduction" in doc.structured_sections:
                 script_content += f"{doc.structured_sections['Introduction']}\n\n"
             else:
-                limit = 1000
+                limit = 5000
                 content_snippet = doc.raw_content[:limit]
                 if len(doc.raw_content) > limit:
                     content_snippet += "..."
@@ -92,8 +101,47 @@ class AudioService:
             
             return {
                 "script": script_content,
-                "model_used": "legacy_fallback"
+                "model_used": "legacy_fallback",
+                "generation_error": generation_error
             }
+
+    async def generate_script_stream(
+        self,
+        knowledge_id: str,
+        model_name: str = "gemini-2.5-flash",
+        custom_prompt: Optional[str] = None
+    ) -> AsyncGenerator[dict, None]:
+        """Stream script generation from a knowledge document.
+        
+        This method streams tokens as they are generated, keeping the
+        connection alive and providing real-time feedback to avoid
+        timeout issues with large documents.
+        
+        Args:
+            knowledge_id: ID of the knowledge document.
+            model_name: Gemini model to use.
+            custom_prompt: Optional custom prompt.
+            
+        Yields:
+            dict events with type: 'token', 'complete', or 'error'
+        """
+        logging.info(f"Starting streaming script generation for knowledge_id: {knowledge_id}")
+        
+        doc = await self.data_service.get_knowledge_document(knowledge_id)
+        if not doc:
+            logging.warning(f"Knowledge document not found: {knowledge_id}")
+            yield {"type": "error", "message": f"Knowledge document {knowledge_id} not found"}
+            return
+        
+        prompt = custom_prompt or get_default_script_prompt()
+        api_model_name = GEMINI_MODELS.get(model_name, model_name)
+        
+        async for event in self.script_service.generate_script_stream(
+            knowledge_content=doc.raw_content,
+            model_name=api_model_name,
+            prompt=prompt
+        ):
+            yield event
 
     async def generate_audio(self, script: str, voice_id: str, knowledge_id: str) -> AudioMetadata:
         """Generate audio from a script.

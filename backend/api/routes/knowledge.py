@@ -129,31 +129,25 @@ async def create_knowledge_document(
     The document name in ElevenLabs will be formatted as "{disease_name}_{tag1_tag2...}".
     The content will be parsed into structured sections for future retrieval.
     """
-    try:
-        # 1. Create in database (pending status)
-        # DataService automatically parses structured_sections now.
-        created_doc = await data_service.create_knowledge_document(doc)
-        
-        # Format name for ElevenLabs: "Disease Name_tag1_tag2..."
-        tags_str = "_".join(doc.tags)
-        elevenlabs_doc_name = f"{doc.disease_name}_{tags_str}"
+    # 1. Create in database (pending status)
+    # DataService automatically parses structured_sections now.
+    created_doc = await data_service.create_knowledge_document(doc)
+    
+    # Format name for ElevenLabs: "Disease Name_tag1_tag2..."
+    tags_str = "_".join(doc.tags)
+    elevenlabs_doc_name = f"{doc.disease_name}_{tags_str}"
 
-        # 2. Trigger background sync
-        background_tasks.add_task(
-            sync_knowledge_to_elevenlabs,
-            created_doc.knowledge_id,
-            doc.raw_content,
-            elevenlabs_doc_name,
-            data_service,
-            elevenlabs_service,
-        )
+    # 2. Trigger background sync
+    background_tasks.add_task(
+        sync_knowledge_to_elevenlabs,
+        created_doc.knowledge_id,
+        doc.raw_content,
+        elevenlabs_doc_name,
+        data_service,
+        elevenlabs_service,
+    )
 
-        return created_doc
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create knowledge document: {str(e)}",
-        )
+    return created_doc
 
 
 @router.get("", response_model=KnowledgeDocumentListResponse)

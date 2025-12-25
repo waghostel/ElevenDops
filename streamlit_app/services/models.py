@@ -65,6 +65,7 @@ class ScriptResponse:
     knowledge_id: str
     generated_at: datetime
     model_used: str = "legacy"
+    generation_error: Optional[str] = None
 
 
 @dataclass

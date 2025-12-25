@@ -117,7 +117,7 @@ def render_sidebar() -> None:
             try:
                 # Use sync HTTP request - simpler and more reliable than async in cached function
                 # Use 10s timeout because health check may take time when checking service connections
-                backend_url = os.getenv("BACKEND_API_URL", "http://localhost:8000")
+                backend_url = os.getenv("BACKEND_API_URL") or "http://localhost:8000"
                 response = httpx.get(f"{backend_url}/api/health", timeout=10.0)
                 if response.status_code == 200:
                     data = response.json()
