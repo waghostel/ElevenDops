@@ -290,8 +290,8 @@ async def render_script_editor():
     with col1:
         st.session_state.selected_llm_model = st.selectbox(
             "AI Model",
-            options=["gemini-2.5-flash", "gemini-2.5-pro", "gemini-1.5-flash", "gemini-3.0-pro"],
-            index=0, # Default to gemini-2.5-flash
+            options=["gemini-1.5-flash-8b", "gemini-2.5-flash-lite", "gemini-3-flash-preview", "gemini-3-pro-preview"],
+            index=1, # Default to gemini-2.5-flash-lite
             help="Select the AI model for script generation"
         )
         

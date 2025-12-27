@@ -15,7 +15,7 @@ MOCK_DOCS = [
         knowledge_id="doc_1",
         doctor_id="doc",
         disease_name="Flu",
-        document_type="Guide",
+        tags=["Guide"],
         raw_content="Flu guide content",
         sync_status="COMPLETED",
         elevenlabs_document_id="el_1",
@@ -33,12 +33,19 @@ MOCK_SCRIPT = ScriptResponse(
 
 MOCK_VOICES = []
 
+MOCK_SCRIPT_CONTENT = "Generated script"
+
+async def mock_script_stream(*args, **kwargs):
+    yield {"type": "token", "content": MOCK_SCRIPT_CONTENT}
+    yield {"type": "complete", "script": MOCK_SCRIPT_CONTENT, "model_used": "gemini-2.5-flash-lite"}
+
 @pytest.fixture
 def mock_client():
     client = MagicMock()
     client.get_knowledge_documents = AsyncMock(return_value=MOCK_DOCS)
     client.get_available_voices = AsyncMock(return_value=MOCK_VOICES)
-    client.generate_script = AsyncMock(return_value=MOCK_SCRIPT)
+    # Mock the stream method instead of the sync/async value method
+    client.generate_script_stream = MagicMock(side_effect=mock_script_stream)
     client.get_audio_files = AsyncMock(return_value=[])
     client.health_check = AsyncMock(return_value={"status": "ok"})
     return client
@@ -50,11 +57,7 @@ def test_configuration_persistence(mock_client):
         at.session_state["IS_TESTING_BACKEND"] = True
         at.run()
         
-        # Verify default model is gemini-2.5-flash
-        # Find the model selectbox. It's inside Script Editor.
-        # It has label "AI Model".
-        # Note: Depending on column rendering, index might vary.
-        # But we can find by label.
+        # Verify default model is gemini-2.5-flash-lite (per index=1 default)
         
         # Select document first to show script editor
         at.selectbox[0].select_index(0).run()
@@ -63,16 +66,13 @@ def test_configuration_persistence(mock_client):
         assert len(at.selectbox) >= 2
         model_sb = at.selectbox[1]
         assert model_sb.label == "AI Model"
-        assert model_sb.value == "gemini-2.5-flash"
+        assert model_sb.value == "gemini-2.5-flash-lite"
         
-        # Change selection
-        model_sb.select("gemini-2.5-pro").run()
+        # Change selection to a valid option
+        model_sb.select("gemini-3-flash-preview").run()
         
-        # Rerun simply by calling run()? 
-        # Actually modifying a widget triggers a rerun.
-        
-        assert at.selectbox[1].value == "gemini-2.5-pro"
-        assert at.session_state.selected_llm_model == "gemini-2.5-pro"
+        assert at.selectbox[1].value == "gemini-3-flash-preview"
+        assert at.session_state.selected_llm_model == "gemini-3-flash-preview"
 
 def test_script_generation_parameters(mock_client):
     """Verify parameters passed to backend."""
@@ -84,8 +84,8 @@ def test_script_generation_parameters(mock_client):
         # Select Doc
         at.selectbox[0].select_index(0).run()
         
-        # Select Model
-        at.selectbox[1].select("gemini-2.0-flash").run()
+        # Select Model (valid option)
+        at.selectbox[1].select("gemini-3-pro-preview").run()
         
         # Set custom prompt directly in session state since dialog testing is hard
         at.session_state.custom_prompt = "My custom prompt"
@@ -94,9 +94,9 @@ def test_script_generation_parameters(mock_client):
         # Click Generate
         at.button(key="generate_script_btn").click().run()
         
-        # Check backend call
-        mock_client.generate_script.assert_called_with(
+        # Check backend call - assert on generate_script_stream
+        mock_client.generate_script_stream.assert_called_with(
             knowledge_id="doc_1",
-            model_name="gemini-2.0-flash",
+            model_name="gemini-3-pro-preview",
             custom_prompt="My custom prompt"
         )

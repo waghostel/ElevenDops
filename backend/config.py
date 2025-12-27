@@ -302,10 +302,10 @@ def initialize_config() -> Settings:
 # Gemini model configurations (LangChain-compatible names)
 # Ref: https://docs.langchain.com/oss/python/integrations/chat/google_generative_ai.md
 GEMINI_MODELS = {
-    "gemini-2.5-flash": "gemini-2.5-flash",          # Fast model (confirmed working in docs)
-    "gemini-2.5-pro": "gemini-2.5-pro",              # Pro model
-    "gemini-1.5-flash": "gemini-1.5-flash",          # Legacy fast model (fallback)
-    "gemini-3.0-pro": "gemini-3-pro-preview"         # Latest flagship (preview)
+    "gemini-1.5-flash-8b": "gemini-1.5-flash-8b",
+    "gemini-2.5-flash-lite": "gemini-2.5-flash-lite",
+    "gemini-3-flash-preview": "gemini-3-flash-preview",
+    "gemini-3-pro-preview": "gemini-3-pro-preview"
 }
 
 from pathlib import Path

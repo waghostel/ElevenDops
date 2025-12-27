@@ -104,3 +104,6 @@ docker-compose.override.yml
 # Editor/IDE specific
 *.sublime-project
 *.sublime-workspace
+
+# Server management
+.server_jobs.json

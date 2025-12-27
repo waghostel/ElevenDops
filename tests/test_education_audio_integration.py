@@ -50,12 +50,19 @@ MOCK_AUDIO = AudioResponse(
     created_at=datetime.utcnow()
 )
 
+MOCK_SCRIPT_CONTENT = "Generated script"
+
+async def mock_script_stream(*args, **kwargs):
+    yield {"type": "token", "content": MOCK_SCRIPT_CONTENT}
+    yield {"type": "complete", "script": MOCK_SCRIPT_CONTENT, "model_used": "gemini-2.5-flash-lite"}
+
 @pytest.fixture
 def mock_client():
     client = MagicMock()
     client.get_knowledge_documents = AsyncMock(return_value=MOCK_DOCS)
     client.get_available_voices = AsyncMock(return_value=MOCK_VOICES)
-    client.generate_script = AsyncMock(return_value=MOCK_SCRIPT)
+    # Mock the stream method
+    client.generate_script_stream = MagicMock(side_effect=mock_script_stream)
     client.generate_audio = AsyncMock(return_value=MOCK_AUDIO)
     client.get_audio_files = AsyncMock(return_value=[MOCK_AUDIO])
     client.health_check = AsyncMock(return_value={"status": "ok"})
@@ -91,14 +98,13 @@ def test_script_generation_flow(mock_client):
         at.button(key="generate_script_btn").click().run()
         
         # Verify script appears in text area
-        # Check using key if possible, but index 0 is likely still correct if only 1 text area
         assert at.text_area(key="script_editor_area").value == "Generated script"
         
         # Verify audio generation section appears (2nd selectbox)
         assert len(at.selectbox) >= 2, f"Audio section not rendered. Selectboxes: {len(at.selectbox)}"
         
         # Verify client call
-        mock_client.generate_script.assert_called_with(
+        mock_client.generate_script_stream.assert_called_with(
             knowledge_id="doc_1",
             model_name="gemini-2.5-flash-lite",
             custom_prompt=None
@@ -122,9 +128,13 @@ def test_audio_generation_flow(mock_client):
         assert not at.error, f"Errors: {[e.value for e in at.error]}"
         assert not at.warning, f"Warnings: {[w.value for w in at.warning]}"
         
+        # There should be 3 selectboxes: 
+        # 0: Document
+        # 1: AI Model (in script editor)
+        # 2: Voice (in audio generation)
         assert len(at.selectbox) >= 3
+        
         # "Rachel" is at index 0 of the voices list (mocked)
-        # selectbox[0] = document, selectbox[1] = AI model, selectbox[2] = voice
         at.selectbox[2].select("Rachel").run()
         
         # 4. Generate Audio
@@ -136,7 +146,7 @@ def test_audio_generation_flow(mock_client):
         mock_client.generate_audio.assert_called()
         call_args = mock_client.generate_audio.call_args
         assert call_args[0][0] == "doc_1"
-        assert call_args[0][1] == "Generated script" # From MOCK_SCRIPT
+        assert call_args[0][1] == "Generated script" # From MOCK_SCRIPT_CONTENT
         assert call_args[0][2] == "v1"
 
 def test_reset_on_document_change(mock_client):
