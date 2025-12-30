@@ -23,7 +23,7 @@ from datetime import datetime
         created_at=st.datetimes()
     )
 )
-@settings(max_examples=50)
+
 @pytest.mark.asyncio
 async def test_audio_metadata_persistence_round_trip(audio):
     # Mock Firestore dependency

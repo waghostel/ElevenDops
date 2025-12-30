@@ -65,12 +65,14 @@ def mock_client():
     client.generate_script_stream = MagicMock(side_effect=mock_script_stream)
     client.generate_audio = AsyncMock(return_value=MOCK_AUDIO)
     client.get_audio_files = AsyncMock(return_value=[MOCK_AUDIO])
+    client.get_templates = AsyncMock(return_value=[])
     client.health_check = AsyncMock(return_value={"status": "ok"})
     return client
 
 def test_page_loads_and_displays_documents(mock_client):
     """Test that the page loads and fetches documents."""
-    with patch("streamlit_app.services.backend_api.get_backend_client", return_value=mock_client):
+    with patch("streamlit_app.services.backend_api.get_backend_client", return_value=mock_client), \
+         patch("streamlit_app.services.cached_data.get_documents_cached", return_value=MOCK_DOCS):
         at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py", default_timeout=30)
         at.session_state["IS_TESTING_BACKEND"] = True
         at.run()
@@ -83,7 +85,8 @@ def test_page_loads_and_displays_documents(mock_client):
 
 def test_script_generation_flow(mock_client):
     """Test selecting a document and generating a script."""
-    with patch("streamlit_app.services.backend_api.get_backend_client", return_value=mock_client):
+    with patch("streamlit_app.services.backend_api.get_backend_client", return_value=mock_client), \
+         patch("streamlit_app.services.cached_data.get_documents_cached", return_value=MOCK_DOCS):
         at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py", default_timeout=30)
         at.session_state["IS_TESTING_BACKEND"] = True
         at.run()
@@ -107,12 +110,17 @@ def test_script_generation_flow(mock_client):
         mock_client.generate_script_stream.assert_called_with(
             knowledge_id="doc_1",
             model_name="gemini-2.5-flash-lite",
-            custom_prompt=None
+            custom_prompt=None,
+            template_ids=["pre_surgery"],
+            quick_instructions="",
+            system_prompt_override=None
         )
 
 def test_audio_generation_flow(mock_client):
     """Test selecting a voice and generating audio."""
-    with patch("streamlit_app.services.backend_api.get_backend_client", return_value=mock_client):
+    with patch("streamlit_app.services.backend_api.get_backend_client", return_value=mock_client), \
+         patch("streamlit_app.services.cached_data.get_documents_cached", return_value=MOCK_DOCS), \
+         patch("streamlit_app.services.cached_data.get_voices_cached", return_value=MOCK_VOICES):
         at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py", default_timeout=30)
         at.session_state["IS_TESTING_BACKEND"] = True
         at.run()
@@ -151,7 +159,8 @@ def test_audio_generation_flow(mock_client):
 
 def test_reset_on_document_change(mock_client):
     """Test that state resets when document selection changes."""
-    with patch("streamlit_app.services.backend_api.get_backend_client", return_value=mock_client):
+    with patch("streamlit_app.services.backend_api.get_backend_client", return_value=mock_client), \
+         patch("streamlit_app.services.cached_data.get_documents_cached", return_value=MOCK_DOCS):
         at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py", default_timeout=30)
         at.session_state["IS_TESTING_BACKEND"] = True
         at.run()
@@ -164,38 +173,77 @@ def test_reset_on_document_change(mock_client):
         assert at.text_area(key="script_editor_area").value == "Generated script"
         
         # Change document
-        # Update mock to include a second document
-        doc2 = replace(MOCK_DOCS[0], knowledge_id="doc_2", disease_name="Cold")
-        mock_client.get_knowledge_documents.return_value = [MOCK_DOCS[0], doc2]
+        # To test doc change, we need the page to reload with new docs.
+        # But AppTest is persistent. If we change what get_documents_cached returns, 
+        # normally cache would prevent reload unless we clear it.
+        # But since we are patching the cached function, subsequent calls might return new value
+        # IF the cache logic in wrapper is bypassed or we patch again.
         
-        at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py", default_timeout=30)
-        with patch("streamlit_app.services.backend_api.get_backend_client", return_value=mock_client):
-             at.session_state["IS_TESTING_BACKEND"] = True
-             at.run()
-             # Select first
-             at.selectbox[0].select("Flu").run()
+        # Actually, in AppTest, calling run() again re-executes the script.
+        # But the patch context manager might exit if we are not careful?
+        # No, we are inside `with patch` block.
+        
+        # Update what the patch returns?
+        # mock_client.get_knowledge_documents was used before.
+        # Now we need to update the return_value of the patch for get_documents_cached?
+        # That's tricky with the current structure.
+        
+        # Let's just create a new list for the second part.
+        doc2 = replace(MOCK_DOCS[0], knowledge_id="doc_2", disease_name="Cold")
+        new_docs = [MOCK_DOCS[0], doc2]
+        
+        # Note: patch(...) returns a Mock object.
+        # But here we used return_value=MOCK_DOCS in the constructor.
+        # To change it dynamically, we should start the patch, get the mock, and configure it.
+        pass
+
+    # Re-writing the test logic to support dynamic return values
+    with patch("streamlit_app.services.backend_api.get_backend_client", return_value=mock_client):
+        # We need to control cached_data mock
+        with patch("streamlit_app.services.cached_data.get_documents_cached") as mock_get_docs:
+            mock_get_docs.return_value = MOCK_DOCS
+            
+            at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py", default_timeout=30)
+            at.session_state["IS_TESTING_BACKEND"] = True
+            at.run()
+            
+            # Setup initial state
+            at.selectbox[0].select_index(0).run()
+            at.button(key="generate_script_btn").click().run()
              
-             at.button(key="generate_script_btn").click().run()
-             assert at.text_area(key="script_editor_area").value == "Generated script"
-             
-             # Select second
-             at.selectbox[0].select("Cold").run()
-             
-             # Script area should be gone or empty
-             # render_script_editor checks if session_state.selected_document, which it is.
-             # render_audio_generation checks if generated_script.
-             # If logic works, generated_script is reset to "".
-             # But render_script_editor renders text_area ONLY if generated_script is truthy.
-             
-             # So text_area should be missing or empty?
-             # My code: if st.session_state.generated_script: st.text_area(...)
-             
-             # So if reset works, text_area should NOT exist.
-             # Or len(at.text_area(key="script_editor_area")) should be failure or None?
-             
-             # AppTest accessor returns valid wrapper or empty?
-             # accessing at.text_area(key="...") returns an element wrapper.
-             # wrapper.value might raise if doesn't exist? Or return defaults?
-             # len(at.text_area) checks ALL text areas.
-             
-             assert len(at.text_area) == 0, f"Text area should be gone. Found {len(at.text_area)}"
+            # Verify script
+            assert at.text_area(key="script_editor_area").value == "Generated script"
+            
+            # Change document
+            doc2 = replace(MOCK_DOCS[0], knowledge_id="doc_2", disease_name="Cold")
+            new_docs = [MOCK_DOCS[0], doc2]
+            mock_get_docs.return_value = new_docs
+            
+            # Trigger a rerun or re-selection?
+            # Ideally streamlit cache would hold old value.
+            # But here we mocked the cached function itself.
+            # Does calling at.run() trigger a re-fetch?
+            # Only if cache invalidates?
+            # Actually st.cache_data logic is IN the decorator.
+            # If we patch the function `get_documents_cached` in `cached_data` module,
+            # we are patching the DECORATED function if it was already decorated at import time?
+            # Yes, imports happen at top level.
+            # `from streamlit_app.services.cached_data import get_documents_cached` imports the decorated object.
+            # `patch` replaces that object with a MagicMock.
+            # So the decorator logic (st.cache_data) IS LOST.
+            # Use `patch` replaces the object in the target module.
+            # If we patch `streamlit_app.services.cached_data.get_documents_cached`, we replace the decorated function with a plain Mock.
+            # So it will behave like a regular function call (no caching behavior in test, which is fine, usually better).
+            
+            # So updating return_value should work on next call.
+            at.run() # Rerun script to pick up new docs?
+            
+            # Select "Cold"
+            # Docs: "Flu", "Cold"
+            # "Flu" was selected.
+            at.selectbox[0].select("Cold").run()
+            
+            # Script area should be gone
+            # Filter for the specific key
+            script_areas = [ta for ta in at.text_area if ta.key == "script_editor_area"]
+            assert len(script_areas) == 0, f"Script text area should be gone. Found {len(script_areas)}"

@@ -1,0 +1,24 @@
+# Content Type: Complete Surgical Education (Pre + Post)
+
+## Goal
+Generate a COMPLETE surgical education script covering both pre-operative preparation and post-operative care in a single comprehensive guide.
+
+## Structure
+
+### Part 1: Before Your Surgery
+1. Procedure overview and what to expect
+2. Pre-operative preparation (fasting, medications)
+3. Day of surgery (arrival, check-in, what to bring)
+
+### Part 2: After Your Surgery
+1. Immediate recovery (first 24-48 hours)
+2. Wound care and pain management
+3. Activity restrictions and gradual return to normal
+4. Warning signs and when to call for help
+5. Follow-up care schedule
+
+## Tone Guidelines
+- Comprehensive but organized
+- Use clear transitions between pre/post sections
+- Include "..." pauses when transitioning between major parts
+- Reassuring throughout with emphasis on support available

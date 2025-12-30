@@ -46,7 +46,7 @@ def mock_data_service():
     voice_id=voice_id_strategy,
     knowledge_id=knowledge_id_strategy
 )
-@settings(max_examples=50) # Keep it faster for now
+
 async def test_audio_generation_produces_complete_metadata(
     script, voice_id, knowledge_id
 ):
@@ -96,7 +96,7 @@ async def test_audio_generation_produces_complete_metadata(
     voice_id=voice_id_strategy,
     knowledge_id=knowledge_id_strategy
 )
-@settings(max_examples=20) 
+ 
 async def test_upload_failure_prevents_metadata_persistence(
     script, voice_id, knowledge_id
 ):
@@ -130,7 +130,7 @@ async def test_upload_failure_prevents_metadata_persistence(
 @given(
     knowledge_id=knowledge_id_strategy
 )
-@settings(max_examples=20)
+
 async def test_audio_query_by_knowledge_id_returns_all_matching_records(
     knowledge_id
 ):
@@ -175,7 +175,7 @@ async def test_audio_query_by_knowledge_id_returns_all_matching_records(
         }), min_size=0, max_size=5
     )
 )
-@settings(max_examples=20)
+
 def test_voice_list_contains_required_fields(voices_data):
     # Setup
     elevenlabs = MagicMock()
@@ -204,7 +204,7 @@ def test_voice_list_contains_required_fields(voices_data):
 @given(
     knowledge_id=knowledge_id_strategy
 )
-@settings(max_examples=20)
+
 @pytest.mark.asyncio
 async def test_script_generation_response_structure(knowledge_id):
     # Setup
@@ -219,16 +219,30 @@ async def test_script_generation_response_structure(knowledge_id):
     
     data.get_knowledge_document.return_value = mock_doc
     
-    service = AudioService(data_service=data, elevenlabs_service=MagicMock(), storage_service=MagicMock())
+    mock_script_service = AsyncMock()
+    mock_script_service.generate_script.return_value = {
+        "script": "Patient Education Script for Flu:\n\nIntro to Flu",
+        "model_used": "test-model"
+    }
+
+    service = AudioService(
+        data_service=data, 
+        elevenlabs_service=MagicMock(), 
+        storage_service=MagicMock(),
+        script_service=mock_script_service
+    )
     
     # Execute
     script = await service.generate_script(knowledge_id)
     
     # Verify
-    assert isinstance(script, str)
-    assert len(script) > 0
-    assert "Flu" in script
-    assert "Intro to Flu" in script
+    assert isinstance(script, dict)
+    assert "script" in script
+    assert isinstance(script["script"], str)
+    assert len(script["script"]) > 0
+    assert "Flu" in script["script"]
+    assert "Intro to Flu" in script["script"]
     
     data.get_knowledge_document.assert_called_once_with(knowledge_id)
+    mock_script_service.generate_script.assert_called_once()
 

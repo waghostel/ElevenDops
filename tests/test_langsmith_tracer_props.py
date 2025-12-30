@@ -145,7 +145,7 @@ class TestSessionPersistence:
         assert "trace-2" in session.trace_ids
 
     @given(session_name=st.text(min_size=1, max_size=100))
-    @hypothesis_settings(max_examples=10)
+
     def test_any_valid_session_name_persists(self, session_name: str) -> None:
         """Property: Any valid session name creates a retrievable session."""
         reset_tracer()

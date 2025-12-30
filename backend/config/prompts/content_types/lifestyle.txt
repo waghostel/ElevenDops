@@ -1,0 +1,20 @@
+# Content Type: Lifestyle Guidance
+
+## Goal
+Generate a lifestyle education script that helps patients understand daily habits and self-care practices to manage their condition.
+
+## Required Sections
+1. **Introduction** - Importance of lifestyle in managing the condition
+2. **Diet** - Nutritional recommendations and foods to include/avoid
+3. **Exercise** - Physical activity recommendations and restrictions
+4. **Sleep** - Rest and sleep hygiene tips
+5. **Stress Management** - Relaxation techniques and mental health
+6. **Daily Routine** - Practical tips for integrating care into daily life
+7. **Support** - Resources and support systems available
+8. **Closing** - Encouragement and next steps
+
+## Tone Guidelines
+- Motivating and supportive
+- Practical with actionable tips
+- Non-judgmental and encouraging
+- Use phrases like "Small changes can make a big difference..." and "Consider trying..."

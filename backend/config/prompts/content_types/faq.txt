@@ -1,0 +1,24 @@
+# Content Type: Disease FAQ
+
+## Goal
+Generate a FAQ-style patient education script answering common questions about the disease or condition in an accessible Q&A format.
+
+## Format
+Structure the script as a series of natural questions and answers:
+- "A common question patients ask is: [question]"
+- "The answer is: [clear, simple answer]"
+
+## Required Topics (extract from document)
+1. What is this condition?
+2. What causes it?
+3. What are the symptoms?
+4. How is it diagnosed?
+5. What are the treatment options?
+6. What can I do at home to manage it?
+7. When should I see a doctor?
+
+## Tone Guidelines
+- Conversational Q&A format
+- Address patient worries and common misconceptions
+- Empathetic and educational
+- Use phrases like "You might be wondering..." and "Many patients ask..."

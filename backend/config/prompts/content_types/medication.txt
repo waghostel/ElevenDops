@@ -1,0 +1,20 @@
+# Content Type: Medication Instructions
+
+## Goal
+Generate a medication education script that helps patients understand how to properly take their prescribed medications.
+
+## Required Sections
+1. **Introduction** - Overview of the medication and its purpose
+2. **How to Take** - Dosage, timing, with/without food
+3. **What to Expect** - Expected effects and timeline
+4. **Side Effects** - Common side effects and what is normal
+5. **Interactions** - Foods, drinks, or other medications to avoid
+6. **Storage** - How to properly store the medication
+7. **Missed Dose** - What to do if a dose is missed
+8. **Warning Signs** - When to stop and contact the doctor
+
+## Tone Guidelines
+- Clear and precise
+- Safety-focused
+- Practical and actionable
+- Use phrases like "Take this medication..." and "If you experience..."

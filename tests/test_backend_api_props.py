@@ -65,7 +65,7 @@ class TestClientConfiguration:
             assert client.base_url == DEFAULT_BACKEND_URL
 
     @given(timeout=st.floats(min_value=0.1, max_value=60.0))
-    @settings(max_examples=10)
+
     def test_client_accepts_custom_timeout(self, timeout: float) -> None:
         """Property: Client accepts any positive timeout value."""
         client = BackendAPIClient(timeout=timeout)

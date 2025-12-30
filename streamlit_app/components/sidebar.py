@@ -94,16 +94,7 @@ def render_sidebar() -> None:
         
         st.divider()
         
-        # System status indicator
-        st.subheader("System Status")
-        if st.button("🔄 Refresh Data", use_container_width=True):
-            st.rerun()
-        
-        # Settings at the bottom
-        if st.button("⚙️ Settings", use_container_width=True):
-            st.toast("Settings page coming soon!", icon="⚙️")
-        
-        # Real Backend Health Check
+        # Real Backend Health Check - define before fragment
         import httpx
         import os
         
@@ -127,11 +118,31 @@ def render_sidebar() -> None:
                 return False
             except (httpx.ConnectError, httpx.TimeoutException, httpx.HTTPError):
                 return False
-
-        status = check_backend_status()
         
-        if status:
-            st.success("Backend: Online", icon="✅")
-        else:
-            st.error("Backend: Offline", icon="❌")
+        # System Status as isolated fragment - prevents full page re-render
+        @st.fragment
+        def render_system_status():
+            """Render system status section as an isolated fragment."""
+            st.subheader("System Status")
+            if st.button("🔄 Refresh Data", use_container_width=True):
+                # Clear cached data to force refresh without full page rerun
+                check_backend_status.clear()
+                # Clear document/voice caches if they exist
+                for key in list(st.session_state.keys()):
+                    if key.startswith("_") and key.endswith("_cache"):
+                        del st.session_state[key]
+                    if key.startswith("_") and key.endswith("_cache_time"):
+                        del st.session_state[key]
+            
+            # Settings at the bottom
+            if st.button("⚙️ Settings", use_container_width=True):
+                st.toast("Settings page coming soon!", icon="⚙️")
+            
+            status = check_backend_status()
+            if status:
+                st.success("Backend: Online", icon="✅")
+            else:
+                st.error("Backend: Offline", icon="❌")
+        
+        render_system_status()
     

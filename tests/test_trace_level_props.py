@@ -288,7 +288,7 @@ class TestTraceLevelConfiguration:
             set_current_trace(None)
 
     @given(level=st.sampled_from(["debug", "info", "error"]))
-    @hypothesis_settings(max_examples=3)
+
     def test_any_valid_level_records_steps(self, level: str) -> None:
         """Property: Any valid trace level records workflow steps."""
         get_settings.cache_clear()

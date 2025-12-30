@@ -1,0 +1,233 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.0, pytest-9.0.2, pluggy-1.6.0
+rootdir: C:\Users\Cheney\Documents\Github\ElevenDops
+configfile: pyproject.toml
+plugins: anyio-4.12.0, hypothesis-6.148.8, langsmith-0.5.1, asyncio-1.3.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 6 items
+
+tests\test_education_audio_integration.py ..FF                           [ 66%]
+tests\test_script_generation_frontend_props.py .F                        [100%]
+
+================================== FAILURES ===================================
+_________________________ test_audio_generation_flow __________________________
+
+mock_client = <MagicMock id='2116310586832'>
+
+    def test_audio_generation_flow(mock_client):
+        """Test selecting a voice and generating audio."""
+        with patch("streamlit_app.services.backend_api.get_backend_client", return_value=mock_client), \
+             patch("streamlit_app.services.cached_data.get_documents_cached", return_value=MOCK_DOCS), \
+             patch("streamlit_app.services.cached_data.get_voices_cached", return_value=MOCK_VOICES):
+            at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py", default_timeout=30)
+            at.session_state["IS_TESTING_BACKEND"] = True
+            at.run()
+    
+            # 1. Select Document
+            at.selectbox[0].select_index(0).run()
+    
+            # 2. Generate Script
+            at.button(key="generate_script_btn").click().run()
+    
+            # 3. Select Voice
+            # Voice selector should now be visible (index 1)
+            assert not at.error, f"Errors: {[e.value for e in at.error]}"
+>           assert not at.warning, f"Warnings: {[w.value for w in at.warning]}"
+E           AssertionError: Warnings: ["Could not load templates: object MagicMock can't be used in 'await' expression"]
+E           assert not ElementList(_list=[Warning()])
+E            +  where ElementList(_list=[Warning()]) = AppTest(\\n    _script_path='streamlit_app\\\\pages\\\\3_Education_Audio.py',\\n    default_timeout=30,\\n    session_state={$$I...ck(\\n            type='event',\\n            children={\\n                0: Toast(icon='\U0001f4dd')\\n            }\\n        )\\n    }\\n).warning
+
+tests\test_education_audio_integration.py:136: AssertionError
+---------------------------- Captured stderr call -----------------------------
+2025-12-30 02:00:43.701 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-30 02:00:43.701 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+________________________ test_reset_on_document_change ________________________
+
+mock_client = <MagicMock id='2116166739152'>
+
+    def test_reset_on_document_change(mock_client):
+        """Test that state resets when document selection changes."""
+        with patch("streamlit_app.services.backend_api.get_backend_client", return_value=mock_client), \
+             patch("streamlit_app.services.cached_data.get_documents_cached", return_value=MOCK_DOCS):
+            at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py", default_timeout=30)
+            at.session_state["IS_TESTING_BACKEND"] = True
+            at.run()
+    
+            # Setup initial state
+            at.selectbox[0].select_index(0).run()
+            at.button(key="generate_script_btn").click().run()
+    
+            # Verify script
+            assert at.text_area(key="script_editor_area").value == "Generated script"
+    
+            # Change document
+            # To test doc change, we need the page to reload with new docs.
+            # But AppTest is persistent. If we change what get_documents_cached returns,
+            # normally cache would prevent reload unless we clear it.
+            # But since we are patching the cached function, subsequent calls might return new value
+            # IF the cache logic in wrapper is bypassed or we patch again.
+    
+            # Actually, in AppTest, calling run() again re-executes the script.
+            # But the patch context manager might exit if we are not careful?
+            # No, we are inside `with patch` block.
+    
+            # Update what the patch returns?
+            # mock_client.get_knowledge_documents was used before.
+            # Now we need to update the return_value of the patch for get_documents_cached?
+            # That's tricky with the current structure.
+    
+            # Let's just create a new list for the second part.
+            doc2 = replace(MOCK_DOCS[0], knowledge_id="doc_2", disease_name="Cold")
+            new_docs = [MOCK_DOCS[0], doc2]
+    
+            # Note: patch(...) returns a Mock object.
+            # But here we used return_value=MOCK_DOCS in the constructor.
+            # To change it dynamically, we should start the patch, get the mock, and configure it.
+            pass
+    
+        # Re-writing the test logic to support dynamic return values
+        with patch("streamlit_app.services.backend_api.get_backend_client", return_value=mock_client):
+            # We need to control cached_data mock
+            with patch("streamlit_app.services.cached_data.get_documents_cached") as mock_get_docs:
+                mock_get_docs.return_value = MOCK_DOCS
+    
+                at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py", default_timeout=30)
+                at.session_state["IS_TESTING_BACKEND"] = True
+                at.run()
+    
+                # Setup initial state
+                at.selectbox[0].select_index(0).run()
+                at.button(key="generate_script_btn").click().run()
+    
+                # Verify script
+                assert at.text_area(key="script_editor_area").value == "Generated script"
+    
+                # Change document
+                doc2 = replace(MOCK_DOCS[0], knowledge_id="doc_2", disease_name="Cold")
+                new_docs = [MOCK_DOCS[0], doc2]
+                mock_get_docs.return_value = new_docs
+    
+                # Trigger a rerun or re-selection?
+                # Ideally streamlit cache would hold old value.
+                # But here we mocked the cached function itself.
+                # Does calling at.run() trigger a re-fetch?
+                # Only if cache invalidates?
+                # Actually st.cache_data logic is IN the decorator.
+                # If we patch the function `get_documents_cached` in `cached_data` module,
+                # we are patching the DECORATED function if it was already decorated at import time?
+                # Yes, imports happen at top level.
+                # `from streamlit_app.services.cached_data import get_documents_cached` imports the decorated object.
+                # `patch` replaces that object with a MagicMock.
+                # So the decorator logic (st.cache_data) IS LOST.
+                # Use `patch` replaces the object in the target module.
+                # If we patch `streamlit_app.services.cached_data.get_documents_cached`, we replace the decorated function with a plain Mock.
+                # So it will behave like a regular function call (no caching behavior in test, which is fine, usually better).
+    
+                # So updating return_value should work on next call.
+                at.run() # Rerun script to pick up new docs?
+    
+                # Select "Cold"
+                # Docs: "Flu", "Cold"
+                # "Flu" was selected.
+                at.selectbox[0].select("Cold").run()
+    
+>               assert len(at.text_area) == 0, f"Text area should be gone. Found {len(at.text_area)}"
+E               AssertionError: Text area should be gone. Found 1
+E               assert 1 == 0
+E                +  where 1 = len(WidgetList(_list=[TextArea(_value=InitialValue(), label='\U0001f4ac Additional Instructions', placeholder='e.g., Focus on elderly patients, use simple language...', help='Add extra instructions without modifying templates')]))
+E                +    where WidgetList(_list=[TextArea(_value=InitialValue(), label='\U0001f4ac Additional Instructions', placeholder='e.g., Focus on elderly patients, use simple language...', help='Add extra instructions without modifying templates')]) = AppTest(\\n    _script_path='streamlit_app\\\\pages\\\\3_Education_Audio.py',\\n    default_timeout=30,\\n    session_state={$$I...       }\\n                )\\n            }\\n        ),\\n        2: SpecialBlock(\\n            type='event'\\n        )\\n    }\\n).text_area
+
+tests\test_education_audio_integration.py:245: AssertionError
+---------------------------- Captured stderr call -----------------------------
+2025-12-30 02:00:43.886 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-30 02:00:43.887 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-30 02:00:44.054 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-30 02:00:44.054 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+______________________ test_script_generation_parameters ______________________
+
+mock_client = <MagicMock id='2116166989776'>
+
+    def test_script_generation_parameters(mock_client):
+        """Verify parameters passed to backend."""
+        with patch("streamlit_app.services.backend_api.get_backend_client", return_value=mock_client), \
+             patch("streamlit_app.services.cached_data.get_documents_cached", return_value=MOCK_DOCS):
+            at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py", default_timeout=30)
+            at.session_state["IS_TESTING_BACKEND"] = True
+            at.run()
+    
+            # Select Doc
+            at.selectbox[0].select_index(0).run()
+    
+            # Select Model (valid option)
+            at.selectbox[1].select("gemini-3-pro-preview").run()
+    
+            # Set custom prompt directly in session state since dialog testing is hard
+            at.session_state.custom_prompt = "My custom prompt"
+            at.run()
+    
+            # Click Generate
+            at.button(key="generate_script_btn").click().run()
+    
+            # Check backend call - assert on generate_script_stream
+>           mock_client.generate_script_stream.assert_called_with(
+                knowledge_id="doc_1",
+                model_name="gemini-3-pro-preview",
+                custom_prompt="My custom prompt",
+                template_ids=["pre_surgery"],
+                quick_instructions="",
+                system_prompt_override=None
+            )
+
+tests\test_script_generation_frontend_props.py:100: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <MagicMock name='mock.generate_script_stream' id='2116311490128'>
+args = ()
+kwargs = {'custom_prompt': 'My custom prompt', 'knowledge_id': 'doc_1', 'model_name': 'gemini-3-pro-preview', 'quick_instructions': '', ...}
+expected = call(knowledge_id='doc_1', model_name='gemini-3-pro-preview', custom_prompt='My custom prompt', template_ids=['pre_surgery'], quick_instructions='', system_prompt_override=None)
+actual = call(knowledge_id='doc_1', model_name='gemini-3-pro-preview', custom_prompt=None, template_ids=['pre_surgery'], quick_instructions='', system_prompt_override=None)
+_error_message = <function NonCallableMock.assert_called_with.<locals>._error_message at 0x000001ECBE0E2340>
+cause = None
+
+    def assert_called_with(self, /, *args, **kwargs):
+        """assert that the last call was made with the specified arguments.
+    
+        Raises an AssertionError if the args and keyword args passed in are
+        different to the last call to the mock."""
+        if self.call_args is None:
+            expected = self._format_mock_call_signature(args, kwargs)
+            actual = 'not called.'
+            error_message = ('expected call not found.\nExpected: %s\nActual: %s'
+                    % (expected, actual))
+            raise AssertionError(error_message)
+    
+        def _error_message():
+            msg = self._format_mock_failure_message(args, kwargs)
+            return msg
+        expected = self._call_matcher(_Call((args, kwargs), two=True))
+        actual = self._call_matcher(self.call_args)
+        if actual != expected:
+            cause = expected if isinstance(expected, Exception) else None
+>           raise AssertionError(_error_message()) from cause
+E           AssertionError: expected call not found.
+E           Expected: generate_script_stream(knowledge_id='doc_1', model_name='gemini-3-pro-preview', custom_prompt='My custom prompt', template_ids=['pre_surgery'], quick_instructions='', system_prompt_override=None)
+E           Actual: generate_script_stream(knowledge_id='doc_1', model_name='gemini-3-pro-preview', custom_prompt=None, template_ids=['pre_surgery'], quick_instructions='', system_prompt_override=None)
+
+..\..\..\AppData\Local\Programs\Python\Python311\Lib\unittest\mock.py:923: AssertionError
+---------------------------- Captured stderr call -----------------------------
+2025-12-30 02:00:44.522 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-30 02:00:44.523 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+2025-12-30 02:00:44.681 Thread 'MainThread': missing ScriptRunContext! This warning can be ignored when running in bare mode.
+============================== warnings summary ===============================
+tests/test_education_audio_integration.py::test_script_generation_flow
+  C:\Users\Cheney\Documents\Github\ElevenDops\streamlit_app\services\cached_data.py:58: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    return []
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_education_audio_integration.py::test_audio_generation_flow
+FAILED tests/test_education_audio_integration.py::test_reset_on_document_change
+FAILED tests/test_script_generation_frontend_props.py::test_script_generation_parameters
+=================== 3 failed, 3 passed, 1 warning in 2.92s ====================

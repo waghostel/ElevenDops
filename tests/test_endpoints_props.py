@@ -112,7 +112,7 @@ class TestHealthEndpointProperties:
         assert isinstance(data["version"], str)
         assert len(data["version"]) > 0
 
-    @settings(max_examples=10)
+
     @given(st.just(None))
     def test_health_endpoint_response_structure_consistent(self, _: None) -> None:
         """Property: Health endpoint always returns consistent structure."""
@@ -171,7 +171,7 @@ class TestDashboardStatsEndpointProperties:
         timestamp = datetime.fromisoformat(data["last_activity"])
         assert isinstance(timestamp, datetime)
 
-    @settings(max_examples=10)
+
     @given(st.just(None))
     def test_dashboard_stats_response_structure_consistent(self, _: None) -> None:
         """Property: Dashboard stats always returns complete structure."""

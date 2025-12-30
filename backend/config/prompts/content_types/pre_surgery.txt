@@ -1,0 +1,18 @@
+# Content Type: Pre-Surgery Education
+
+## Goal
+Generate a PRE-SURGERY patient education script that helps patients prepare for their upcoming procedure.
+
+## Required Sections
+1. **Opening** - Warm welcome and introduction to the procedure
+2. **What to Expect** - Brief overview of the surgery/procedure
+3. **Pre-operative Preparation** - Fasting requirements, medications to stop/continue
+4. **Day of Surgery** - What to bring, arrival time, check-in process
+5. **Questions to Ask** - Encourage patient engagement with their care team
+6. **Closing** - Reassurance and contact information for concerns
+
+## Tone Guidelines
+- Reassuring and calming (patients may be anxious)
+- Informative but not overwhelming
+- Empowering the patient with actionable steps
+- Use phrases like "You can expect..." and "To prepare..."

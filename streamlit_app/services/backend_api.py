@@ -23,6 +23,9 @@ from streamlit_app.services.models import (
     ScriptResponse,
     AudioResponse,
     VoiceOption,
+    TemplateInfo,
+    TemplateConfig,
+    CustomTemplateCreate,
     AgentConfig,
     PatientSession,
     PatientSession,
@@ -411,7 +414,10 @@ class BackendAPIClient:
         self,
         knowledge_id: str,
         model_name: str = "gemini-2.5-flash",
-        custom_prompt: Optional[str] = None
+        custom_prompt: Optional[str] = None,
+        template_ids: Optional[List[str]] = None,
+        quick_instructions: Optional[str] = None,
+        system_prompt_override: Optional[str] = None
     ) -> AsyncGenerator[dict, None]:
         """Stream script generation with Server-Sent Events.
         
@@ -422,7 +428,10 @@ class BackendAPIClient:
         Args:
             knowledge_id: ID of the knowledge document.
             model_name: Gemini model to use.
-            custom_prompt: Optional custom prompt.
+            custom_prompt: Optional custom prompt (legacy support).
+            template_ids: Optional list of template IDs in display order.
+            quick_instructions: Optional additional instructions to inject.
+            system_prompt_override: Optional custom base system prompt.
             
         Yields:
             dict events with type: 'token', 'complete', or 'error'
@@ -430,8 +439,17 @@ class BackendAPIClient:
         payload = {
             "knowledge_id": knowledge_id,
             "model_name": model_name,
-            "custom_prompt": custom_prompt
         }
+        
+        # Build template_config if templates are specified
+        if template_ids:
+            payload["template_config"] = {
+                "template_ids": template_ids,
+                "quick_instructions": quick_instructions,
+                "system_prompt_override": system_prompt_override
+            }
+        elif custom_prompt:
+            payload["custom_prompt"] = custom_prompt
         
         try:
             async with self._get_llm_client() as client:
@@ -554,6 +572,189 @@ class BackendAPIClient:
         except httpx.HTTPStatusError as e:
             raise APIError(
                 message=f"Failed to fetch voices: {self._parse_error_message(e.response)}",
+                status_code=e.response.status_code,
+            ) from e
+
+    async def get_templates(self) -> List[TemplateInfo]:
+        """Get available prompt templates.
+
+        Returns:
+            List of TemplateInfo objects with template metadata.
+        """
+        try:
+            async with self._get_client() as client:
+                response = await client.get("/api/templates")
+                response.raise_for_status()
+                data = response.json()
+                return [
+                    TemplateInfo(
+                        template_id=t["template_id"],
+                        display_name=t["display_name"],
+                        description=t["description"],
+                        category=t["category"],
+                        preview=t.get("preview", ""),
+                    )
+                    for t in data
+                ]
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Failed to fetch templates: {self._parse_error_message(e.response)}",
+                status_code=e.response.status_code,
+            ) from e
+
+    async def preview_combined_prompt(
+        self, 
+        template_ids: List[str],
+        quick_instructions: Optional[str] = None
+    ) -> str:
+        """Preview the combined prompt without generating a script.
+
+        Args:
+            template_ids: List of template IDs in display order.
+            quick_instructions: Optional additional instructions.
+
+        Returns:
+            Combined prompt string.
+        """
+        try:
+            payload = {
+                "template_ids": template_ids,
+                "quick_instructions": quick_instructions
+            }
+            async with self._get_client() as client:
+                response = await client.post("/api/templates/preview", json=payload)
+                response.raise_for_status()
+                data = response.json()
+                return data.get("combined_prompt", "")
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Failed to preview prompt: {self._parse_error_message(e.response)}",
+                status_code=e.response.status_code,
+            ) from e
+
+    async def create_custom_template(self, template: CustomTemplateCreate) -> TemplateInfo:
+        """Create a new custom template.
+        
+        Args:
+            template: Custom template creation data.
+            
+        Returns:
+            Created template info.
+        """
+        try:
+            payload = {
+                "display_name": template.display_name,
+                "description": template.description,
+                "content": template.content
+            }
+            async with self._get_client() as client:
+                response = await client.post("/api/templates", json=payload)
+                response.raise_for_status()
+                data = response.json()
+                return TemplateInfo(
+                    template_id=data["template_id"],
+                    display_name=data["display_name"],
+                    description=data["description"],
+                    category=data["category"],
+                    preview=data.get("preview", ""),
+                )
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Failed to create template: {self._parse_error_message(e.response)}",
+                status_code=e.response.status_code,
+            ) from e
+
+    async def delete_custom_template(self, template_id: str) -> bool:
+        """Delete a custom template.
+        
+        Args:
+            template_id: Template ID to delete.
+            
+        Returns:
+            True if successful.
+        """
+        try:
+            async with self._get_client() as client:
+                response = await client.delete(f"/api/templates/{template_id}")
+                response.raise_for_status()
+                return True
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Failed to delete template: {self._parse_error_message(e.response)}",
+                status_code=e.response.status_code,
+            ) from e
+
+    async def update_custom_template(
+        self, template_id: str, display_name: Optional[str] = None,
+        description: Optional[str] = None, content: Optional[str] = None
+    ) -> TemplateInfo:
+        """Update a custom template.
+        
+        Args:
+            template_id: Template ID to update.
+            display_name: New display name (optional).
+            description: New description (optional).
+            content: New content (optional).
+            
+        Returns:
+            Updated template info.
+        """
+        try:
+            payload = {}
+            if display_name is not None:
+                payload["display_name"] = display_name
+            if description is not None:
+                payload["description"] = description
+            if content is not None:
+                payload["content"] = content
+                
+            async with self._get_client() as client:
+                response = await client.put(f"/api/templates/{template_id}", json=payload)
+                response.raise_for_status()
+                data = response.json()
+                return TemplateInfo(
+                    template_id=data["template_id"],
+                    display_name=data["display_name"],
+                    description=data["description"],
+                    category=data["category"],
+                    preview=data.get("preview", ""),
+                )
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Failed to update template: {self._parse_error_message(e.response)}",
+                status_code=e.response.status_code,
+            ) from e
+
+    async def get_template_content(self, template_id: str) -> str:
+        """Get full template content.
+        
+        Args:
+            template_id: Template ID.
+            
+        Returns:
+            Full template content string.
+        """
+        try:
+            async with self._get_client() as client:
+                response = await client.get(f"/api/templates/{template_id}")
+                response.raise_for_status()
+                data = response.json()
+                return data.get("content", "")
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Failed to get template content: {self._parse_error_message(e.response)}",
                 status_code=e.response.status_code,
             ) from e
 

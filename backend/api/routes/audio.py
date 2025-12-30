@@ -37,7 +37,8 @@ async def generate_script(
         result = await service.generate_script(
             knowledge_id=request.knowledge_id,
             model_name=request.model_name,
-            custom_prompt=request.custom_prompt
+            custom_prompt=request.custom_prompt,
+            template_config=request.template_config
         )
         return ScriptGenerateResponse(
             script=result["script"],
@@ -76,7 +77,8 @@ async def generate_script_stream(
             async for event in service.generate_script_stream(
                 knowledge_id=request.knowledge_id,
                 model_name=request.model_name,
-                custom_prompt=request.custom_prompt
+                custom_prompt=request.custom_prompt,
+                template_config=request.template_config
             ):
                 # Format as Server-Sent Event
                 yield f"data: {json.dumps(event)}\n\n"

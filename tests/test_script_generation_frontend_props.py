@@ -46,13 +46,16 @@ def mock_client():
     client.get_available_voices = AsyncMock(return_value=MOCK_VOICES)
     # Mock the stream method instead of the sync/async value method
     client.generate_script_stream = MagicMock(side_effect=mock_script_stream)
+    client.generate_script_stream = MagicMock(side_effect=mock_script_stream)
     client.get_audio_files = AsyncMock(return_value=[])
+    client.get_templates = AsyncMock(return_value=[])
     client.health_check = AsyncMock(return_value={"status": "ok"})
     return client
 
 def test_configuration_persistence(mock_client):
     """Property 1: Configuration Persistence."""
-    with patch("streamlit_app.services.backend_api.get_backend_client", return_value=mock_client):
+    with patch("streamlit_app.services.backend_api.get_backend_client", return_value=mock_client), \
+         patch("streamlit_app.services.cached_data.get_documents_cached", return_value=MOCK_DOCS):
         at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py", default_timeout=30)
         at.session_state["IS_TESTING_BACKEND"] = True
         at.run()
@@ -76,7 +79,8 @@ def test_configuration_persistence(mock_client):
 
 def test_script_generation_parameters(mock_client):
     """Verify parameters passed to backend."""
-    with patch("streamlit_app.services.backend_api.get_backend_client", return_value=mock_client):
+    with patch("streamlit_app.services.backend_api.get_backend_client", return_value=mock_client), \
+         patch("streamlit_app.services.cached_data.get_documents_cached", return_value=MOCK_DOCS):
         at = AppTest.from_file("streamlit_app/pages/3_Education_Audio.py", default_timeout=30)
         at.session_state["IS_TESTING_BACKEND"] = True
         at.run()
@@ -89,6 +93,8 @@ def test_script_generation_parameters(mock_client):
         
         # Set custom prompt directly in session state since dialog testing is hard
         at.session_state.custom_prompt = "My custom prompt"
+        # Disable template mode to ensure custom prompt is used
+        at.session_state.use_template_mode = False
         at.run()
         
         # Click Generate
@@ -98,5 +104,8 @@ def test_script_generation_parameters(mock_client):
         mock_client.generate_script_stream.assert_called_with(
             knowledge_id="doc_1",
             model_name="gemini-3-pro-preview",
-            custom_prompt="My custom prompt"
+            custom_prompt="My custom prompt",
+            template_ids=None,
+            quick_instructions=None,
+            system_prompt_override=None
         )

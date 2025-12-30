@@ -162,7 +162,7 @@ def storage_service():
 class TestStorageServiceIntegration:
     """Integration tests requiring GCS emulator."""
     
-    @settings(max_examples=5, suppress_health_check=[HealthCheck.function_scoped_fixture])
+
     @given(audio_data=s_audio_bytes(), filename=s_valid_filename())
     def test_property_2_upload_produces_correct_url(self, storage_service, audio_data, filename):
         """Test upload produces correct storage and URL format."""
@@ -183,7 +183,7 @@ class TestStorageServiceIntegration:
         # Clean up
         storage_service.delete_audio(filename)
     
-    @settings(max_examples=5, suppress_health_check=[HealthCheck.function_scoped_fixture])
+
     @given(audio_data=s_audio_bytes(), filename=s_valid_filename())
     def test_property_3_upload_then_delete_roundtrip(self, storage_service, audio_data, filename):
         """Test upload then delete round-trip."""
@@ -247,7 +247,7 @@ class TestStorageServiceIntegration:
 class TestStorageServiceMocked:
     """Tests using mocked GCS client."""
     
-    @settings(max_examples=10)
+
     @given(filename=s_valid_filename())
     def test_upload_audio_sets_correct_content_type(self, filename):
         """Test that upload_audio sets content type to audio/mpeg."""
@@ -262,6 +262,7 @@ class TestStorageServiceMocked:
                 mock_settings_instance.gcs_emulator_host = "http://localhost:4443"
                 mock_settings_instance.gcs_bucket_name = "test-bucket"
                 mock_settings_instance.google_cloud_project = "test-project"
+                mock_settings_instance.use_mock_storage = False
                 mock_settings.return_value = mock_settings_instance
                 
                 mock_client = MagicMock()
@@ -290,7 +291,7 @@ class TestStorageServiceMocked:
                 call_args = mock_blob.upload_from_string.call_args
                 assert call_args[1]['content_type'] == 'audio/mpeg'
     
-    @settings(max_examples=10)
+
     @given(filename=s_valid_filename())
     def test_upload_audio_uses_audio_prefix(self, filename):
         """Test that upload_audio stores files with audio/ prefix."""
@@ -305,6 +306,7 @@ class TestStorageServiceMocked:
                 mock_settings_instance.gcs_emulator_host = "http://localhost:4443"
                 mock_settings_instance.gcs_bucket_name = "test-bucket"
                 mock_settings_instance.google_cloud_project = "test-project"
+                mock_settings_instance.use_mock_storage = False
                 mock_settings.return_value = mock_settings_instance
                 
                 mock_client = MagicMock()

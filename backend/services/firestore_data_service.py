@@ -4,7 +4,7 @@ from typing import List, Optional
 import uuid
 import re
 
-from google.cloud import firestore
+import google.cloud.firestore as firestore
 from google.cloud.firestore import SERVER_TIMESTAMP
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from google.api_core.exceptions import GoogleAPICallError, RetryError
@@ -24,6 +24,9 @@ from backend.models.schemas import (
     AudioMetadata,
     AgentResponse,
     AnswerStyle,
+    CustomTemplateCreate,
+    CustomTemplateUpdate,
+    CustomTemplateResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -33,7 +36,9 @@ KNOWLEDGE_DOCUMENTS = "knowledge_documents"
 AUDIO_FILES = "audio_files"
 AGENTS = "agents"
 CONVERSATIONS = "conversations"
+CONVERSATIONS = "conversations"
 PATIENT_SESSIONS = "patient_sessions"
+CUSTOM_TEMPLATES = "custom_templates"
 
 
 class FirestoreDataService(DataServiceInterface):
@@ -668,3 +673,109 @@ class FirestoreDataService(DataServiceInterface):
         except Exception as e:
             logger.error(f"Failed to get attention percentage: {e}")
             return 0.0
+
+    # ==================== Custom Templates ====================
+    def _doc_to_custom_template_response(self, doc_dict: dict) -> CustomTemplateResponse:
+        """Convert Firestore document to CustomTemplateResponse."""
+        return CustomTemplateResponse(
+            template_id=doc_dict["template_id"],
+            display_name=doc_dict["display_name"],
+            description=doc_dict["description"],
+            category=doc_dict["category"],
+            preview=doc_dict.get("preview", doc_dict["content"][:200]),
+            content=doc_dict["content"],
+            created_by=doc_dict.get("created_by"),
+            created_at=doc_dict["created_at"],
+        )
+
+    async def create_custom_template(
+        self, template: CustomTemplateCreate, user_id: str = "default_user"
+    ) -> CustomTemplateResponse:
+        """Create a new custom template."""
+        try:
+            template_id = str(uuid.uuid4())
+            now = datetime.now()
+            
+            doc_data = {
+                "template_id": template_id,
+                "display_name": template.display_name,
+                "description": template.description,
+                "content": template.content,
+                "category": "custom",
+                "preview": template.content[:200],
+                "created_by": user_id,
+                "created_at": now,  # We use local time for immediate return, Firestore will store Timestamp
+            }
+            
+            # Using set with merge=True concept or specific ID
+            self._db.collection(CUSTOM_TEMPLATES).document(template_id).set(doc_data)
+            
+            return self._doc_to_custom_template_response(doc_data)
+        except Exception as e:
+            logger.error(f"Failed to create custom template: {e}")
+            raise
+
+    async def get_custom_templates(self, user_id: Optional[str] = None) -> List[CustomTemplateResponse]:
+        """Get all custom templates, optionally filtered by user."""
+        try:
+            ref = self._db.collection(CUSTOM_TEMPLATES)
+            if user_id:
+                ref = ref.where(filter=firestore.FieldFilter("created_by", "==", user_id))
+            
+            # Order by created_at desc
+            ref = ref.order_by("created_at", direction=firestore.Query.DESCENDING)
+            
+            docs = ref.stream()
+            return [self._doc_to_custom_template_response(d.to_dict()) for d in docs]
+        except Exception as e:
+            logger.error(f"Failed to get custom templates: {e}")
+            return []
+
+    async def get_custom_template(self, template_id: str) -> Optional[CustomTemplateResponse]:
+        """Get a specific custom template."""
+        try:
+            doc = self._db.collection(CUSTOM_TEMPLATES).document(template_id).get()
+            if not doc.exists:
+                return None
+            return self._doc_to_custom_template_response(doc.to_dict())
+        except Exception as e:
+            logger.error(f"Failed to get custom template {template_id}: {e}")
+            return None
+
+    async def update_custom_template(
+        self, template_id: str, update_data: CustomTemplateUpdate
+    ) -> Optional[CustomTemplateResponse]:
+        """Update a custom template."""
+        try:
+            doc_ref = self._db.collection(CUSTOM_TEMPLATES).document(template_id)
+            doc_snap = doc_ref.get()
+            if not doc_snap.exists:
+                return None
+            
+            updates = update_data.model_dump(exclude_unset=True)
+            if not updates:
+                return self._doc_to_custom_template_response(doc_snap.to_dict())
+            
+            # Update preview if content changed
+            if "content" in updates:
+                updates["preview"] = updates["content"][:200]
+            
+            doc_ref.update(updates)
+            
+            updated_snap = doc_ref.get()
+            return self._doc_to_custom_template_response(updated_snap.to_dict())
+        except Exception as e:
+            logger.error(f"Failed to update custom template {template_id}: {e}")
+            return None
+
+    async def delete_custom_template(self, template_id: str) -> bool:
+        """Delete a custom template."""
+        try:
+            doc_ref = self._db.collection(CUSTOM_TEMPLATES).document(template_id)
+            if not doc_ref.get().exists:
+                return False
+            doc_ref.delete()
+            return True
+        except Exception as e:
+            logger.error(f"Failed to delete custom template {template_id}: {e}")
+            return False

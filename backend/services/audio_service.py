@@ -8,10 +8,12 @@ from typing import List, Optional, AsyncGenerator
 from backend.models.schemas import AudioMetadata, VoiceOption
 from backend.services.elevenlabs_service import ElevenLabsService, get_elevenlabs_service
 from backend.services.storage_service import StorageService, get_storage_service
-from backend.services.firestore_data_service import FirestoreDataService
+from backend.services.data_service import get_data_service, DataServiceInterface
 
 from backend.services.script_generation_service import ScriptGenerationService
+from backend.services.prompt_template_service import get_prompt_template_service
 from backend.config import get_default_script_prompt, GEMINI_MODELS
+from backend.models.schemas import TemplateConfig
 
 # In-memory storage is removed in favor of FirestoreDataService
 
@@ -22,7 +24,7 @@ class AudioService:
         self, 
         elevenlabs_service: Optional[ElevenLabsService] = None,
         storage_service: Optional[StorageService] = None,
-        data_service: Optional[FirestoreDataService] = None,
+        data_service: Optional[DataServiceInterface] = None,
         script_service: Optional[ScriptGenerationService] = None
     ):
         """Initialize audio service.
@@ -34,22 +36,24 @@ class AudioService:
         """
         self.elevenlabs_service = elevenlabs_service or get_elevenlabs_service()
         self.storage_service = storage_service or get_storage_service()
-        # FirestoreDataService is a singleton class, so we can instantiate it directly if not provided
-        self.data_service = data_service or FirestoreDataService()
+        # Use get_data_service() to respect environment variables (mock vs real DB)
+        self.data_service = data_service or get_data_service()
         self.script_service = script_service or ScriptGenerationService()
 
     async def generate_script(
         self, 
         knowledge_id: str, 
         model_name: str = "gemini-2.5-flash",
-        custom_prompt: Optional[str] = None
+        custom_prompt: Optional[str] = None,
+        template_config: Optional[TemplateConfig] = None
     ) -> dict:
         """Generate a script from a knowledge document.
         
         Args:
             knowledge_id: ID of the knowledge document.
             model_name: Gemini model to use.
-            custom_prompt: Optional custom prompt.
+            custom_prompt: Optional custom prompt (legacy support).
+            template_config: Optional template configuration for building prompt.
             
         Returns:
             dict: {"script": str, "model_used": str}
@@ -63,9 +67,17 @@ class AudioService:
         if not doc:
             logging.warning(f"Knowledge document not found: {knowledge_id}")
             raise ValueError(f"Knowledge document {knowledge_id} not found")
-            
-        # Use AI Script Generation Service
-        prompt = custom_prompt or get_default_script_prompt()
+        
+        # Build prompt: prefer template_config > custom_prompt > default
+        if template_config:
+            template_service = get_prompt_template_service()
+            prompt = await template_service.build_prompt(
+                template_ids=template_config.template_ids,
+                quick_instructions=template_config.quick_instructions,
+            )
+            logging.info(f"Using template config with {len(template_config.template_ids)} templates")
+        else:
+            prompt = custom_prompt or get_default_script_prompt()
         
         # Map friendly name to API model name
         api_model_name = GEMINI_MODELS.get(model_name, model_name)
@@ -109,7 +121,8 @@ class AudioService:
         self,
         knowledge_id: str,
         model_name: str = "gemini-2.5-flash",
-        custom_prompt: Optional[str] = None
+        custom_prompt: Optional[str] = None,
+        template_config: Optional[TemplateConfig] = None
     ) -> AsyncGenerator[dict, None]:
         """Stream script generation from a knowledge document.
         
@@ -120,7 +133,8 @@ class AudioService:
         Args:
             knowledge_id: ID of the knowledge document.
             model_name: Gemini model to use.
-            custom_prompt: Optional custom prompt.
+            custom_prompt: Optional custom prompt (legacy support).
+            template_config: Optional template configuration for building prompt.
             
         Yields:
             dict events with type: 'token', 'complete', or 'error'
@@ -133,7 +147,18 @@ class AudioService:
             yield {"type": "error", "message": f"Knowledge document {knowledge_id} not found"}
             return
         
-        prompt = custom_prompt or get_default_script_prompt()
+        # Build prompt: prefer template_config > custom_prompt > default
+        if template_config:
+            template_service = get_prompt_template_service()
+            prompt = await template_service.build_prompt(
+                template_ids=template_config.template_ids,
+                quick_instructions=template_config.quick_instructions,
+                system_prompt_override=template_config.system_prompt_override,
+            )
+            logging.info(f"Using template config with {len(template_config.template_ids)} templates")
+        else:
+            prompt = custom_prompt or get_default_script_prompt()
+        
         api_model_name = GEMINI_MODELS.get(model_name, model_name)
         
         async for event in self.script_service.generate_script_stream(

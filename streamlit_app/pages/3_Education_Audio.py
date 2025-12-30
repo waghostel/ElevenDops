@@ -6,7 +6,6 @@ from knowledge documents using ElevenLabs TTS.
 
 import asyncio
 import logging
-import time
 from typing import List, Optional
 
 import streamlit as st
@@ -16,6 +15,12 @@ from streamlit_app.services.models import (
     AudioResponse,
     KnowledgeDocument,
     VoiceOption,
+    CustomTemplateCreate,
+)
+from streamlit_app.services.cached_data import (
+    get_documents_cached,
+    get_voices_cached,
+    run_async,
 )
 from streamlit_app.components.sidebar import render_sidebar
 from streamlit_app.components.footer import render_footer
@@ -28,7 +33,6 @@ render_sidebar()
 # Initialize client
 client = get_backend_client()
 
-# Session state initialization
 if "selected_document" not in st.session_state:
     st.session_state.selected_document = None
 if "generated_script" not in st.session_state:
@@ -41,11 +45,46 @@ if "selected_llm_model" not in st.session_state:
     st.session_state.selected_llm_model = "gemini-2.5-flash-lite"
 if "custom_prompt" not in st.session_state:
     st.session_state.custom_prompt = None
+if "selected_templates" not in st.session_state:
+    st.session_state.selected_templates = ["pre_surgery"]
+if "quick_instructions" not in st.session_state:
+    st.session_state.quick_instructions = ""
+if "use_template_mode" not in st.session_state:
+    st.session_state.use_template_mode = True
+if "available_templates" not in st.session_state:
+    st.session_state.available_templates = []
+if "custom_system_prompt" not in st.session_state:
+    st.session_state.custom_system_prompt = None
+# Pending template operations (for async handling outside dialogs)
+if "_pending_template_op" not in st.session_state:
+    st.session_state._pending_template_op = None
 
 
-# Cache settings
-DOCUMENTS_CACHE_TTL = 30  # seconds
-VOICES_CACHE_TTL = 300  # 5 minutes
+# Process pending template operations (triggered by dialog form submissions)
+if st.session_state._pending_template_op:
+    op = st.session_state._pending_template_op
+    st.session_state._pending_template_op = None
+    
+    try:
+        if op["action"] == "create":
+            run_async(client.create_custom_template(op["template"]))
+            st.toast("Template created successfully!", icon="✅")
+        elif op["action"] == "delete":
+            run_async(client.delete_custom_template(op["template_id"]))
+            st.toast("Template deleted!", icon="🗑️")
+        elif op["action"] == "update":
+            run_async(client.update_custom_template(
+                op["template_id"],
+                display_name=op["display_name"],
+                description=op["description"],
+                content=op["content"]
+            ))
+            st.toast("Template updated!", icon="✅")
+        
+        # Reload templates after any operation
+        st.session_state.available_templates = run_async(client.get_templates())
+    except Exception as e:
+        st.error(f"Template operation failed: {e}")
 
 
 def render_header():
@@ -60,62 +99,19 @@ def render_header():
     )
 
 
-async def load_documents_cached() -> List[KnowledgeDocument]:
-    """Load documents with session state caching (async-compatible)."""
-    cache_key = "_documents_cache"
-    cache_time_key = "_documents_cache_time"
-    
-    now = time.time()
-    
-    # Check if cache exists and is still valid
-    if (
-        cache_key in st.session_state
-        and cache_time_key in st.session_state
-        and (now - st.session_state[cache_time_key]) < DOCUMENTS_CACHE_TTL
-    ):
-        return st.session_state[cache_key]
-    
-    # Fetch fresh data
-    try:
-        documents = await client.get_knowledge_documents()
-        st.session_state[cache_key] = documents
-        st.session_state[cache_time_key] = now
-        return documents
-    except Exception as e:
-        st.error(f"Unable to load documents. Please check your connection. (Error: {e})")
-        return []
 
-
-async def load_voices_cached() -> List[VoiceOption]:
-    """Load voices with session state caching (async-compatible)."""
-    cache_key = "_voices_cache"
-    cache_time_key = "_voices_cache_time"
-    
-    now = time.time()
-    
-    # Check if cache exists and is still valid
-    if (
-        cache_key in st.session_state
-        and cache_time_key in st.session_state
-        and (now - st.session_state[cache_time_key]) < VOICES_CACHE_TTL
-    ):
-        return st.session_state[cache_key]
-    
-    # Fetch fresh data
-    try:
-        voices = await client.get_available_voices()
-        st.session_state[cache_key] = voices
-        st.session_state[cache_time_key] = now
-        return voices
-    except Exception as e:
-        st.error(f"Unable to load voice options. (Error: {e})")
-        return []
 
 
 async def generate_script(knowledge_id: str):
     """Generate script from document using streaming for real-time feedback."""
     model = st.session_state.selected_llm_model
-    prompt = st.session_state.custom_prompt
+    
+    # Determine whether to use templates or custom prompt
+    use_templates = st.session_state.use_template_mode
+    template_ids = st.session_state.selected_templates if use_templates else None
+    quick_instructions = st.session_state.quick_instructions if use_templates else None
+    custom_prompt = st.session_state.custom_prompt if not use_templates else None
+    system_prompt_override = st.session_state.custom_system_prompt if use_templates else None
     
     # Create placeholders for streaming display
     progress_placeholder = st.empty()
@@ -126,12 +122,18 @@ async def generate_script(knowledge_id: str):
     final_model_used = ""
     
     try:
-        status_placeholder.info("🚀 Starting AI script generation...")
+        if use_templates:
+            status_placeholder.info(f"🚀 Starting AI script generation with {len(template_ids)} template(s)...")
+        else:
+            status_placeholder.info("🚀 Starting AI script generation...")
         
         async for event in client.generate_script_stream(
             knowledge_id=knowledge_id,
             model_name=model,
-            custom_prompt=prompt
+            custom_prompt=custom_prompt,
+            template_ids=template_ids,
+            quick_instructions=quick_instructions,
+            system_prompt_override=system_prompt_override
         ):
             event_type = event.get("type")
             
@@ -143,7 +145,7 @@ async def generate_script(knowledge_id: str):
                     value=full_script,
                     height=400,
                     disabled=True,
-                    key=f"streaming_script_{len(full_script)}"
+                    key="streaming_script_live"
                 )
                 status_placeholder.caption(f"⏳ Generating... ({len(full_script):,} characters)")
                 
@@ -160,7 +162,7 @@ async def generate_script(knowledge_id: str):
                 status_placeholder.empty()
                 
                 st.toast(f"✅ Script generated using {final_model_used}!", icon="📝")
-                st.rerun()
+                # Removed st.rerun() - session state update will reflect on next interaction
                 
             elif event_type == "error":
                 # Error occurred during generation
@@ -195,10 +197,8 @@ async def generate_audio(knowledge_id: str, script: str, voice_id: str):
         with st.spinner("Synthesizing audio with ElevenLabs..."):
             await client.generate_audio(knowledge_id, script, voice_id)
             st.toast("Audio generated successfully!", icon="✅")
-            # Clear script to allow new generation or keep it? 
-            # Requirements say: "After successful generation, the audio should appear in the 'Audio History' list"
-            # We'll reload the history.
-            st.rerun()
+            # Invalidate audio history cache so it refreshes on next render
+            st.session_state["_audio_history_cache_id"] = None
     except Exception as e:
         st.error(f"Audio generation failed. Please check your quota or try again. (Error: {e})")
 
@@ -269,55 +269,330 @@ Generate a patient education script from the provided medical knowledge document
         if st.button("Reset to Default", use_container_width=True):
             st.session_state.custom_prompt = None
             st.rerun()
+
+
+@st.dialog("Prompt Preview")
+def render_preview_dialog(preview_text: str):
+    """Render dialog to preview combined prompt."""
+    st.markdown("This is the exact prompt that will be sent to the AI:")
+    st.text_area("Full Prompt", value=preview_text, height=400, disabled=True)
+    st.caption(f"Total characters: {len(preview_text)}")
+
+
+@st.dialog("Edit System Prompt")
+def render_system_prompt_editor():
+    """Render dialog to edit the base system prompt."""
+    st.markdown("Edit the foundational prompt that is inserted at the beginning of all script generation.")
+    
+    # Default system prompt content
+    default_system_prompt = """# Role
+You are a medical education script writer specializing in creating voice-optimized content for text-to-speech systems.
+
+# Goal
+Generate a patient education script from the provided medical knowledge document. The script should be natural, clear, and optimized for ElevenLabs voice synthesis.
+
+# Voice Optimization Guidelines
+- Write in a conversational, warm tone suitable for spoken delivery
+- Use short, clear sentences (under 20 words when possible)
+- Include natural pauses using punctuation (commas, periods)
+- Avoid complex medical jargon; use patient-friendly language
+- Spell out abbreviations on first use
+
+# Pacing
+- Add "..." for longer pauses between sections
+- Use commas for natural breathing points
+- Keep paragraphs short (2-3 sentences)
+
+# Structure
+- Start with a friendly greeting and topic introduction
+- Organize content into logical sections
+- Use transitional phrases between topics
+- End with a supportive closing message
+
+# Language
+- Support Traditional Chinese when the source document is in Chinese
+- Maintain consistent language throughout the script
+- Use culturally appropriate expressions
+
+# Output Format
+Generate only the script content, ready for voice synthesis. Do not include section headers, markdown formatting, or code blocks."""
+    
+    current_prompt = st.session_state.custom_system_prompt or default_system_prompt
+    
+    with st.form("system_prompt_form"):
+        new_prompt = st.text_area(
+            "System Prompt Content",
+            value=current_prompt,
+            height=350
+        )
+        
+        fc1, fc2, fc3 = st.columns(3)
+        with fc1:
+            if st.form_submit_button("Save", type="primary", use_container_width=True):
+                st.session_state.custom_system_prompt = new_prompt
+                st.toast("System prompt saved!", icon="✅")
+        with fc2:
+            if st.form_submit_button("Reset to Default", use_container_width=True):
+                st.session_state.custom_system_prompt = None
+                st.toast("Reset to default!", icon="🔄")
+        with fc3:
+            if st.form_submit_button("Cancel", use_container_width=True):
+                pass  # Just close the dialog
+
+
+@st.dialog("Manage Custom Templates")
+def render_template_manager():
+    """Render dialog for managing custom templates."""
+    st.markdown("Create new templates or manage existing ones.")
+    
+    # Create new template form
+    with st.expander("➕ Create New Template", expanded=False):
+        with st.form("create_template_form"):
+            display_name = st.text_input("Template Name", placeholder="e.g., Pediatric Intro")
+            description = st.text_input("Description", placeholder="For explaining procedures to children")
+            content = st.text_area("Template Content", placeholder="Write your prompt logic here...")
             
-    with col2:
-        if st.button("Save Changes", type="primary", use_container_width=True):
-            st.session_state.custom_prompt = new_prompt
-            # st.dialog automatically handles closing on rerun usually
-            st.rerun()
+            if st.form_submit_button("Create Template", type="primary"):
+                if not display_name or not content:
+                    st.error("Name and Content are required.")
+                else:
+                    new_template = CustomTemplateCreate(
+                        display_name=display_name,
+                        description=description,
+                        content=content
+                    )
+                    # Queue operation for async execution outside dialog
+                    st.session_state._pending_template_op = {
+                        "action": "create",
+                        "template": new_template
+                    }
+                    st.rerun()
+
+    st.divider()
+    
+    # List existing custom templates
+    st.subheader("Your Custom Templates")
+    
+    # Ensure available templates are loaded
+    templates = st.session_state.get("available_templates", [])
+    custom_templates = [t for t in templates if t.category == "custom"]
+    
+    if not custom_templates:
+        st.info("No custom templates found.")
+    else:
+        for tmpl in custom_templates:
+            edit_key = f"editing_{tmpl.template_id}"
+            
+            with st.container(border=True):
+                c1, c2, c3 = st.columns([3, 1, 1])
+                with c1:
+                    st.markdown(f"**{tmpl.display_name}**")
+                    st.caption(tmpl.description)
+                with c2:
+                    if st.button("Edit", key=f"edit_{tmpl.template_id}", use_container_width=True):
+                        # Toggle edit mode and load content
+                        if not st.session_state.get(edit_key):
+                            st.session_state[edit_key] = True
+                            # Fetch content when entering edit mode (use run_async helper)
+                            try:
+                                content = run_async(client.get_template_content(tmpl.template_id))
+                                st.session_state[f"content_{tmpl.template_id}"] = content
+                            except Exception:
+                                st.session_state[f"content_{tmpl.template_id}"] = tmpl.preview
+                        else:
+                            st.session_state[edit_key] = False
+                with c3:
+                    if st.button("Delete", key=f"del_{tmpl.template_id}", type="secondary", use_container_width=True):
+                        # Queue delete operation for async execution
+                        st.session_state._pending_template_op = {
+                            "action": "delete",
+                            "template_id": tmpl.template_id
+                        }
+                        st.rerun()
+                
+                # Show edit form when Edit is clicked
+                if st.session_state.get(edit_key):
+                    with st.form(f"edit_form_{tmpl.template_id}"):
+                        edit_name = st.text_input("Template Name", value=tmpl.display_name)
+                        edit_desc = st.text_input("Description", value=tmpl.description)
+                        edit_content = st.text_area(
+                            "Content", 
+                            value=st.session_state.get(f"content_{tmpl.template_id}", tmpl.preview),
+                            height=200
+                        )
+                        
+                        fc1, fc2 = st.columns(2)
+                        with fc1:
+                            if st.form_submit_button("Save Changes", type="primary"):
+                                # Queue update operation for async execution
+                                st.session_state._pending_template_op = {
+                                    "action": "update",
+                                    "template_id": tmpl.template_id,
+                                    "display_name": edit_name,
+                                    "description": edit_desc,
+                                    "content": edit_content
+                                }
+                                st.session_state[edit_key] = False
+                                st.rerun()
+                        with fc2:
+                            if st.form_submit_button("Cancel"):
+                                st.session_state[edit_key] = False
 
 
+@st.fragment
 async def render_script_editor():
-    """Render script generation and editing section."""
+    """Render script generation and editing section (isolated fragment)."""
     st.subheader("2. Script Editor")
     
     if not st.session_state.selected_document:
         st.info("Please select a document specifically to proceed.")
         return
 
+    # Load available templates if not loaded
+    if not st.session_state.available_templates:
+        try:
+            st.session_state.available_templates = await client.get_templates()
+        except Exception as e:
+            st.warning(f"Could not load templates: {e}")
+            st.session_state.available_templates = []
+
     col1, col2 = st.columns([1, 3])
     
     with col1:
+        # AI Model selection
         st.session_state.selected_llm_model = st.selectbox(
             "AI Model",
             options=["gemini-1.5-flash-8b", "gemini-2.5-flash-lite", "gemini-3-flash-preview", "gemini-3-pro-preview"],
-            index=1, # Default to gemini-2.5-flash-lite
+            index=1,
             help="Select the AI model for script generation"
         )
         
-        if st.button("⚙️ Customize Prompt", use_container_width=True):
-            render_prompt_editor_dialog()
+        st.divider()
+
+        # Manage Templates Button
+        if st.button("🛠️ Manage Templates", use_container_width=True):
+            render_template_manager()
+            
+        st.divider()
+        
+        # Mode toggle: Template vs Custom
+        st.session_state.use_template_mode = st.toggle(
+            "Use Template Mode",
+            value=st.session_state.use_template_mode,
+            help="Enable template-based prompt building"
+        )
+        
+        if st.session_state.use_template_mode:
+            # Template selection
+            if st.session_state.available_templates:
+                template_options = {t.template_id: t for t in st.session_state.available_templates}
+                
+                selected = st.multiselect(
+                    "📋 Content Modules",
+                    options=list(template_options.keys()),
+                    default=st.session_state.selected_templates,
+                    format_func=lambda x: template_options[x].display_name if x in template_options else x,
+                    help="Select content types to include in the prompt"
+                )
+                
+                # Check for streamlit-sortables availability (it should be installed now)
+                try:
+                    from streamlit_sortables import sort_items
+                    
+                    if selected and len(selected) > 0:
+                        st.caption("Drag to reorder content modules:")
+                        selected_names = [template_options[t].display_name if t in template_options else t for t in selected]
+                        
+                        # Dynamic key ensures component re-initializes when selection changes
+                        sorter_key = f"template_sorter_{len(selected)}_{hash(tuple(selected))}"
+                        
+                        ordered_names = sort_items(
+                            selected_names,
+                            direction="vertical",
+                            key=sorter_key
+                        )
+                        
+                        # Map back to IDs (careful with duplicate display names if any, but template names should be unique)
+                        # We use a reverse lookup mapping
+                        name_to_id = {template_options[t].display_name: t for t in selected if t in template_options}
+                        
+                        # Reconstruct selected_templates based on sorted order
+                        # ordered_names comes from UI, map back to IDs
+                        st.session_state.selected_templates = [name_to_id[n] for n in ordered_names if n in name_to_id]
+                    else:
+                        st.session_state.selected_templates = selected if selected else ["pre_surgery"]
+                except ImportError:
+                    st.warning("streamlit-sortables not installed. Reordering disabled.")
+                    st.session_state.selected_templates = selected if selected else ["pre_surgery"]
+                
+                # Show template descriptions
+                if selected:
+                    with st.expander("📖 Template Details", expanded=False):
+                        for tid in selected:
+                            if tid in template_options:
+                                t = template_options[tid]
+                                st.markdown(f"**{t.display_name}**")
+                                st.caption(t.description)
+            
+            st.divider()
+            
+            # Quick instructions
+            st.session_state.quick_instructions = st.text_area(
+                "💬 Additional Instructions",
+                value=st.session_state.quick_instructions,
+                placeholder="e.g., Focus on elderly patients, use simple language...",
+                height=100,
+                help="Add extra instructions without modifying templates"
+            )
+            
+            if st.button("👁️ Preview Combined Prompt", use_container_width=True):
+                try:
+                    preview_text = await client.preview_combined_prompt(
+                        st.session_state.selected_templates,
+                        st.session_state.quick_instructions
+                    )
+                    render_preview_dialog(preview_text)
+                except Exception as e:
+                    st.error(f"Preview failed: {e}")
+            
+            # System prompt editor button
+            sp1, sp2 = st.columns([3, 1])
+            with sp1:
+                if st.button("⚙️ Edit System Prompt", use_container_width=True):
+                    render_system_prompt_editor()
+            with sp2:
+                if st.session_state.custom_system_prompt:
+                    st.success("✓ Custom")
+        else:
+            # Custom prompt mode (legacy)
+            if st.button("⚙️ Customize Prompt", use_container_width=True):
+                render_prompt_editor_dialog()
+            
+            if st.session_state.custom_prompt:
+                st.caption("✓ Using custom prompt")
             
         st.divider()
 
         if st.button("✨ Generate Script", key="generate_script_btn", type="primary", use_container_width=True):
             await generate_script(st.session_state.selected_document.knowledge_id)
 
-    if st.session_state.generated_script:
-        st.markdown("**Review and Edit Script:**")
-        edited_script = st.text_area(
-            "Script Content",
-            value=st.session_state.generated_script,
-            height=600,
-            label_visibility="collapsed",
-            key="script_editor_area"
-        )
-        st.session_state.generated_script = edited_script
-        st.caption(f"Character count: {len(edited_script)}")
+    with col2:
+        if st.session_state.generated_script:
+            st.markdown("**Review and Edit Script:**")
+            edited_script = st.text_area(
+                "Script Content",
+                value=st.session_state.generated_script,
+                height=600,
+                label_visibility="collapsed",
+                key="script_editor_area"
+            )
+            st.session_state.generated_script = edited_script
+            st.caption(f"Character count: {len(edited_script)}")
 
 
+@st.fragment
 async def render_audio_generation():
-    """Render voice selection and audio generation."""
+    """Render voice selection and audio generation (isolated fragment)."""
     st.subheader("3. Voice & Generation")
 
     if not st.session_state.generated_script:
@@ -326,7 +601,7 @@ async def render_audio_generation():
 
     # Load voices if not loaded
     if not st.session_state.voices:
-        st.session_state.voices = await load_voices_cached()
+        st.session_state.voices = get_voices_cached()
 
     if not st.session_state.voices:
         st.warning("No voices available. Check API connection.")
@@ -360,39 +635,55 @@ async def render_audio_generation():
         )
 
 
+@st.fragment
 async def render_audio_history():
-    """Render audio history for the selected document."""
+    """Render audio history for the selected document (isolated fragment)."""
     if not st.session_state.selected_document:
         return
 
     st.subheader("Audio History")
-    
-    try:
-        audio_files = await client.get_audio_files(st.session_state.selected_document.knowledge_id)
-        
-        if not audio_files:
-            st.caption("No audio files generated yet for this document.")
+
+    knowledge_id = st.session_state.selected_document.knowledge_id
+    cache_key = "_audio_history_cache"
+    cache_id_key = "_audio_history_cache_id"
+
+    # Refresh button inside fragment
+    if st.button("🔄 Refresh Audio List", key="refresh_audio_history"):
+        st.session_state[cache_id_key] = None
+
+    # Check cache validity
+    if st.session_state.get(cache_id_key) != knowledge_id:
+        # Cache miss or stale, fetch fresh data
+        try:
+            audio_files = await client.get_audio_files(knowledge_id)
+            st.session_state[cache_key] = audio_files
+            st.session_state[cache_id_key] = knowledge_id
+        except Exception as e:
+            st.error(f"Unable to load audio history. (Error: {e})")
             return
+    else:
+        audio_files = st.session_state.get(cache_key, [])
 
-        for audio in audio_files:
-            with st.container(border=True):
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    st.markdown(f"**Generated:** {audio.created_at.strftime('%Y-%m-%d %H:%M')}")
-                    with st.expander("View Script"):
-                        st.text(audio.script[:100] + "..." if len(audio.script) > 100 else audio.script)
-                with col2:
-                    st.audio(audio.audio_url, format="audio/mpeg")
+    if not audio_files:
+        st.caption("No audio files generated yet for this document.")
+        return
 
-    except Exception as e:
-        st.error(f"Unable to load audio history. Please refer to conversion logs or try again later. (Error: {e})")
+    for audio in audio_files:
+        with st.container(border=True):
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.markdown(f"**Generated:** {audio.created_at.strftime('%Y-%m-%d %H:%M')}")
+                with st.expander("View Script"):
+                    st.text(audio.script[:100] + "..." if len(audio.script) > 100 else audio.script)
+            with col2:
+                st.audio(audio.audio_url, format="audio/mpeg")
 
 
 async def main():
     """Main page execution."""
     render_header()
     
-    documents = await load_documents_cached()
+    documents = get_documents_cached()
     
     await render_document_selection(documents)
     await render_script_editor()

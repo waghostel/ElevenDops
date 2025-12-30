@@ -81,7 +81,7 @@ async def test_agent_deletion_property():
     mock_elevenlabs_service.delete_agent.assert_called_once()
 
 
-@settings(max_examples=50, deadline=None)
+
 @given(
     name=agent_names,
     k_ids=knowledge_ids,

@@ -66,7 +66,7 @@ def conversation_detail_strategy(draw: st.DrawFn) -> ConversationDetailSchema:
 class TestConversationLogsProperties:
     
     @given(st.lists(conversation_detail_strategy(), min_size=1, max_size=20))
-    @settings(max_examples=50)
+
     async def test_conversation_list_ordering(self, conversations: List[ConversationDetailSchema]):
         """Property 1: Conversation list ordering.
         
@@ -91,7 +91,7 @@ class TestConversationLogsProperties:
         assert dates == sorted(dates, reverse=True)
 
     @given(st.lists(conversation_detail_strategy(), min_size=1, max_size=20))
-    @settings(max_examples=50)
+
     async def test_requires_attention_filter(self, conversations: List[ConversationDetailSchema]):
         """Property 3: Attention filter accuracy.
         
@@ -115,7 +115,7 @@ class TestConversationLogsProperties:
             assert conv.requires_attention is True
 
     @given(st.lists(conversation_detail_strategy(), min_size=1, max_size=20))
-    @settings(max_examples=50)
+
     async def test_all_conversations_completeness(self, conversations: List[ConversationDetailSchema]):
         """Property 4: All conversations filter completeness.
         
@@ -137,7 +137,7 @@ class TestConversationLogsProperties:
         assert len(result.conversations) == len(conversations)
 
     @given(conversation_detail_strategy())
-    @settings(max_examples=50)
+
     async def test_message_history_completeness(self, conversation: ConversationDetailSchema):
         """Property 6: Message history completeness.
         
@@ -160,7 +160,7 @@ class TestConversationLogsProperties:
             assert result.messages[0].content == conversation.messages[0].content
 
     @given(st.lists(conversation_message_strategy(), min_size=1, max_size=20))
-    @settings(max_examples=50)
+
     async def test_question_categorization(self, messages: List[ConversationMessageSchema]):
         """Property 9: Question categorization accuracy.
         
@@ -195,7 +195,7 @@ class TestConversationLogsProperties:
         assert unanswered == expected_unanswered
 
     @given(st.lists(conversation_detail_strategy(), min_size=1, max_size=20))
-    @settings(max_examples=50)
+
     async def test_statistics_calculation(self, conversations: List[ConversationDetailSchema]):
         """Property 12: Statistics calculation accuracy.
         

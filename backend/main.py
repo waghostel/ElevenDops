@@ -13,6 +13,7 @@ from backend.api.routes.agent import router as agent_router
 from backend.api.routes.patient import router as patient_router
 from backend.api.routes.conversation import router as conversation_router
 from backend.api.routes.debug import router as debug_router
+from backend.api.routes.templates import router as templates_router
 
 from backend.config import get_settings
 
@@ -48,6 +49,7 @@ app.include_router(agent_router)
 app.include_router(patient_router, prefix="/api/patient", tags=["patient"])
 app.include_router(conversation_router, prefix="/api/conversations", tags=["conversations"])
 app.include_router(debug_router)
+app.include_router(templates_router)
 
 # Mount static files for mock storage mode
 settings = get_settings()

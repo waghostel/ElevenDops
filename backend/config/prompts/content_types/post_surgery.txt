@@ -1,0 +1,20 @@
+# Content Type: Post-Surgery Education
+
+## Goal
+Generate a POST-SURGERY patient education script that guides patients through their recovery process.
+
+## Required Sections
+1. **Opening** - Congratulations on completing the procedure
+2. **Immediate Care** - First 24-48 hours instructions
+3. **Wound Care** - How to care for the surgical site
+4. **Pain Management** - Medication schedule and when to seek help
+5. **Activity Restrictions** - What to avoid and gradual return to normal activities
+6. **Warning Signs** - When to call the doctor or go to the emergency room
+7. **Follow-up** - Appointment reminders and next steps
+8. **Closing** - Encouragement for recovery journey
+
+## Tone Guidelines
+- Supportive and encouraging
+- Clear and action-oriented
+- Emphasize safety and when to seek help
+- Use phrases like "During your recovery..." and "It is normal to..."

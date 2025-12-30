@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch, MagicMock
 from backend.services.script_generation_service import ScriptGenerationService
 import datetime
 
-@settings(max_examples=10)
+
 @given(
     model_name=st.sampled_from(["gemini-2.5-flash-lite", "gemini-3.0-flash", "gemini-3.0-pro"]),
     prompt=st.text(min_size=1, max_size=100),
@@ -44,7 +44,7 @@ async def test_configuration_passthrough(model_name, prompt, content):
             assert content in messages[1].content
 
 
-@settings(max_examples=10)
+
 @given(
     content=st.text(min_size=1),
     generated_text=st.text(min_size=1, max_size=500)
@@ -73,7 +73,7 @@ async def test_successful_response_format(content, generated_text):
             assert result["error"] is None
 
 
-@settings(max_examples=10)
+
 @given(error_msg=st.text(min_size=1))
 @pytest.mark.asyncio
 async def test_error_propagation(error_msg):

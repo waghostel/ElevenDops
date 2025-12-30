@@ -136,6 +136,63 @@ class ScriptGenerateRequest(BaseModel):
     knowledge_id: str = Field(..., description="ID of the knowledge document")
     model_name: str = Field(default="gemini-2.5-flash", description="Gemini model to use")
     custom_prompt: Optional[str] = Field(None, description="Custom prompt for generation")
+    template_config: Optional["TemplateConfig"] = Field(
+        None, description="Template configuration for prompt building"
+    )
+
+
+class TemplateConfig(BaseModel):
+    """Configuration for prompt template selection."""
+
+    template_ids: List[str] = Field(
+        default=["pre_surgery"],
+        description="List of template IDs in display order"
+    )
+    quick_instructions: Optional[str] = Field(
+        None,
+        max_length=2000,
+        description="Additional instructions to inject into the prompt"
+    )
+    system_prompt_override: Optional[str] = Field(
+        None,
+        description="Custom base system prompt to use instead of default"
+    )
+
+
+class TemplateInfoResponse(BaseModel):
+    """Template information response for API."""
+
+    template_id: str = Field(..., description="Unique template identifier")
+    display_name: str = Field(..., description="Human-readable display name")
+    description: str = Field(..., description="Brief description of the template")
+    category: str = Field(..., description="Template category (base, content_type, custom)")
+    preview: str = Field(default="", description="First 200 characters of template content")
+
+
+class CustomTemplateCreate(BaseModel):
+    """Schema for creating a custom template."""
+
+    display_name: str = Field(..., min_length=1, max_length=100)
+    description: str = Field(..., max_length=500)
+    content: str = Field(..., min_length=10)
+
+
+class CustomTemplateUpdate(BaseModel):
+    """Schema for updating a custom template."""
+
+    display_name: Optional[str] = Field(None, min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=500)
+    content: Optional[str] = Field(None, min_length=10)
+
+
+class CustomTemplateResponse(TemplateInfoResponse):
+    """Response schema for custom templates including full content."""
+    
+    content: str = Field(..., description="Full template content")
+    created_by: Optional[str] = Field(None, description="User ID who created the template")
+    created_at: datetime = Field(..., description="Creation timestamp")
+    category: str = Field(..., description="Template category: base, content_type, or custom")
+    preview: str = Field(default="", description="First 200 chars of template content")
 
 
 class ScriptGenerateResponse(BaseModel):

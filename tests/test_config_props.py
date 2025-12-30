@@ -78,7 +78,7 @@ class TestEnvironmentDefaults:
             assert settings.backend_api_url == "http://custom:9000"
 
     @given(port=st.integers(min_value=1024, max_value=65535))
-    @hypothesis_settings(max_examples=10)
+
     def test_valid_port_numbers_accepted(self, port: int) -> None:
         """Property: Any valid port number is accepted."""
         with patch.dict(os.environ, {"STREAMLIT_PORT": str(port)}):
@@ -265,7 +265,7 @@ class TestLangSmithConfigurationBasedTracing:
             assert settings.langsmith_trace_level == "info"
 
     @given(trace_level=st.sampled_from(["debug", "info", "error"]))
-    @hypothesis_settings(max_examples=3)
+
     def test_valid_trace_levels_accepted(self, trace_level: str) -> None:
         """Property: Any valid trace level is accepted."""
         with patch.dict(os.environ, {"LANGSMITH_TRACE_LEVEL": trace_level}):

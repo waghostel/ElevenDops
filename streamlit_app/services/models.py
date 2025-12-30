@@ -92,6 +92,54 @@ class VoiceOption:
 
 
 @dataclass
+class TemplateInfo:
+    """Prompt template information data class.
+    
+    Attributes:
+        template_id: Unique template identifier.
+        display_name: Human-readable template name.
+        description: Brief description of the template.
+        category: Template category (base, content_type, custom).
+        preview: First 200 chars of template content.
+    """
+    
+    template_id: str
+    display_name: str
+    description: str
+    category: str
+    preview: str = ""
+
+
+@dataclass
+class TemplateConfig:
+    """Configuration for prompt template selection.
+    
+    Attributes:
+        template_ids: List of template IDs in display order.
+        quick_instructions: Additional instructions to inject.
+    """
+    
+    template_ids: List[str]
+    quick_instructions: Optional[str] = None
+
+
+@dataclass
+class CustomTemplateCreate:
+    """Data required to create a new custom template."""
+    display_name: str
+    description: str
+    content: str
+
+
+@dataclass
+class CustomTemplateUpdate:
+    """Data for updating a custom template."""
+    display_name: Optional[str] = None
+    description: Optional[str] = None
+    content: Optional[str] = None
+
+
+@dataclass
 class AgentConfig:
     """Agent configuration data class.
 

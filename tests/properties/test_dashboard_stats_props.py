@@ -42,7 +42,7 @@ async def test_dashboard_stats_properties():
         audio_timestamps=timestamps,
         conv_timestamps=timestamps
     )
-    @settings(max_examples=50) 
+ 
     async def run_test(
         doc_count, agent_count, audio_count,
         doc_timestamps, agent_timestamps, audio_timestamps, conv_timestamps
@@ -111,7 +111,7 @@ async def test_last_activity_logic():
         audio_timestamps=timestamps,
         conv_timestamps=timestamps
     )
-    @settings(max_examples=50)
+
     async def run_test(doc_timestamps, agent_timestamps, audio_timestamps, conv_timestamps):
         mock_db = AsyncMock()
         

@@ -24,6 +24,9 @@ from backend.models.schemas import (
     AudioMetadata,
     AgentResponse,
     AnswerStyle,
+    CustomTemplateCreate,
+    CustomTemplateUpdate,
+    CustomTemplateResponse,
 )
 
 
@@ -197,6 +200,40 @@ class DataServiceInterface(ABC):
         """Get percentage of conversations requiring attention."""
         pass
 
+    # ==================== Custom Templates ====================
+    @abstractmethod
+    async def create_custom_template(
+        self, template: CustomTemplateCreate, user_id: str = "default_user"
+    ) -> CustomTemplateResponse:
+        """Create a new custom template."""
+        pass
+
+    @abstractmethod
+    async def get_custom_templates(
+        self, user_id: Optional[str] = None
+    ) -> List[CustomTemplateResponse]:
+        """Get all custom templates, optionally filtered by user."""
+        pass
+
+    @abstractmethod
+    async def get_custom_template(
+        self, template_id: str
+    ) -> Optional[CustomTemplateResponse]:
+        """Get a specific custom template by ID."""
+        pass
+
+    @abstractmethod
+    async def update_custom_template(
+        self, template_id: str, update_data: CustomTemplateUpdate
+    ) -> Optional[CustomTemplateResponse]:
+        """Update a custom template."""
+        pass
+
+    @abstractmethod
+    async def delete_custom_template(self, template_id: str) -> bool:
+        """Delete a custom template."""
+        pass
+
 
 class MockDataService(DataServiceInterface):
     """Mock data service for development and testing.
@@ -212,6 +249,7 @@ class MockDataService(DataServiceInterface):
         self._session_messages: dict[str, List[ConversationMessageSchema]] = {}
         self._audio_files: dict[str, AudioMetadata] = {}
         self._agents: dict[str, AgentResponse] = {}
+        self._custom_templates: dict[str, CustomTemplateResponse] = {}
 
     def _parse_structured_sections(self, content: str) -> dict:
         """Parse markdown content into structured sections based on headers.
@@ -530,6 +568,72 @@ class MockDataService(DataServiceInterface):
             
         attention_count = sum(1 for c in conversations if c.requires_attention)
         return (attention_count / len(conversations)) * 100.0
+
+    # ==================== Custom Templates ====================
+    async def create_custom_template(
+        self, template: CustomTemplateCreate, user_id: str = "default_user"
+    ) -> CustomTemplateResponse:
+        """Create a new custom template."""
+        import uuid
+        template_id = str(uuid.uuid4())
+        now = datetime.now()
+        
+        response = CustomTemplateResponse(
+            template_id=template_id,
+            display_name=template.display_name,
+            description=template.description,
+            category="custom",
+            preview=template.content[:200],
+            content=template.content,
+            created_by=user_id,
+            created_at=now,
+        )
+        self._custom_templates[template_id] = response
+        return response
+
+    async def get_custom_templates(
+        self, user_id: Optional[str] = None
+    ) -> List[CustomTemplateResponse]:
+        """Get all custom templates, optionally filtered by user."""
+        templates = list(self._custom_templates.values())
+        if user_id:
+            templates = [t for t in templates if t.created_by == user_id]
+        templates.sort(key=lambda x: x.created_at, reverse=True)
+        return templates
+
+    async def get_custom_template(
+        self, template_id: str
+    ) -> Optional[CustomTemplateResponse]:
+        """Get a specific custom template by ID."""
+        return self._custom_templates.get(template_id)
+
+    async def update_custom_template(
+        self, template_id: str, update_data: CustomTemplateUpdate
+    ) -> Optional[CustomTemplateResponse]:
+        """Update a custom template."""
+        if template_id not in self._custom_templates:
+            return None
+        
+        existing = self._custom_templates[template_id]
+        update_fields = update_data.model_dump(exclude_unset=True)
+        
+        if not update_fields:
+            return existing
+        
+        # Update preview if content changed
+        if "content" in update_fields:
+            update_fields["preview"] = update_fields["content"][:200]
+        
+        updated = existing.model_copy(update=update_fields)
+        self._custom_templates[template_id] = updated
+        return updated
+
+    async def delete_custom_template(self, template_id: str) -> bool:
+        """Delete a custom template."""
+        if template_id in self._custom_templates:
+            del self._custom_templates[template_id]
+            return True
+        return False
 
 
 # Singleton instances

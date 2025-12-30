@@ -123,7 +123,7 @@ async def test_property_2_factory_singleton():
 # Or if we want to test Firestore, we need the emulator running.
 # We will assume emulator is running.
 
-@settings(max_examples=10, suppress_health_check=[HealthCheck.function_scoped_fixture])
+
 @given(doc=s_knowledge_document_create())
 @pytest.mark.asyncio
 async def test_property_3_knowledge_document_persistence(doc):
@@ -145,7 +145,7 @@ async def test_property_3_knowledge_document_persistence(doc):
     # Clean up
     await service.delete_knowledge_document(created_doc.knowledge_id)
 
-@settings(max_examples=10, suppress_health_check=[HealthCheck.function_scoped_fixture])
+
 @given(audio=s_audio_metadata())
 @pytest.mark.asyncio
 async def test_property_audio_persistence(audio):
@@ -162,7 +162,7 @@ async def test_property_audio_persistence(audio):
     assert await service.delete_audio_file(audio.audio_id)
     assert await service.get_audio_file(audio.audio_id) is None
 
-@settings(max_examples=10, suppress_health_check=[HealthCheck.function_scoped_fixture])
+
 @given(agent=s_agent_response())
 @pytest.mark.asyncio
 async def test_property_agent_persistence(agent):
@@ -179,7 +179,7 @@ async def test_property_agent_persistence(agent):
     assert await service.delete_agent(agent.agent_id)
     assert await service.get_agent(agent.agent_id) is None
 
-@settings(max_examples=10, suppress_health_check=[HealthCheck.function_scoped_fixture])
+
 @given(conv=s_conversation_detail())
 @pytest.mark.asyncio
 async def test_property_4_conversation_query_filtering(conv):
@@ -214,7 +214,7 @@ async def test_property_4_conversation_query_filtering(conv):
 # Dashboard stats test requires cleaning up DB or knowing exact counts.
 # We can skip it for now or implement it by creating N items, checking stats count increased by N.
 
-@settings(max_examples=5, suppress_health_check=[HealthCheck.function_scoped_fixture])
+
 @given(doc=s_knowledge_document_create())
 @pytest.mark.asyncio
 async def test_property_5_dashboard_stats_accuracy(doc):

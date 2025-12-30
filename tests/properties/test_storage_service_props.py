@@ -13,7 +13,7 @@ from backend.services.storage_service import StorageService
     filename=st.text(min_size=1, alphabet=st.characters(blacklist_categories=('Cc', 'Cs'))),
     use_emulator=st.booleans()
 )
-@settings(max_examples=50)
+
 def test_storage_upload_returns_valid_url(filename, use_emulator):
     with patch("backend.services.storage_service.get_settings") as mock_settings:
         # Mock settings
@@ -21,6 +21,7 @@ def test_storage_upload_returns_valid_url(filename, use_emulator):
         mock_settings.return_value.gcs_emulator_host = "http://localhost:9023"
         mock_settings.return_value.gcs_bucket_name = "test-bucket"
         mock_settings.return_value.google_cloud_project = "test-project"
+        mock_settings.return_value.use_mock_storage = False
 
         # Mock storage client injection or initialization
         with patch("google.cloud.storage.Client"):
