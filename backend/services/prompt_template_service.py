@@ -80,8 +80,25 @@ class PromptTemplateService:
         """Load the base system prompt."""
         cache_key = "__base__"
         if cache_key not in self._template_cache:
-            base_path = self.PROMPTS_DIR / "base_system_prompt.txt"
+            base_path = self.PROMPTS_DIR / "base_system_promptV2.txt"
             self._template_cache[cache_key] = self._load_template_file(base_path)
+        return self._template_cache[cache_key]
+    
+    def get_speaker_format(self, is_multi_speaker: bool = True) -> str:
+        """Load the appropriate speaker format prompt.
+        
+        Args:
+            is_multi_speaker: If True, load multi-speaker (Doctor-Patient) format.
+                              If False, load single-speaker (Solo Doctor) format.
+        
+        Returns:
+            Speaker format prompt content.
+        """
+        cache_key = "__speaker_multi__" if is_multi_speaker else "__speaker_single__"
+        if cache_key not in self._template_cache:
+            filename = "speaker_format_multi.txt" if is_multi_speaker else "speaker_format_single.txt"
+            format_path = self.PROMPTS_DIR / filename
+            self._template_cache[cache_key] = self._load_template_file(format_path)
         return self._template_cache[cache_key]
     
     async def get_template(self, template_id: str) -> str:
@@ -154,6 +171,14 @@ class PromptTemplateService:
         
         return templates
     
+    # Duration to word count mapping (based on ~150 words per minute speaking rate)
+    DURATION_WORD_ESTIMATES = {
+        3: (400, 500),
+        5: (650, 850),
+        10: (1300, 1700),
+        15: (2000, 2500),
+    }
+    
     async def build_prompt(
         self,
         template_ids: List[str],
@@ -162,6 +187,8 @@ class PromptTemplateService:
         preferred_languages: Optional[List[str]] = None,
         speaker1_languages: Optional[List[str]] = None,
         speaker2_languages: Optional[List[str]] = None,
+        target_duration_minutes: Optional[int] = None,
+        is_multi_speaker: bool = True,
     ) -> str:
         """Build final prompt by combining templates.
         
@@ -172,6 +199,8 @@ class PromptTemplateService:
             preferred_languages: Optional list of preferred output language codes.
             speaker1_languages: Languages for Speaker 1 (Doctor/Educator role).
             speaker2_languages: Languages for Speaker 2 (Patient/Learner role).
+            target_duration_minutes: Target speech duration in minutes (3, 5, 10, or 15).
+            is_multi_speaker: Whether to use multi-speaker (Doctor-Patient) or single-speaker format.
             
         Returns:
             Combined prompt string ready for LLM.
@@ -229,10 +258,123 @@ class PromptTemplateService:
                 logger.error("Base system prompt not found!")
                 sections.append("You are a medical education script writer.")
         
-        # 2. Multi-speaker dialogue format (if both speaker languages specified)
+        # 2. Speaker format (multi-speaker or single-speaker)
+        try:
+            speaker_format = self.get_speaker_format(is_multi_speaker)
+            sections.append("\n---\n")
+            sections.append(speaker_format)
+        except FileNotFoundError:
+            logger.warning(f"Speaker format file not found for is_multi_speaker={is_multi_speaker}")
+        
+        
+        # 2. Script length requirement (if duration specified)
+        if target_duration_minutes and target_duration_minutes in self.DURATION_WORD_ESTIMATES:
+            min_words, max_words = self.DURATION_WORD_ESTIMATES[target_duration_minutes]
+            sections.append(f"""
+
+## Script Length Requirement
+
+Generate a script approximately **{target_duration_minutes} minutes long** when spoken aloud.
+Target word count: **{min_words:,}–{max_words:,} words**.
+
+Ensure the content is comprehensive enough to fill the target duration while remaining engaging and well-paced.
+""")
+        
+        # 3. Multi-speaker dialogue format (if both speaker languages specified)
         if speaker1_languages and speaker2_languages:
             speaker1_langs = [lang_map.get(code, code) for code in speaker1_languages]
             speaker2_langs = [lang_map.get(code, code) for code in speaker2_languages]
+            
+            # Check if either speaker uses multiple languages (sentence-by-sentence multilingual)
+            speaker1_multilingual = len(speaker1_languages) > 1
+            speaker2_multilingual = len(speaker2_languages) > 1
+            
+            # Build per-speaker language instructions
+            if speaker1_multilingual:
+                speaker1_instruction = f"Speaks in {', '.join(speaker1_langs)} using **sentence-by-sentence multilingual format** (each sentence in first language, then same sentence in second language)"
+            else:
+                speaker1_instruction = f"Speaks ONLY in {speaker1_langs[0]}"
+            
+            if speaker2_multilingual:
+                speaker2_instruction = f"Speaks in {', '.join(speaker2_langs)} using **sentence-by-sentence multilingual format** (each sentence in first language, then same sentence in second language)"
+            else:
+                speaker2_instruction = f"Speaks ONLY in {speaker2_langs[0]}"
+            
+            # Language-specific example phrases for dynamic example generation
+            lang_examples = {
+                "English": {"greeting": "Good morning.", "intro": "I'm here to explain your procedure.", "prep": "First, let me walk you through the preparation.", "thanks": "Thank you, Doctor.", "question": "What should I expect?"},
+                "繁體中文 (Traditional Chinese)": {"greeting": "早安。", "intro": "我會解釋您的手術流程。", "prep": "首先，讓我說明準備步驟。", "thanks": "謝謝醫生。", "question": "我應該期待什麼？"},
+                "簡體中文 (Simplified Chinese)": {"greeting": "早上好。", "intro": "我会解释您的手术流程。", "prep": "首先，让我说明准备步骤。", "thanks": "谢谢医生。", "question": "我应该期待什么？"},
+                "日本語 (Japanese)": {"greeting": "おはようございます。", "intro": "手術について説明します。", "prep": "まず、準備の手順を説明しましょう。", "thanks": "ありがとうございます。", "question": "何を期待すればいいですか？"},
+                "한국어 (Korean)": {"greeting": "안녕하세요.", "intro": "수술에 대해 설명드리겠습니다.", "prep": "먼저 준비 과정을 설명하겠습니다.", "thanks": "감사합니다.", "question": "무엇을 기대해야 하나요?"},
+                "Español (Spanish)": {"greeting": "Buenos días.", "intro": "Voy a explicar su procedimiento.", "prep": "Primero, permítame explicar la preparación.", "thanks": "Gracias, Doctor.", "question": "¿Qué debo esperar?"},
+                "Français (French)": {"greeting": "Bonjour.", "intro": "Je vais vous expliquer la procédure.", "prep": "D'abord, laissez-moi vous expliquer la préparation.", "thanks": "Merci, Docteur.", "question": "À quoi dois-je m'attendre?"},
+                "Deutsch (German)": {"greeting": "Guten Morgen.", "intro": "Ich erkläre Ihnen den Eingriff.", "prep": "Zuerst erkläre ich die Vorbereitung.", "thanks": "Danke, Herr Doktor.", "question": "Was soll ich erwarten?"},
+            }
+            
+            def get_phrase(lang, key, fallback_key):
+                """Get phrase for language, with fallback to placeholder."""
+                if lang in lang_examples:
+                    return lang_examples[lang].get(key, f"[{lang} {fallback_key}]")
+                return f"[{lang} {fallback_key}]"
+            
+            # Build example based on speaker configurations
+            if speaker1_multilingual and speaker2_multilingual:
+                # Both multilingual - use first two langs of each speaker
+                s1_l1, s1_l2 = speaker1_langs[0], speaker1_langs[1] if len(speaker1_langs) > 1 else speaker1_langs[0]
+                s2_l1, s2_l2 = speaker2_langs[0], speaker2_langs[1] if len(speaker2_langs) > 1 else speaker2_langs[0]
+                example_text = f"""
+### Example Format (Both speakers multilingual):
+```
+Speaker 1: [reassuring] {get_phrase(s1_l1, "greeting", "greeting")} {get_phrase(s1_l2, "greeting", "greeting")} {get_phrase(s1_l1, "intro", "intro")} {get_phrase(s1_l2, "intro", "intro")}
+
+Speaker 2: [curious] {get_phrase(s2_l1, "thanks", "thanks")} {get_phrase(s2_l2, "thanks", "thanks")} {get_phrase(s2_l1, "question", "question")} {get_phrase(s2_l2, "question", "question")}
+
+Speaker 1: [professional] {get_phrase(s1_l1, "prep", "prep")} {get_phrase(s1_l2, "prep", "prep")}
+```
+"""
+            elif speaker1_multilingual:
+                # Speaker 1 multilingual, Speaker 2 single language
+                s1_l1, s1_l2 = speaker1_langs[0], speaker1_langs[1] if len(speaker1_langs) > 1 else speaker1_langs[0]
+                s2_l1 = speaker2_langs[0]
+                example_text = f"""
+### Example Format (Speaker 1 multilingual, Speaker 2 single language):
+```
+Speaker 1: [reassuring] {get_phrase(s1_l1, "greeting", "greeting")} {get_phrase(s1_l2, "greeting", "greeting")} {get_phrase(s1_l1, "intro", "intro")} {get_phrase(s1_l2, "intro", "intro")}
+
+Speaker 2: [curious] {get_phrase(s2_l1, "thanks", "thanks")} {get_phrase(s2_l1, "question", "question")}
+
+Speaker 1: [professional] {get_phrase(s1_l1, "prep", "prep")} {get_phrase(s1_l2, "prep", "prep")}
+```
+"""
+            elif speaker2_multilingual:
+                # Speaker 1 single language, Speaker 2 multilingual
+                s1_l1 = speaker1_langs[0]
+                s2_l1, s2_l2 = speaker2_langs[0], speaker2_langs[1] if len(speaker2_langs) > 1 else speaker2_langs[0]
+                example_text = f"""
+### Example Format (Speaker 1 single language, Speaker 2 multilingual):
+```
+Speaker 1: [reassuring] {get_phrase(s1_l1, "greeting", "greeting")} {get_phrase(s1_l1, "intro", "intro")}
+
+Speaker 2: [curious] {get_phrase(s2_l1, "thanks", "thanks")} {get_phrase(s2_l2, "thanks", "thanks")} {get_phrase(s2_l1, "question", "question")} {get_phrase(s2_l2, "question", "question")}
+
+Speaker 1: [professional] {get_phrase(s1_l1, "prep", "prep")}
+```
+"""
+            else:
+                # Both speakers single language
+                s1_l1 = speaker1_langs[0]
+                s2_l1 = speaker2_langs[0]
+                example_text = f"""
+### Example Format:
+```
+Speaker 1: [reassuring] {get_phrase(s1_l1, "greeting", "greeting")} {get_phrase(s1_l1, "intro", "intro")}
+
+Speaker 2: [curious] {get_phrase(s2_l1, "thanks", "thanks")} {get_phrase(s2_l1, "question", "question")}
+
+Speaker 1: [professional] {get_phrase(s1_l1, "prep", "prep")}
+```
+"""
             
             multi_speaker_instruction = f"""
 
@@ -240,28 +382,23 @@ class PromptTemplateService:
 
 Generate the script as a dialogue between two speakers using ElevenLabs V3 format:
 
-- **Speaker 1** (Doctor/Educator/Guider): Speaks in {', '.join(speaker1_langs)}
-- **Speaker 2** (Patient/Learner): Speaks in {', '.join(speaker2_langs)}
+- **Speaker 1** (Doctor/Educator/Guider): {speaker1_instruction}
+- **Speaker 2** (Patient/Learner): {speaker2_instruction}
+
+**CRITICAL**: Each speaker must ONLY use their assigned language(s). Do NOT add any other languages (especially English if not selected for that speaker).
 
 ### Format Rules:
 1. Each speaker's line MUST start with `Speaker 1:` or `Speaker 2:` prefix
 2. Use audio tags like `[cheerful]`, `[curious]`, `[reassuring]` for emotion
-3. Alternate between speakers naturally for a conversational flow
-4. Speaker 1 leads the conversation with educational content
-5. Speaker 2 asks questions and responds to learn
-
-### Example Format:
-```
-Speaker 1: [reassuring] Welcome! Today I'll explain the procedure you'll be having.
-
-Speaker 2: [curious] Thank you, Doctor. What should I expect?
-
-Speaker 1: [professional] First, let me walk you through the preparation steps...
-```
-"""
+3. If a speaker has multiple languages, write each complete sentence in their FIRST language, then IMMEDIATELY follow with the SAME sentence in their SECOND language
+4. Alternate between speakers naturally for conversational flow
+5. Speaker 1 leads the conversation with educational content
+6. Speaker 2 asks questions and responds to learn
+7. Do NOT include any language not explicitly assigned to that speaker
+{example_text}"""
             sections.append(multi_speaker_instruction)
         
-        # 3. Single/multi-language instruction (if preferred_languages specified, but not multi-speaker)
+        # 4. Single/multi-language instruction (if preferred_languages specified, but not multi-speaker)
         elif preferred_languages:
             # Filter valid languages
             langs = [lang_map[code] for code in preferred_languages if code in lang_map]
@@ -269,18 +406,83 @@ Speaker 1: [professional] First, let me walk you through the preparation steps..
             if len(langs) == 1:
                 # Single language specific instructions
                 code = preferred_languages[0]
+                lang_name = langs[0]
                 if code == "zh-TW":
                     sections.append("\n\n## Language Requirement\nGenerate the script in Traditional Chinese (繁體中文). Use culturally appropriate expressions for Taiwan.")
                 elif code == "en":
                     sections.append("\n\n## Language Requirement\nGenerate the script in English. Use clear, accessible language suitable for patients.")
                 elif code == "zh-CN":
                     sections.append("\n\n## Language Requirement\nGenerate the script in Simplified Chinese (简体中文).")
+                else:
+                    # Generic handler for all other languages (Japanese, Korean, French, etc.)
+                    sections.append(f"\n\n## Language Requirement\nGenerate the script entirely in {lang_name}. Do NOT use English unless quoting technical medical terms that have no direct translation.")
             elif len(langs) > 1:
-                # Multi-language instructions
+                # Multi-language sentence-by-sentence format
                 lang_str = ", ".join(langs)
-                sections.append(f"\n\n## Language Requirement\nGenerate the script in the following languages: {lang_str}. Provide the content in all requested languages, organizing it clearly (e.g., sequentially or side-by-side where appropriate).")
+                first_lang = langs[0]
+                second_lang = langs[1] if len(langs) > 1 else langs[0]
+                
+                # Build dynamic example based on selected languages
+                # Use language-specific greeting examples where available
+                lang_examples = {
+                    "English": ("Good morning, I'm Dr. Smith.", "Today we'll discuss your procedure.", "First, let me explain what will happen."),
+                    "繁體中文 (Traditional Chinese)": ("早安，我是史密斯醫生。", "今天我們來討論您的手術流程。", "首先，讓我解釋會發生什麼事。"),
+                    "簡體中文 (Simplified Chinese)": ("早上好，我是史密斯医生。", "今天我们来讨论您的手术流程。", "首先，让我解释会发生什么事。"),
+                    "日本語 (Japanese)": ("おはようございます、スミス医師です。", "今日は手術についてお話しします。", "まず、何が起こるか説明しましょう。"),
+                    "한국어 (Korean)": ("안녕하세요, 스미스 의사입니다.", "오늘 수술에 대해 이야기하겠습니다.", "먼저 무슨 일이 일어날지 설명드리겠습니다."),
+                    "Español (Spanish)": ("Buenos días, soy el Dr. Smith.", "Hoy hablaremos sobre su procedimiento.", "Primero, déjame explicar lo que sucederá."),
+                    "Français (French)": ("Bonjour, je suis le Dr Smith.", "Aujourd'hui, nous allons discuter de votre procédure.", "D'abord, laissez-moi vous expliquer ce qui va se passer."),
+                    "Deutsch (German)": ("Guten Morgen, ich bin Dr. Smith.", "Heute werden wir über Ihren Eingriff sprechen.", "Zuerst möchte ich erklären, was passieren wird."),
+                }
+                
+                # Get examples for selected languages, fallback to placeholder
+                first_examples = lang_examples.get(first_lang, (f"[{first_lang} greeting]", f"[{first_lang} introduction]", f"[{first_lang} explanation]"))
+                second_examples = lang_examples.get(second_lang, (f"[{second_lang} greeting]", f"[{second_lang} introduction]", f"[{second_lang} explanation]"))
+                
+                # Build example with [pause] between language transitions
+                example_lines = [
+                    f"{first_examples[0]}",
+                    f"{second_examples[0]}",
+                    "",
+                    "[pause]",
+                    "",
+                    f"{first_examples[1]}",
+                    f"{second_examples[1]}",
+                    "",
+                    "[pause]",
+                    "",
+                    f"{first_examples[2]}",
+                    f"{second_examples[2]}",
+                ]
+                example_output = "\n".join(example_lines)
+                
+                sections.append(f"""
+
+## Language Requirement (Multilingual)
+
+Generate the script using **sentence-by-sentence multilingual format** in ONLY these languages: {lang_str}.
+
+**CRITICAL**: Use ONLY the specified languages. Do NOT add any other languages (especially English if not selected).
+
+### Format Rules:
+1. Write each complete thought/sentence FIRST in {first_lang}
+2. IMMEDIATELY follow with the SAME sentence in {second_lang}
+3. Add `[pause]` between major topic transitions for natural pacing
+4. If more than two languages are selected, continue the pattern for each additional language
+5. Keep all translations of the same sentence together on adjacent lines
+6. Do NOT separate languages into different sections or paragraphs
+7. Do NOT include any language that was not explicitly selected
+8. Do NOT use speaker labels like "Doctor:" - just write the content directly
+
+### Example Output (using {first_lang} + {second_lang}):
+```
+{example_output}
+```
+
+This sentence-by-sentence format with pauses helps listeners learn vocabulary in context while understanding the full educational content.
+""")
         
-        # 4. Content type templates (in order)
+        # 5. Content type templates (in order)
         if template_ids:
             sections.append("\n---\n\n# Content Structure\n")
             for template_id in template_ids:
@@ -291,7 +493,7 @@ Speaker 1: [professional] First, let me walk you through the preparation steps..
                 except (ValueError, FileNotFoundError) as e:
                     logger.warning(f"Skipping template {template_id}: {e}")
         
-        # 5. Quick instructions
+        # 6. Quick instructions
         if quick_instructions and quick_instructions.strip():
             sections.append("\n# Additional Instructions\n")
             sections.append(quick_instructions.strip())

@@ -6,6 +6,7 @@ from datetime import datetime
 from streamlit_app.services.backend_api import get_backend_client
 from streamlit_app.components.sidebar import render_sidebar
 from streamlit_app.components.footer import render_footer
+from streamlit_app.components.error_console import add_error_to_log, render_error_console
 from streamlit_app.services.models import PatientSession, ConversationMessage
 
 # Page Configuration
@@ -64,7 +65,7 @@ with st.container(border=True):
 
 if patient_id_input:
     if not patient_id_input.isalnum():
-        st.error("❌ Invalid format: Alphanumeric only")
+        add_error_to_log("Invalid format: Alphanumeric only")
     else:
         st.session_state.patient_id = patient_id_input
         st.success(f"✅ Patient ID Confirmed: {patient_id_input}")
@@ -96,7 +97,7 @@ if st.session_state.patient_id and st.session_state.patient_id.isalnum():
                     st.caption(f"Knowledge IDs: {', '.join(selected_agent.knowledge_ids)}")
                         
         except Exception as e:
-            st.error(f"❌ Failed to load agent list: {str(e)}")
+            add_error_to_log(f"Failed to load agent list: {str(e)}")
 
 # --- Education Audio Section ---
 # Only show if agent is selected
@@ -134,7 +135,7 @@ if st.session_state.selected_agent_id:
             st.info("ℹ️ This agent has no linked knowledge base")
             
     except Exception as e:
-        st.error(f"❌ Failed to load audio files: {str(e)}")
+        add_error_to_log(f"Failed to load audio files: {str(e)}")
 
 # --- Conversation Section ---
 if st.session_state.selected_agent_id:
@@ -163,7 +164,7 @@ if st.session_state.selected_agent_id:
                     st.session_state.conversation_history = []  # Reset history
                     st.rerun()
                 except Exception as e:
-                    st.error(f"❌ Connection failed: {str(e)}")
+                    add_error_to_log(f"Connection failed: {str(e)}")
 
     # 2. Active Conversation Interface
     else:
@@ -185,7 +186,7 @@ if st.session_state.selected_agent_id:
                         audio_bytes = base64.b64decode(msg.audio_data)
                         st.audio(audio_bytes, format="audio/mp3")
                     except Exception as e:
-                        st.error(f"⚠️ Cannot play audio: {str(e)}") 
+                        add_error_to_log(f"Cannot play audio: {str(e)}") 
 
         # Input
         if prompt := st.chat_input("Type your message..."):
@@ -209,7 +210,7 @@ if st.session_state.selected_agent_id:
                     st.session_state.conversation_history.append(agent_msg)
                     st.rerun()
                 except Exception as e:
-                    st.error(f"❌ Message send failed: {str(e)}")
+                    add_error_to_log(f"Message send failed: {str(e)}")
 
         # End Conversation Button
         st.divider()
@@ -221,7 +222,8 @@ if st.session_state.selected_agent_id:
                     st.info("Conversation ended")
                     st.rerun()
                 except Exception as e:
-                    st.error(f"❌ Failed to end conversation: {str(e)}")
+                    add_error_to_log(f"Failed to end conversation: {str(e)}")
 
+render_error_console()
 render_footer()
 

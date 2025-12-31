@@ -6,6 +6,7 @@ from streamlit_app.services.exceptions import APIError, APIConnectionError
 from backend.models.schemas import AnswerStyle
 from streamlit_app.components.sidebar import render_sidebar
 from streamlit_app.components.footer import render_footer
+from streamlit_app.components.error_console import add_error_to_log, render_error_console
 
 # Page config
 st.set_page_config(
@@ -61,7 +62,7 @@ try:
     voices = get_cached_voices()
     agents = get_cached_agents()
 except Exception as e:
-    st.error(f"Failed to load data: {str(e)}")
+    add_error_to_log(f"Failed to load data: {str(e)}")
     docs, voices, agents = [], [], []
 
 # Define style options
@@ -135,9 +136,9 @@ with st.form("create_agent_form"):
     
     if submitted:
         if not name.strip():
-            st.error("Agent name is required.")
+            add_error_to_log("Agent name is required.")
         elif not selected_voice_id:
-            st.error("Voice selection is required.")
+            add_error_to_log("Voice selection is required.")
         else:
             client = get_backend_client()
             try:
@@ -153,9 +154,9 @@ with st.form("create_agent_form"):
                 get_cached_agents.clear()
                 st.rerun()
             except APIError as e:
-                st.error(f"Creation failed: {e.message}")
+                add_error_to_log(f"Creation failed: {e.message}")
             except Exception as e:
-                st.error(f"Error: {str(e)}")
+                add_error_to_log(f"Error: {str(e)}")
 
 
 # --- Existing Agents Column ---
@@ -203,7 +204,8 @@ with st.container(border=True):
                         get_cached_agents.clear()
                         st.rerun()
                     except Exception as e:
-                        st.error(f"Delete failed: {str(e)}")
+                        add_error_to_log(f"Delete failed: {str(e)}")
 
+render_error_console()
 render_footer()
 

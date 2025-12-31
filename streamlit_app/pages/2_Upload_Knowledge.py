@@ -4,6 +4,7 @@ from streamlit_app.services.backend_api import get_backend_client
 from streamlit_app.services.exceptions import APIError
 from streamlit_app.components.sidebar import render_sidebar
 from streamlit_app.components.footer import render_footer
+from streamlit_app.components.error_console import add_error_to_log, render_error_console
 from backend.models.schemas import DEFAULT_DOCUMENT_TAGS
 
 st.set_page_config(page_title="Upload Knowledge", page_icon="📚", layout="wide")
@@ -55,9 +56,9 @@ def edit_document_dialog(doc):
     with btn_c1:
         if st.button("Save", key=f"dialog_save_{doc.knowledge_id}", type="primary"):
             if not new_name.strip():
-                st.error("Disease name required")
+                add_error_to_log("Disease name required")
             elif not new_tags:
-                st.error("At least one tag required")
+                add_error_to_log("At least one tag required")
             else:
                 try:
                     asyncio.run(client.update_knowledge_document(
@@ -69,7 +70,7 @@ def edit_document_dialog(doc):
                     st.success("Updated!")
                     st.rerun()
                 except APIError as e:
-                    st.error(f"Update failed: {e.message}")
+                    add_error_to_log(f"Update failed: {e.message}")
     with btn_c2:
         if st.button("Cancel", key=f"dialog_cancel_{doc.knowledge_id}"):
             st.rerun()
@@ -116,15 +117,15 @@ if submitted:
     # Note: Streamlit form submission already provides local variables, but we rely on the widget return values assigned above.
     
     if not disease_name or not disease_name.strip():
-        st.error("Please enter a disease name.")
+        add_error_to_log("Please enter a disease name.")
     elif not selected_tags:
-        st.error("Please select at least one tag.")
+        add_error_to_log("Please select at least one tag.")
     elif not uploaded_file:
-        st.error("Please upload a file.")
+        add_error_to_log("Please upload a file.")
     else:
         # File size check (300KB = 300 * 1024 bytes)
         if uploaded_file.size > 300 * 1024:
-            st.error("File size exceeds 300KB limit.")
+            add_error_to_log("File size exceeds 300KB limit.")
         else:
             content = uploaded_file.read().decode("utf-8")
             
@@ -145,9 +146,9 @@ if submitted:
                     # Rerun to update list
                     st.rerun()
                 except APIError as e:
-                    st.error(f"Upload failed: {e.message}")
+                    add_error_to_log(f"Upload failed: {e.message}")
                 except Exception as e:
-                    st.error(f"An unexpected error occurred: {e}")
+                    add_error_to_log(f"An unexpected error occurred: {e}")
 
 # --- Document List Section ---
 # --- Document List Section ---
@@ -228,7 +229,7 @@ with st.container(border=True):
                                 st.session_state.delete_confirmation = None
                                 st.rerun()
                             except APIError as e:
-                                st.error(f"Delete failed: {e.message}")
+                                add_error_to_log(f"Delete failed: {e.message}")
                         if st.button("Cancel", key=f"cancel_del_{doc.knowledge_id}"):
                             st.session_state.delete_confirmation = None
                             st.rerun()
@@ -247,11 +248,12 @@ with st.container(border=True):
                                 st.success("Retry initiated.")
                                 st.rerun()
                             except APIError as e:
-                                st.error(f"Retry failed: {e.message}")
+                                add_error_to_log(f"Retry failed: {e.message}")
 
     except APIError as e:
-        st.error(f"Failed to load documents: {e.message}")
+        add_error_to_log(f"Failed to load documents: {e.message}")
     except Exception as e:
-        st.error(f"An unexpected error occurred loading documents: {e}")
+        add_error_to_log(f"An unexpected error occurred loading documents: {e}")
 
+render_error_console()
 render_footer()

@@ -18,6 +18,7 @@ from streamlit_app.services import (
 )
 from streamlit_app.components.sidebar import render_sidebar
 from streamlit_app.components.footer import render_footer
+from streamlit_app.components.error_console import add_error_to_log, render_error_console
 
 # Page configuration
 st.set_page_config(
@@ -154,7 +155,7 @@ def render_dashboard() -> None:
             st.rerun()
         
         if error_message:
-            st.error(error_message, icon="🔌")
+            add_error_to_log(error_message)
         
         st.warning(
             "Could not load dashboard data. Please check if the backend is running.",
@@ -165,6 +166,7 @@ def render_dashboard() -> None:
 def main() -> None:
     """Main page entry point."""
     render_dashboard()
+    render_error_console()
     render_footer()
 
 

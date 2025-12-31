@@ -24,6 +24,7 @@ from streamlit_app.services.cached_data import (
 )
 from streamlit_app.components.sidebar import render_sidebar
 from streamlit_app.components.footer import render_footer
+from streamlit_app.components.error_console import add_error_to_log, render_error_console
 
 # Page configuration
 st.set_page_config(page_title="Education Audio", page_icon="🎧", layout="wide")
@@ -59,8 +60,8 @@ if "is_generating" not in st.session_state:
     st.session_state.is_generating = False
 if "generation_id" not in st.session_state:
     st.session_state.generation_id = 0
-if "preferred_languages" not in st.session_state:
-    st.session_state.preferred_languages = []  # Empty list means auto-detect
+if "multi_speaker_enabled" not in st.session_state:
+    st.session_state.multi_speaker_enabled = False
 if "speaker1_languages" not in st.session_state:
     st.session_state.speaker1_languages = []
 if "speaker2_languages" not in st.session_state:
@@ -69,6 +70,8 @@ if "speaker1_voice_id" not in st.session_state:
     st.session_state.speaker1_voice_id = None
 if "speaker2_voice_id" not in st.session_state:
     st.session_state.speaker2_voice_id = None
+if "target_duration_minutes" not in st.session_state:
+    st.session_state.target_duration_minutes = 3
 # Pending template operations (for async handling outside dialogs)
 if "_pending_template_op" not in st.session_state:
     st.session_state._pending_template_op = None
@@ -98,7 +101,7 @@ if st.session_state._pending_template_op:
         # Reload templates after any operation
         st.session_state.available_templates = run_async(client.get_templates())
     except Exception as e:
-        st.error(f"Template operation failed: {e}")
+        add_error_to_log(f"Template operation failed: {e}")
 
 
 def render_header():
@@ -136,9 +139,20 @@ async def generate_script(knowledge_id: str, script_placeholder: Optional[Any] =
     quick_instructions = st.session_state.quick_instructions if use_templates else None
     custom_prompt = st.session_state.custom_prompt if not use_templates else None
     system_prompt_override = st.session_state.custom_system_prompt if use_templates else None
-    preferred_languages = st.session_state.preferred_languages if use_templates else None
-    speaker1_languages = st.session_state.speaker1_languages if use_templates else None
-    speaker2_languages = st.session_state.speaker2_languages if use_templates else None
+    # Determine multi-speaker mode
+    multi_speaker = st.session_state.multi_speaker_enabled if use_templates else False
+    
+    # In single-speaker mode, use Speaker 1 languages as output language
+    # In multi-speaker mode, use both speaker languages
+    if multi_speaker:
+        preferred_languages = None  # Multi-speaker handles languages differently
+        speaker1_languages = st.session_state.speaker1_languages if use_templates else None
+        speaker2_languages = st.session_state.speaker2_languages if use_templates else None
+    else:
+        # Single-speaker: use Speaker 1 languages as the output language
+        preferred_languages = st.session_state.speaker1_languages if use_templates else None
+        speaker1_languages = None
+        speaker2_languages = None
     
     # Create placeholders for streaming display
     progress_placeholder = st.empty()
@@ -164,20 +178,19 @@ async def generate_script(knowledge_id: str, script_placeholder: Optional[Any] =
             system_prompt_override=system_prompt_override,
             preferred_languages=preferred_languages,
             speaker1_languages=speaker1_languages,
-            speaker2_languages=speaker2_languages
+            speaker2_languages=speaker2_languages,
+            target_duration_minutes=st.session_state.target_duration_minutes if use_templates else None,
+            is_multi_speaker=multi_speaker
         ):
             event_type = event.get("type")
             
             if event_type == "token":
                 # Append token and update display
                 full_script += event.get("content", "")
-                disp_placeholder.text_area(
-                    "📝 Generating script...",
-                    value=full_script,
-                    height=600,
-                    disabled=True,
-                    # No key here to avoid conflict during stream
-                )
+                
+                # Use st.code for streaming - it doesn't require keys and works
+                # perfectly with st.empty() placeholders for dynamic updates
+                disp_placeholder.code(full_script, language=None, wrap_lines=True)
                 status_placeholder.caption(f"⏳ Generating... ({len(full_script):,} characters)")
                 
             elif event_type == "complete":
@@ -191,11 +204,12 @@ async def generate_script(knowledge_id: str, script_placeholder: Optional[Any] =
                 # Clear streaming placeholders
                 progress_placeholder.empty()
                 if not script_placeholder:
+                    # If we own the placeholder, clear it so the editor can take its place visually
                     disp_placeholder.empty()
                 status_placeholder.empty()
                 
                 st.toast(f"✅ Script generated using {final_model_used}!", icon="📝")
-                st.rerun()  # Rerun to switch from streaming view to editable view
+                # Removed st.rerun() to prevent UI blink. The flow will continue in render_script_editor to show the editor.
                 
             elif event_type == "error":
                 # Error occurred during generation
@@ -211,7 +225,7 @@ async def generate_script(knowledge_id: str, script_placeholder: Optional[Any] =
                     )
                     st.session_state.generated_script = full_script
                 else:
-                    st.error(f"Script generation failed: {error_msg}")
+                    add_error_to_log(f"Script generation failed: {error_msg}")
                 st.session_state.is_generating = False
                 st.rerun()
                 return
@@ -225,7 +239,7 @@ async def generate_script(knowledge_id: str, script_placeholder: Optional[Any] =
         st.session_state.is_generating = False
         
         error_msg = str(e) if str(e) else repr(e)
-        st.error(f"Script generation failed: {error_msg}")
+        add_error_to_log(f"Script generation failed: {error_msg}")
         st.rerun()
 
 
@@ -238,7 +252,7 @@ async def generate_audio(knowledge_id: str, script: str, voice_id: str):
             # Invalidate audio history cache so it refreshes on next render
             st.session_state["_audio_history_cache_id"] = None
     except Exception as e:
-        st.error(f"Audio generation failed. Please check your quota or try again. (Error: {e})")
+        add_error_to_log(f"Audio generation failed. Please check your quota or try again. (Error: {e})")
 
 
 async def render_document_selection(documents: List[KnowledgeDocument]):
@@ -327,7 +341,7 @@ def render_system_prompt_editor():
         try:
             return run_async(client.get_base_system_prompt())
         except Exception as e:
-            st.error(f"Failed to load base system prompt: {e}")
+            add_error_to_log(f"Failed to load base system prompt: {e}")
             return "Error loading system prompt."
 
     # Cache the default prompt in session state to avoid re-fetching on every rerun
@@ -392,7 +406,7 @@ def render_template_manager():
             
             if st.form_submit_button("Create Template", type="primary"):
                 if not display_name or not content:
-                    st.error("Name and Content are required.")
+                    add_error_to_log("Name and Content are required.")
                 else:
                     new_template = CustomTemplateCreate(
                         display_name=display_name,
@@ -500,26 +514,35 @@ async def render_script_editor():
         # AI Model selection
         st.session_state.selected_llm_model = st.selectbox(
             "AI Model",
-            options=["gemini-1.5-flash-8b", "gemini-2.5-flash-lite", "gemini-3-flash-preview", "gemini-3-pro-preview"],
-            index=1,
+            options=["gemini-2.5-flash-lite", "gemini-3-flash-preview", "gemini-3-pro-preview"],
+            index=0,
             help="Select the AI model for script generation"
         )
         
-        # Language selection
-        st.session_state.preferred_languages = st.multiselect(
-            "Output Language",
-            options=["zh-TW", "en", "zh-CN"],
-            default=st.session_state.preferred_languages,
-            format_func=lambda x: {
-                "zh-TW": "繁體中文 (Traditional Chinese)",
-                "en": "English",
-                "zh-CN": "简体中文 (Simplified Chinese)"
-            }.get(x, x),
-            help="Select preferred languages for generated transcript (leave empty for auto-detect)"
+        # Speech duration selection (based on ~150 words per minute)
+        DURATION_OPTIONS = {
+            3: "3 min (~400–500 words)",
+            5: "5 min (~650–850 words)",
+            10: "10 min (~1,300–1,700 words)",
+            15: "15 min (~2,000–2,500 words)",
+        }
+        st.session_state.target_duration_minutes = st.selectbox(
+            "🕐 Speech Duration",
+            options=list(DURATION_OPTIONS.keys()),
+            format_func=lambda x: DURATION_OPTIONS[x],
+            index=list(DURATION_OPTIONS.keys()).index(st.session_state.target_duration_minutes),
+            help="Target length of the generated audio"
         )
         
-        # Multi-speaker language selection
-        st.caption("🎭 **Multi-Speaker Dialogue**")
+        st.divider()
+        
+        # Multi-speaker toggle and language selection
+        st.session_state.multi_speaker_enabled = st.toggle(
+            "🎭 Multi-Speaker Dialogue",
+            value=st.session_state.multi_speaker_enabled,
+            help="Enable dialogue between Doctor/Educator and Patient/Learner"
+        )
+        
         st.caption("💡 Speaker 1 is the Doctor/Educator/Guider voice")
         
         # All ElevenLabs supported languages with native script + English
@@ -573,12 +596,22 @@ async def render_script_editor():
             help="Languages for the Doctor/Educator speaker"
         )
         
+        # Speaker 2 is grayed out when multi-speaker is disabled
+        speaker2_disabled = not st.session_state.multi_speaker_enabled
+        
+        # Clear Speaker 2 languages when multi-speaker is disabled
+        if speaker2_disabled:
+            speaker2_default = []
+        else:
+            speaker2_default = st.session_state.speaker2_languages
+        
         st.session_state.speaker2_languages = st.multiselect(
             "Speaker 2 Languages",
             options=LANGUAGE_OPTIONS,
-            default=st.session_state.speaker2_languages,
+            default=speaker2_default,
             format_func=lambda x: LANGUAGE_DISPLAY.get(x, x),
-            help="Languages for the Patient/Learner speaker"
+            help="Languages for the Patient/Learner speaker" if not speaker2_disabled else "Enable Multi-Speaker Dialogue to use Speaker 2",
+            disabled=speaker2_disabled
         )
         
         st.divider()
@@ -667,7 +700,7 @@ async def render_script_editor():
                     )
                     render_preview_dialog(preview_text)
                 except Exception as e:
-                    st.error(f"Preview failed: {e}")
+                    add_error_to_log(f"Preview failed: {e}")
             
             # System prompt editor button
             if st.button("⚙️ Edit System Prompt", use_container_width=True):
@@ -706,7 +739,7 @@ async def render_script_editor():
         if st.session_state.is_generating:
             # Streaming is handled by generate_script via streaming_area
             pass
-        elif st.session_state.generated_script:
+        else:
             streaming_area.empty()  # Clear any leftover streaming content
             st.markdown("**Review and Edit Script:**")
             # Use dynamic key based on generation_id to force widget refresh
@@ -720,8 +753,6 @@ async def render_script_editor():
             )
             st.session_state.generated_script = edited_script
             st.caption(f"Character count: {len(edited_script)}")
-        else:
-            streaming_area.info("Configure templates and click 'Generate Script' to begin.")
 
 
 @st.fragment
@@ -880,7 +911,7 @@ async def render_audio_history():
             st.session_state[cache_key] = audio_files
             st.session_state[cache_id_key] = knowledge_id
         except Exception as e:
-            st.error(f"Unable to load audio history. (Error: {e})")
+            add_error_to_log(f"Unable to load audio history. (Error: {e})")
             return
     else:
         audio_files = st.session_state.get(cache_key, [])
@@ -911,6 +942,7 @@ async def main():
     await render_audio_generation()
     st.divider()
     await render_audio_history()
+    render_error_console()
     render_footer()
 
 

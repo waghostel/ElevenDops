@@ -9,6 +9,7 @@ from streamlit_app.services.backend_api import get_backend_client, BackendAPICli
 from streamlit_app.services.models import ConversationSummary, ConversationDetail
 from streamlit_app.components.sidebar import render_sidebar
 from streamlit_app.components.footer import render_footer
+from streamlit_app.components.error_console import add_error_to_log, render_error_console
 
 # Page Configuration
 st.set_page_config(
@@ -159,7 +160,7 @@ async def render_detail_view(conversation_id: str):
     try:
         detail = await client.get_conversation_detail(conversation_id)
     except Exception as e:
-        st.error(f"Failed to load details: {e}")
+        add_error_to_log(f"Failed to load details: {e}")
         return
 
     st.divider()
@@ -255,7 +256,8 @@ async def main():
             )
             stats = await client.get_conversation_statistics()
     except Exception as e:
-        st.error(f"Failed to fetch logs: {e}")
+        add_error_to_log(f"Failed to fetch logs: {e}")
+        render_error_console()
         render_footer()
         return
 
@@ -278,6 +280,7 @@ async def main():
     if st.session_state.selected_conversation_id:
         await render_detail_view(st.session_state.selected_conversation_id)
 
+    render_error_console()
     render_footer()
 
 if __name__ == "__main__":

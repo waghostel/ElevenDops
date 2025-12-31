@@ -1,0 +1,98 @@
+# Doctor-Patient Dialogue Format
+
+Always use this 2-speaker format. Label speakers clearly as `Doctor:` and `Patient:`.
+
+## Format Example
+
+```
+Doctor: [professional] Good morning. How are you feeling about your upcoming procedure?
+
+Patient: [concerned] I'm a bit nervous, to be honest. I don't know what to expect.
+
+Doctor: [reassuring] That's completely normal. Let me walk you through what will happen step by step. [pause] First, you'll arrive at the surgical center about an hour before your scheduled time.
+
+Patient: [curious] What should I bring with me?
+
+Doctor: [thoughtful] Great question. Bring your ID, insurance card, and a list of your current medications.
+
+Patient: [worried] I read online that some people have bad reactions to anesthesia. How do I know if I'll be okay?
+
+Doctor: [calm] That's a valid concern. Before the procedure, our anesthesiologist will review your medical history carefully. [pause] They'll ask about any allergies, previous surgeries, and family history of anesthesia reactions.
+
+Patient: [skeptical] But what if something goes wrong during the surgery?
+
+Doctor: [serious] Our team is extensively trained to handle any situation. [reassuring] We have continuous monitoring throughout the procedure, and I'll personally be checking on you the entire time.
+
+Patient: [relieved] That makes me feel better. Thank you for explaining.
+```
+
+**Key Elements:**
+- Patient asks skeptical questions ("I read online...", "But what if...")
+- Doctor uses analogies when explaining technical concepts
+- Multiple exchanges per topic (not rushing through)
+- Natural emotional progression (concerned → skeptical → relieved)
+
+---
+
+# Character Consistency Rules
+
+## Doctor Character Profile
+
+**Personality**: Professional, knowledgeable, compassionate, patient
+**Primary tags**: `[professional]`, `[reassuring]`, `[thoughtful]`, `[calm]`, `[serious]`, `[sympathetic]`
+**Occasional tags**: `[encouraging]`, `[gentle]`, `[affirming]`
+**Avoid**: `[worried]`, `[nervous]`, `[confused]`
+
+**Behavior**:
+- Uses analogies to explain medical concepts
+- Patiently addresses patient concerns and myths
+- Repeats important information in different ways
+- Never dismisses patient fears
+
+## Patient Character Profile
+
+**Personality**: Curious, sometimes anxious, occasionally skeptical, learning-oriented
+**Primary tags**: `[curious]`, `[concerned]`, `[worried]`, `[skeptical]`, `[confused]`
+**Reaction tags**: `[relieved]`, `[hopeful]`, `[surprised]`, `[thoughtful]`
+
+**Behavior**:
+- Asks "Why?", "What if?", "How?" questions
+- Expresses doubts or mentions myths from the internet
+- Doesn't accept information immediately
+- Shows emotional progression throughout conversation
+
+---
+
+# Output Format Requirements
+
+## Speaker Label Format
+Use clear speaker labels followed by colon:
+
+```
+Doctor: [professional] Text here.
+
+Patient: [curious] Response here.
+```
+
+## Line Breaks Between Speakers
+Always add a blank line between different speakers for clarity:
+
+✅ **CORRECT**:
+```
+Doctor: [reassuring] You'll do great.
+
+Patient: [hopeful] Thank you so much.
+```
+
+❌ **WRONG** (no line break):
+```
+Doctor: [reassuring] You'll do great.
+Patient: [hopeful] Thank you so much.
+```
+
+## No Extra Formatting
+- ❌ Do NOT include section headers like "## Pre-Surgery Topics"
+- ❌ Do NOT use markdown formatting
+- ❌ Do NOT include code blocks
+- ❌ Do NOT number exchanges
+- ✅ DO generate clean, ready-to-speak dialogue with V3 tags

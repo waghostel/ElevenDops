@@ -77,8 +77,10 @@ class AudioService:
                 preferred_languages=template_config.preferred_languages,
                 speaker1_languages=template_config.speaker1_languages,
                 speaker2_languages=template_config.speaker2_languages,
+                target_duration_minutes=template_config.target_duration_minutes,
+                is_multi_speaker=template_config.is_multi_speaker,
             )
-            logging.info(f"Using template config with {len(template_config.template_ids)} templates")
+            logging.info(f"Using template config with {len(template_config.template_ids)} templates, multi_speaker={template_config.is_multi_speaker}")
         else:
             prompt = custom_prompt or get_default_script_prompt()
         
@@ -160,8 +162,10 @@ class AudioService:
                 preferred_languages=template_config.preferred_languages,
                 speaker1_languages=template_config.speaker1_languages,
                 speaker2_languages=template_config.speaker2_languages,
+                target_duration_minutes=template_config.target_duration_minutes,
+                is_multi_speaker=template_config.is_multi_speaker,
             )
-            logging.info(f"Using template config with {len(template_config.template_ids)} templates")
+            logging.info(f"Using template config with {len(template_config.template_ids)} templates, multi_speaker={template_config.is_multi_speaker}")
         else:
             prompt = custom_prompt or get_default_script_prompt()
         

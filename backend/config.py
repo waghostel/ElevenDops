@@ -302,7 +302,6 @@ def initialize_config() -> Settings:
 # Gemini model configurations (LangChain-compatible names)
 # Ref: https://docs.langchain.com/oss/python/integrations/chat/google_generative_ai.md
 GEMINI_MODELS = {
-    "gemini-1.5-flash-8b": "gemini-1.5-flash-8b",
     "gemini-2.5-flash-lite": "gemini-2.5-flash-lite",
     "gemini-3-flash-preview": "gemini-3-flash-preview",
     "gemini-3-pro-preview": "gemini-3-pro-preview"

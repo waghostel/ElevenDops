@@ -420,7 +420,9 @@ class BackendAPIClient:
         system_prompt_override: Optional[str] = None,
         preferred_languages: Optional[List[str]] = None,
         speaker1_languages: Optional[List[str]] = None,
-        speaker2_languages: Optional[List[str]] = None
+        speaker2_languages: Optional[List[str]] = None,
+        target_duration_minutes: Optional[int] = None,
+        is_multi_speaker: bool = True
     ) -> AsyncGenerator[dict, None]:
         """Stream script generation with Server-Sent Events.
         
@@ -438,6 +440,8 @@ class BackendAPIClient:
             preferred_languages: Optional list of preferred language codes.
             speaker1_languages: Languages for Speaker 1 (Doctor/Educator).
             speaker2_languages: Languages for Speaker 2 (Patient/Learner).
+            target_duration_minutes: Target speech duration (3, 5, 10, or 15 minutes).
+            is_multi_speaker: Whether to use multi-speaker (Doctor-Patient) or single-speaker format.
             
         Yields:
             dict events with type: 'token', 'complete', or 'error'
@@ -453,9 +457,12 @@ class BackendAPIClient:
                 "template_ids": template_ids,
                 "quick_instructions": quick_instructions,
                 "system_prompt_override": system_prompt_override,
-                "preferred_languages": preferred_languages,
-                "speaker1_languages": speaker1_languages,
-                "speaker2_languages": speaker2_languages
+                # Convert None to empty lists to satisfy backend schema (expects List[str], not Optional)
+                "preferred_languages": preferred_languages or [],
+                "speaker1_languages": speaker1_languages or [],
+                "speaker2_languages": speaker2_languages or [],
+                "target_duration_minutes": target_duration_minutes,
+                "is_multi_speaker": is_multi_speaker
             }
         elif custom_prompt:
             payload["custom_prompt"] = custom_prompt
@@ -467,7 +474,12 @@ class BackendAPIClient:
                     "/api/audio/generate-script-stream",
                     json=payload
                 ) as response:
-                    response.raise_for_status()
+                    # Check for HTTP errors while stream is still open
+                    if response.status_code >= 400:
+                        # Read error response body before context closes
+                        await response.aread()
+                        yield {"type": "error", "message": f"HTTP error: {self._parse_error_message(response)}"}
+                        return
                     
                     async for line in response.aiter_lines():
                         # Parse SSE format: "data: {...}"
@@ -481,8 +493,6 @@ class BackendAPIClient:
             yield {"type": "error", "message": f"Connection failed: {e}"}
         except httpx.TimeoutException as e:
             yield {"type": "error", "message": f"Request timed out: {e}"}
-        except httpx.HTTPStatusError as e:
-            yield {"type": "error", "message": f"HTTP error: {self._parse_error_message(e.response)}"}
 
     async def generate_audio(self, knowledge_id: str, script: str, voice_id: str) -> AudioResponse:
         """Generate audio from a script.

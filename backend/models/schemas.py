@@ -169,6 +169,22 @@ class TemplateConfig(BaseModel):
         default_factory=list,
         description="Languages for Speaker 2 (Patient/Learner role)"
     )
+    target_duration_minutes: Optional[int] = Field(
+        default=None,
+        description="Target speech duration in minutes (3, 5, 10, or 15)"
+    )
+    is_multi_speaker: bool = Field(
+        default=True,
+        description="Whether to use multi-speaker (Doctor-Patient) or single-speaker (Solo Doctor) format"
+    )
+
+    @field_validator("target_duration_minutes")
+    @classmethod
+    def validate_duration(cls, v: Optional[int]) -> Optional[int]:
+        """Validate that duration is one of the allowed values."""
+        if v is not None and v not in {3, 5, 10, 15}:
+            raise ValueError("Duration must be 3, 5, 10, or 15 minutes")
+        return v
 
     @field_validator("preferred_languages", "speaker1_languages", "speaker2_languages")
     @classmethod
