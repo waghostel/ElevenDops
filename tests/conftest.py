@@ -30,7 +30,7 @@ settings.register_profile(
 # CI profile - balanced between speed and coverage
 settings.register_profile(
     "ci",
-    max_examples=25, //需要計算有多少排列組合
+    max_examples=25,  # 需要計算有多少排列組合
     deadline=None,
     verbosity=Verbosity.normal,
 )

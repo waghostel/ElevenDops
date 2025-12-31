@@ -74,6 +74,9 @@ class AudioService:
             prompt = await template_service.build_prompt(
                 template_ids=template_config.template_ids,
                 quick_instructions=template_config.quick_instructions,
+                preferred_languages=template_config.preferred_languages,
+                speaker1_languages=template_config.speaker1_languages,
+                speaker2_languages=template_config.speaker2_languages,
             )
             logging.info(f"Using template config with {len(template_config.template_ids)} templates")
         else:
@@ -154,6 +157,9 @@ class AudioService:
                 template_ids=template_config.template_ids,
                 quick_instructions=template_config.quick_instructions,
                 system_prompt_override=template_config.system_prompt_override,
+                preferred_languages=template_config.preferred_languages,
+                speaker1_languages=template_config.speaker1_languages,
+                speaker2_languages=template_config.speaker2_languages,
             )
             logging.info(f"Using template config with {len(template_config.template_ids)} templates")
         else:

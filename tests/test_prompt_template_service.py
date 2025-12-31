@@ -11,11 +11,12 @@ from backend.services.prompt_template_service import (
 # Fixtures
 @pytest.fixture
 def mock_db_service():
-    with patch("backend.services.prompt_template_service.FirestoreDataService") as MockClass:
-        mock_instance = MockClass.return_value
+    with patch("backend.services.prompt_template_service.get_data_service") as mock_get_ds:
+        mock_instance = MagicMock()
         # Configure async methods with AsyncMock
         mock_instance.get_custom_templates = AsyncMock(return_value=[])
         mock_instance.get_custom_template = AsyncMock(return_value=None)
+        mock_get_ds.return_value = mock_instance
         yield mock_instance
 
 @pytest.fixture
@@ -166,11 +167,7 @@ async def test_quick_instructions_whitespace_only_ignored(service):
 
 def test_get_prompt_template_service_returns_singleton():
     """get_prompt_template_service should return singleton instance."""
-    # Since we mocked FirestoreDataService globally in setUp?
-    # Actually we mocked it in 'service' fixture, but 'get_prompt_template_service' uses global
-    # We should patch inside the test if we wan't to test safe instantiation or rely on the fact 
-    # that python modules are cached.
-    # Just checking instance type is enough.
-    with patch("backend.services.prompt_template_service.FirestoreDataService"):
+    # Patch get_data_service to avoid actual DB connections during test
+    with patch("backend.services.prompt_template_service.get_data_service"):
         service = get_prompt_template_service()
         assert isinstance(service, PromptTemplateService)

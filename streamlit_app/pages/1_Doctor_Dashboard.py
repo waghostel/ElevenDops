@@ -95,23 +95,23 @@ def render_empty_states(stats: DashboardStats) -> None:
     """Render guidance messages for zero-count metrics."""
     if stats.document_count == 0:
         st.info(
-            "📚 **No documents uploaded yet.** "
+            "**No documents uploaded yet.** "
             "Start by uploading medical guidelines, textbooks, or educational materials.",
             icon="📚",
         )
 
     if stats.agent_count == 0:
         st.info(
-            "🤖 **No agents configured.** "
+            "**No agents configured.** "
             "Create your first AI agent to start patient simulations.",
-            icon="🤖",
+            icon="🎙️",
         )
 
     if stats.audio_count == 0:
         st.info(
-            "🎙️ **No audio generated yet.** "
+            "**No audio generated yet.** "
             "Audio files will appear here after voice interactions.",
-            icon="🎙️",
+            icon="🎧",
         )
 
 

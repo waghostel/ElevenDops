@@ -417,7 +417,10 @@ class BackendAPIClient:
         custom_prompt: Optional[str] = None,
         template_ids: Optional[List[str]] = None,
         quick_instructions: Optional[str] = None,
-        system_prompt_override: Optional[str] = None
+        system_prompt_override: Optional[str] = None,
+        preferred_languages: Optional[List[str]] = None,
+        speaker1_languages: Optional[List[str]] = None,
+        speaker2_languages: Optional[List[str]] = None
     ) -> AsyncGenerator[dict, None]:
         """Stream script generation with Server-Sent Events.
         
@@ -432,6 +435,9 @@ class BackendAPIClient:
             template_ids: Optional list of template IDs in display order.
             quick_instructions: Optional additional instructions to inject.
             system_prompt_override: Optional custom base system prompt.
+            preferred_languages: Optional list of preferred language codes.
+            speaker1_languages: Languages for Speaker 1 (Doctor/Educator).
+            speaker2_languages: Languages for Speaker 2 (Patient/Learner).
             
         Yields:
             dict events with type: 'token', 'complete', or 'error'
@@ -446,7 +452,10 @@ class BackendAPIClient:
             payload["template_config"] = {
                 "template_ids": template_ids,
                 "quick_instructions": quick_instructions,
-                "system_prompt_override": system_prompt_override
+                "system_prompt_override": system_prompt_override,
+                "preferred_languages": preferred_languages,
+                "speaker1_languages": speaker1_languages,
+                "speaker2_languages": speaker2_languages
             }
         elif custom_prompt:
             payload["custom_prompt"] = custom_prompt
@@ -758,12 +767,33 @@ class BackendAPIClient:
                 status_code=e.response.status_code,
             ) from e
 
+    async def get_base_system_prompt(self) -> str:
+        """Get the base system prompt content.
+        
+        Returns:
+            The base system prompt string.
+        """
+        try:
+            async with self._get_client() as client:
+                response = await client.get("/api/templates/system-prompt")
+                response.raise_for_status()
+                data = response.json()
+                return data.get("content", "")
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Failed to get system prompt: {self._parse_error_message(e.response)}",
+                status_code=e.response.status_code,
+            ) from e
+
     async def create_agent(
         self,
         name: str,
         knowledge_ids: List[str],
         voice_id: str,
         answer_style: str,
+        language: str = "zh",
         doctor_id: str = "default_doctor",
     ) -> AgentConfig:
         """Create a new agent.
@@ -773,6 +803,7 @@ class BackendAPIClient:
             knowledge_ids: List of linked knowledge document IDs.
             voice_id: Voice ID.
             answer_style: Answer style.
+            language: Language code for conversations (ISO 639-1).
             doctor_id: Doctor ID.
 
         Returns:
@@ -784,6 +815,7 @@ class BackendAPIClient:
                 "knowledge_ids": knowledge_ids,
                 "voice_id": voice_id,
                 "answer_style": answer_style,
+                "language": language,
                 "doctor_id": doctor_id,
             }
             async with self._get_client() as client:
@@ -796,6 +828,7 @@ class BackendAPIClient:
                     knowledge_ids=data["knowledge_ids"],
                     voice_id=data["voice_id"],
                     answer_style=data["answer_style"],
+                    language=data.get("language", "zh"),
                     elevenlabs_agent_id=data["elevenlabs_agent_id"],
                     doctor_id=data["doctor_id"],
                     created_at=datetime.fromisoformat(data["created_at"]),
@@ -826,6 +859,7 @@ class BackendAPIClient:
                         knowledge_ids=d["knowledge_ids"],
                         voice_id=d["voice_id"],
                         answer_style=d["answer_style"],
+                        language=d.get("language", "zh"),
                         elevenlabs_agent_id=d["elevenlabs_agent_id"],
                         doctor_id=d["doctor_id"],
                         created_at=datetime.fromisoformat(d["created_at"]),

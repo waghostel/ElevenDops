@@ -149,6 +149,7 @@ class AgentConfig:
         knowledge_ids: IDs of linked knowledge documents.
         voice_id: ID of the voice used.
         answer_style: Style of the agent's answers.
+        language: Language code for conversations (ISO 639-1).
         elevenlabs_agent_id: ID of the agent in ElevenLabs.
         doctor_id: ID of the creating doctor.
         created_at: Creation timestamp.
@@ -159,9 +160,10 @@ class AgentConfig:
     knowledge_ids: list[str]
     voice_id: str
     answer_style: str
-    elevenlabs_agent_id: str
-    doctor_id: str
-    created_at: datetime
+    language: str = "zh"
+    elevenlabs_agent_id: str = ""
+    doctor_id: str = ""
+    created_at: datetime = None
 
 
 @dataclass

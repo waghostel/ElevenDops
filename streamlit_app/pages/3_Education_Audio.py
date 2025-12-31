@@ -6,7 +6,7 @@ from knowledge documents using ElevenLabs TTS.
 
 import asyncio
 import logging
-from typing import List, Optional
+from typing import List, Optional, Any
 
 import streamlit as st
 
@@ -55,6 +55,20 @@ if "available_templates" not in st.session_state:
     st.session_state.available_templates = []
 if "custom_system_prompt" not in st.session_state:
     st.session_state.custom_system_prompt = None
+if "is_generating" not in st.session_state:
+    st.session_state.is_generating = False
+if "generation_id" not in st.session_state:
+    st.session_state.generation_id = 0
+if "preferred_languages" not in st.session_state:
+    st.session_state.preferred_languages = []  # Empty list means auto-detect
+if "speaker1_languages" not in st.session_state:
+    st.session_state.speaker1_languages = []
+if "speaker2_languages" not in st.session_state:
+    st.session_state.speaker2_languages = []
+if "speaker1_voice_id" not in st.session_state:
+    st.session_state.speaker1_voice_id = None
+if "speaker2_voice_id" not in st.session_state:
+    st.session_state.speaker2_voice_id = None
 # Pending template operations (for async handling outside dialogs)
 if "_pending_template_op" not in st.session_state:
     st.session_state._pending_template_op = None
@@ -102,9 +116,19 @@ def render_header():
 
 
 
-async def generate_script(knowledge_id: str):
+async def generate_script(knowledge_id: str, script_placeholder: Optional[Any] = None):
     """Generate script from document using streaming for real-time feedback."""
     model = st.session_state.selected_llm_model
+    st.session_state.is_generating = True
+    
+    # Increment generation_id to force new widget key on completion
+    st.session_state.generation_id += 1
+    current_gen_id = st.session_state.generation_id
+    
+    # Clear previous widget state to ensure fresh display on completion
+    old_key = f"script_editor_area_{current_gen_id - 1}"
+    if old_key in st.session_state:
+        del st.session_state[old_key]
     
     # Determine whether to use templates or custom prompt
     use_templates = st.session_state.use_template_mode
@@ -112,10 +136,14 @@ async def generate_script(knowledge_id: str):
     quick_instructions = st.session_state.quick_instructions if use_templates else None
     custom_prompt = st.session_state.custom_prompt if not use_templates else None
     system_prompt_override = st.session_state.custom_system_prompt if use_templates else None
+    preferred_languages = st.session_state.preferred_languages if use_templates else None
+    speaker1_languages = st.session_state.speaker1_languages if use_templates else None
+    speaker2_languages = st.session_state.speaker2_languages if use_templates else None
     
     # Create placeholders for streaming display
     progress_placeholder = st.empty()
-    script_placeholder = st.empty()
+    # Use provided placeholder or create a temporary one
+    disp_placeholder = script_placeholder if script_placeholder else st.empty()
     status_placeholder = st.empty()
     
     full_script = ""
@@ -133,19 +161,22 @@ async def generate_script(knowledge_id: str):
             custom_prompt=custom_prompt,
             template_ids=template_ids,
             quick_instructions=quick_instructions,
-            system_prompt_override=system_prompt_override
+            system_prompt_override=system_prompt_override,
+            preferred_languages=preferred_languages,
+            speaker1_languages=speaker1_languages,
+            speaker2_languages=speaker2_languages
         ):
             event_type = event.get("type")
             
             if event_type == "token":
                 # Append token and update display
                 full_script += event.get("content", "")
-                script_placeholder.text_area(
+                disp_placeholder.text_area(
                     "📝 Generating script...",
                     value=full_script,
-                    height=400,
+                    height=600,
                     disabled=True,
-                    key="streaming_script_live"
+                    # No key here to avoid conflict during stream
                 )
                 status_placeholder.caption(f"⏳ Generating... ({len(full_script):,} characters)")
                 
@@ -155,14 +186,16 @@ async def generate_script(knowledge_id: str):
                 final_model_used = event.get("model_used", model)
                 
                 st.session_state.generated_script = final_script
+                st.session_state.is_generating = False
                 
                 # Clear streaming placeholders
                 progress_placeholder.empty()
-                script_placeholder.empty()
+                if not script_placeholder:
+                    disp_placeholder.empty()
                 status_placeholder.empty()
                 
                 st.toast(f"✅ Script generated using {final_model_used}!", icon="📝")
-                # Removed st.rerun() - session state update will reflect on next interaction
+                st.rerun()  # Rerun to switch from streaming view to editable view
                 
             elif event_type == "error":
                 # Error occurred during generation
@@ -179,16 +212,21 @@ async def generate_script(knowledge_id: str):
                     st.session_state.generated_script = full_script
                 else:
                     st.error(f"Script generation failed: {error_msg}")
+                st.session_state.is_generating = False
+                st.rerun()
                 return
                 
     except Exception as e:
         # Clean up placeholders on error
         progress_placeholder.empty()
-        script_placeholder.empty()
+        if not script_placeholder:
+            disp_placeholder.empty()
         status_placeholder.empty()
+        st.session_state.is_generating = False
         
         error_msg = str(e) if str(e) else repr(e)
         st.error(f"Script generation failed: {error_msg}")
+        st.rerun()
 
 
 async def generate_audio(knowledge_id: str, script: str, voice_id: str):
@@ -284,60 +322,60 @@ def render_system_prompt_editor():
     """Render dialog to edit the base system prompt."""
     st.markdown("Edit the foundational prompt that is inserted at the beginning of all script generation.")
     
-    # Default system prompt content
-    default_system_prompt = """# Role
-You are a medical education script writer specializing in creating voice-optimized content for text-to-speech systems.
+    # helper for fetching system prompt synchronously
+    def get_default_prompt():
+        try:
+            return run_async(client.get_base_system_prompt())
+        except Exception as e:
+            st.error(f"Failed to load base system prompt: {e}")
+            return "Error loading system prompt."
 
-# Goal
-Generate a patient education script from the provided medical knowledge document. The script should be natural, clear, and optimized for ElevenLabs voice synthesis.
-
-# Voice Optimization Guidelines
-- Write in a conversational, warm tone suitable for spoken delivery
-- Use short, clear sentences (under 20 words when possible)
-- Include natural pauses using punctuation (commas, periods)
-- Avoid complex medical jargon; use patient-friendly language
-- Spell out abbreviations on first use
-
-# Pacing
-- Add "..." for longer pauses between sections
-- Use commas for natural breathing points
-- Keep paragraphs short (2-3 sentences)
-
-# Structure
-- Start with a friendly greeting and topic introduction
-- Organize content into logical sections
-- Use transitional phrases between topics
-- End with a supportive closing message
-
-# Language
-- Support Traditional Chinese when the source document is in Chinese
-- Maintain consistent language throughout the script
-- Use culturally appropriate expressions
-
-# Output Format
-Generate only the script content, ready for voice synthesis. Do not include section headers, markdown formatting, or code blocks."""
+    # Cache the default prompt in session state to avoid re-fetching on every rerun
+    if "base_system_prompt_cached" not in st.session_state:
+        st.session_state.base_system_prompt_cached = get_default_prompt()
     
-    current_prompt = st.session_state.custom_system_prompt or default_system_prompt
+    default_system_prompt = st.session_state.base_system_prompt_cached
     
-    with st.form("system_prompt_form"):
+    # Use fragment to allow partial rerun without closing dialog
+    @st.fragment
+    def system_prompt_editor_fragment():
+        # Check for pending reset BEFORE widget renders
+        if st.session_state.get("_reset_system_prompt_pending"):
+            st.session_state["_reset_system_prompt_pending"] = False
+            # Refresh default in case it changed on backend
+            fresh_default = get_default_prompt()
+            st.session_state.base_system_prompt_cached = fresh_default
+            st.session_state["system_prompt_textarea"] = fresh_default
+            st.session_state.custom_system_prompt = None
+            default_system_prompt = fresh_default # Update local variable
+        else:
+            default_system_prompt = st.session_state.base_system_prompt_cached
+        
+        current_prompt = st.session_state.custom_system_prompt or default_system_prompt
+        
         new_prompt = st.text_area(
             "System Prompt Content",
             value=current_prompt,
-            height=350
+            height=350,
+            key="system_prompt_textarea"
         )
         
         fc1, fc2, fc3 = st.columns(3)
         with fc1:
-            if st.form_submit_button("Save", type="primary", use_container_width=True):
+            if st.button("Save", type="primary", use_container_width=True):
                 st.session_state.custom_system_prompt = new_prompt
                 st.toast("System prompt saved!", icon="✅")
+                st.rerun()  # Full rerun to close dialog
         with fc2:
-            if st.form_submit_button("Reset to Default", use_container_width=True):
-                st.session_state.custom_system_prompt = None
+            if st.button("Reset to Default", use_container_width=True):
+                st.session_state["_reset_system_prompt_pending"] = True
                 st.toast("Reset to default!", icon="🔄")
+                st.rerun(scope="fragment")  # Fragment rerun - stays in dialog
         with fc3:
-            if st.form_submit_button("Cancel", use_container_width=True):
-                pass  # Just close the dialog
+            if st.button("Cancel", use_container_width=True):
+                st.rerun()  # Full rerun to close dialog
+    
+    system_prompt_editor_fragment()
 
 
 @st.dialog("Manage Custom Templates")
@@ -467,6 +505,82 @@ async def render_script_editor():
             help="Select the AI model for script generation"
         )
         
+        # Language selection
+        st.session_state.preferred_languages = st.multiselect(
+            "Output Language",
+            options=["zh-TW", "en", "zh-CN"],
+            default=st.session_state.preferred_languages,
+            format_func=lambda x: {
+                "zh-TW": "繁體中文 (Traditional Chinese)",
+                "en": "English",
+                "zh-CN": "简体中文 (Simplified Chinese)"
+            }.get(x, x),
+            help="Select preferred languages for generated transcript (leave empty for auto-detect)"
+        )
+        
+        # Multi-speaker language selection
+        st.caption("🎭 **Multi-Speaker Dialogue**")
+        st.caption("💡 Speaker 1 is the Doctor/Educator/Guider voice")
+        
+        # All ElevenLabs supported languages with native script + English
+        # Chinese and Portuguese have regional variants for correct character/spelling output
+        LANGUAGE_OPTIONS = [
+            "ar", "bg", "cs", "da", "de", "el", "en", "es", "fi", "fil",
+            "fr", "hi", "hr", "hu", "id", "it", "ja", "ko", "ms", "nl",
+            "no", "pl", "pt-BR", "pt-PT", "ro", "ru", "sk", "sv", "ta", "tr", "uk", "zh-TW", "zh-CN"
+        ]
+        LANGUAGE_DISPLAY = {
+            "ar": "العربية (Arabic)",
+            "bg": "Български (Bulgarian)",
+            "cs": "Čeština (Czech)",
+            "da": "Dansk (Danish)",
+            "de": "Deutsch (German)",
+            "el": "Ελληνικά (Greek)",
+            "en": "English",
+            "es": "Español (Spanish)",
+            "fi": "Suomi (Finnish)",
+            "fil": "Filipino",
+            "fr": "Français (French)",
+            "hi": "हिन्दी (Hindi)",
+            "hr": "Hrvatski (Croatian)",
+            "hu": "Magyar (Hungarian)",
+            "id": "Bahasa Indonesia (Indonesian)",
+            "it": "Italiano (Italian)",
+            "ja": "日本語 (Japanese)",
+            "ko": "한국어 (Korean)",
+            "ms": "Bahasa Melayu (Malay)",
+            "nl": "Nederlands (Dutch)",
+            "no": "Norsk (Norwegian)",
+            "pl": "Polski (Polish)",
+            "pt-BR": "Português Brasileiro (Brazilian Portuguese)",
+            "pt-PT": "Português Europeu (European Portuguese)",
+            "ro": "Română (Romanian)",
+            "ru": "Русский (Russian)",
+            "sk": "Slovenčina (Slovak)",
+            "sv": "Svenska (Swedish)",
+            "ta": "தமிழ் (Tamil)",
+            "tr": "Türkçe (Turkish)",
+            "uk": "Українська (Ukrainian)",
+            "zh-TW": "繁體中文 (Traditional Chinese)",
+            "zh-CN": "簡體中文 (Simplified Chinese)"
+        }
+        
+        st.session_state.speaker1_languages = st.multiselect(
+            "Speaker 1 Languages",
+            options=LANGUAGE_OPTIONS,
+            default=st.session_state.speaker1_languages,
+            format_func=lambda x: LANGUAGE_DISPLAY.get(x, x),
+            help="Languages for the Doctor/Educator speaker"
+        )
+        
+        st.session_state.speaker2_languages = st.multiselect(
+            "Speaker 2 Languages",
+            options=LANGUAGE_OPTIONS,
+            default=st.session_state.speaker2_languages,
+            format_func=lambda x: LANGUAGE_DISPLAY.get(x, x),
+            help="Languages for the Patient/Learner speaker"
+        )
+        
         st.divider()
 
         # Manage Templates Button
@@ -556,13 +670,10 @@ async def render_script_editor():
                     st.error(f"Preview failed: {e}")
             
             # System prompt editor button
-            sp1, sp2 = st.columns([3, 1])
-            with sp1:
-                if st.button("⚙️ Edit System Prompt", use_container_width=True):
-                    render_system_prompt_editor()
-            with sp2:
-                if st.session_state.custom_system_prompt:
-                    st.success("✓ Custom")
+            if st.button("⚙️ Edit System Prompt", use_container_width=True):
+                render_system_prompt_editor()
+            if st.session_state.custom_system_prompt:
+                st.caption("✓ Using custom system prompt")
         else:
             # Custom prompt mode (legacy)
             if st.button("⚙️ Customize Prompt", use_container_width=True):
@@ -573,26 +684,49 @@ async def render_script_editor():
             
         st.divider()
 
+        # Capture the second column container for streaming
+        editor_placeholder = None
+
         if st.button("✨ Generate Script", key="generate_script_btn", type="primary", use_container_width=True):
-            await generate_script(st.session_state.selected_document.knowledge_id)
+            # The actual call will happen after we define the placeholder in col2
+            st.session_state._trigger_generation = True
 
     with col2:
-        if st.session_state.generated_script:
+        # Streaming placeholder (only visible during generation)
+        streaming_area = st.empty()
+        
+        if st.session_state.get("_trigger_generation"):
+            st.session_state._trigger_generation = False
+            await generate_script(
+                st.session_state.selected_document.knowledge_id,
+                script_placeholder=streaming_area
+            )
+        
+        # Edit area (only visible when not generating)
+        if st.session_state.is_generating:
+            # Streaming is handled by generate_script via streaming_area
+            pass
+        elif st.session_state.generated_script:
+            streaming_area.empty()  # Clear any leftover streaming content
             st.markdown("**Review and Edit Script:**")
+            # Use dynamic key based on generation_id to force widget refresh
+            editor_key = f"script_editor_area_{st.session_state.generation_id}"
             edited_script = st.text_area(
                 "Script Content",
                 value=st.session_state.generated_script,
                 height=600,
                 label_visibility="collapsed",
-                key="script_editor_area"
+                key=editor_key
             )
             st.session_state.generated_script = edited_script
             st.caption(f"Character count: {len(edited_script)}")
+        else:
+            streaming_area.info("Configure templates and click 'Generate Script' to begin.")
 
 
 @st.fragment
 async def render_audio_generation():
-    """Render voice selection and audio generation (isolated fragment)."""
+    """Render voice selection with dynamic language filtering (isolated fragment)."""
     st.subheader("3. Voice & Generation")
 
     if not st.session_state.generated_script:
@@ -607,23 +741,110 @@ async def render_audio_generation():
         st.warning("No voices available. Check API connection.")
         return
 
-    voice_options = {v.name: v for v in st.session_state.voices}
-    
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        selected_voice_name = st.selectbox(
-            "Select Voice",
-            options=list(voice_options.keys())
-        )
+    # Helper function to filter voices by languages
+    def filter_voices_by_languages(voices, lang_codes):
+        if not lang_codes:
+            return voices
         
-    selected_voice = voice_options[selected_voice_name]
-    st.session_state.selected_voice_id = selected_voice.voice_id
+        # Map UI language codes to voice language codes
+        # Most codes match directly (en, ja, ko, fr, etc.)
+        # Chinese variants (zh-TW, zh-CN) map to zh
+        # Portuguese variants (pt-BR, pt-PT) map to pt
+        lang_map = {"zh-TW": "zh", "zh-CN": "zh", "pt-BR": "pt", "pt-PT": "pt"}
+        required_langs = {lang_map.get(lang, lang) for lang in lang_codes}
+        
+        filtered = [
+            v for v in voices
+            if hasattr(v, 'languages') and all(lang in getattr(v, 'languages', []) for lang in required_langs)
+        ]
+        
+        return filtered if filtered else voices
     
-    with col2:
-        if selected_voice.preview_url:
-            st.audio(selected_voice.preview_url, format="audio/mpeg")
-            st.caption("Voice Preview")
+    # Helper function to build voice options dict
+    def build_voice_options(voices):
+        options = {}
+        for v in voices:
+            lang_count = len(getattr(v, 'languages', [])) if hasattr(v, 'languages') else 0
+            display_name = f"{v.name} ({lang_count} langs)" if lang_count > 0 else v.name
+            options[display_name] = v
+        return options
+
+    # Check if multi-speaker mode is active
+    speaker1_langs = st.session_state.get("speaker1_languages", [])
+    speaker2_langs = st.session_state.get("speaker2_languages", [])
+    is_multi_speaker = bool(speaker1_langs and speaker2_langs)
+    
+    if is_multi_speaker:
+        st.caption("🎭 **Multi-Speaker Mode Active** - Select voices for each speaker")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("**Speaker 1** (Doctor/Educator)")
+            speaker1_voices = filter_voices_by_languages(st.session_state.voices, speaker1_langs)
+            speaker1_options = build_voice_options(speaker1_voices)
+            
+            if speaker1_options:
+                speaker1_voice_name = st.selectbox(
+                    "Speaker 1 Voice",
+                    options=list(speaker1_options.keys()),
+                    help=f"Showing {len(speaker1_voices)} voices supporting: {', '.join(speaker1_langs)}"
+                )
+                speaker1_voice = speaker1_options[speaker1_voice_name]
+                st.session_state.speaker1_voice_id = speaker1_voice.voice_id
+                
+                if speaker1_voice.preview_url:
+                    st.audio(speaker1_voice.preview_url, format="audio/mpeg")
+            else:
+                st.warning("No voices found for Speaker 1 languages")
+        
+        with col2:
+            st.markdown("**Speaker 2** (Patient/Learner)")
+            speaker2_voices = filter_voices_by_languages(st.session_state.voices, speaker2_langs)
+            speaker2_options = build_voice_options(speaker2_voices)
+            
+            if speaker2_options:
+                speaker2_voice_name = st.selectbox(
+                    "Speaker 2 Voice",
+                    options=list(speaker2_options.keys()),
+                    help=f"Showing {len(speaker2_voices)} voices supporting: {', '.join(speaker2_langs)}"
+                )
+                speaker2_voice = speaker2_options[speaker2_voice_name]
+                st.session_state.speaker2_voice_id = speaker2_voice.voice_id
+                
+                if speaker2_voice.preview_url:
+                    st.audio(speaker2_voice.preview_url, format="audio/mpeg")
+            else:
+                st.warning("No voices found for Speaker 2 languages")
+        
+        # Use speaker1 voice for now (multi-speaker TTS would need separate API)
+        st.session_state.selected_voice_id = st.session_state.speaker1_voice_id
+        st.info("💡 Multi-speaker audio will be generated. ElevenLabs V3 uses voice assignments from your script formatting.")
+    
+    else:
+        # Single speaker mode - use preferred_languages or show all
+        selected_langs = st.session_state.get("preferred_languages", [])
+        filtered_voices = filter_voices_by_languages(st.session_state.voices, selected_langs)
+        voice_options = build_voice_options(filtered_voices)
+        
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            selected_voice_name = st.selectbox(
+                "Select Voice",
+                options=list(voice_options.keys()),
+                help=f"Showing {len(filtered_voices)} voices" + (f" supporting: {', '.join(selected_langs)}" if selected_langs else "")
+            )
+            
+        selected_voice = voice_options[selected_voice_name]
+        st.session_state.selected_voice_id = selected_voice.voice_id
+        
+        with col2:
+            if hasattr(selected_voice, 'languages') and selected_voice.languages:
+                st.caption(f"Supports: {', '.join(selected_voice.languages[:10])}{'...' if len(selected_voice.languages) > 10 else ''}")
+            if selected_voice.preview_url:
+                st.audio(selected_voice.preview_url, format="audio/mpeg")
+                st.caption("Voice Preview")
 
     st.divider()
     

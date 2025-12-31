@@ -34,7 +34,7 @@ def test_text_to_speech_propagation(text: str, voice_id: str):
         # Verify arguments
         assert call_args.kwargs["voice_id"] == voice_id
         assert call_args.kwargs["text"] == text
-        assert call_args.kwargs["model_id"] == "eleven_multilingual_v2"
+        assert call_args.kwargs["model_id"] == "eleven_v3"
         
         # Verify result is concatenated bytes
         assert result == b"chunk1chunk2"

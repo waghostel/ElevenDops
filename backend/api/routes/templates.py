@@ -8,7 +8,8 @@ from backend.models.schemas import (
     TemplateInfoResponse,
     CustomTemplateCreate,
     CustomTemplateUpdate,
-    CustomTemplateResponse
+    CustomTemplateResponse,
+    PromptPreviewRequest,
 )
 from backend.services.prompt_template_service import (
     PromptTemplateService,
@@ -59,6 +60,52 @@ async def create_custom_template(
         return await db_service.create_custom_template(template)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create template: {str(e)}")
+
+
+@router.get("/system-prompt")
+async def get_system_prompt() -> dict:
+    """Get the base system prompt content.
+    
+    Returns:
+        Dictionary containing the system prompt content.
+    """
+    service = get_prompt_template_service()
+    try:
+        content = service.get_base_prompt()
+        return {"content": content}
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Base system prompt file not found")
+
+
+@router.post("/preview")
+async def preview_combined_prompt(
+    request: PromptPreviewRequest,
+) -> dict:
+    """Preview the combined prompt without generating a script.
+    
+    This endpoint allows users to see how templates will be combined
+    before actually generating a script.
+    
+    Args:
+        request: Request body containing template_ids and quick_instructions.
+        
+    Returns:
+        Dictionary containing the combined prompt.
+    """
+    service = get_prompt_template_service()
+    
+    combined_prompt = await service.build_prompt(
+        template_ids=request.template_ids,
+        quick_instructions=request.quick_instructions,
+    )
+    
+    return {
+        "template_ids": request.template_ids,
+        "quick_instructions": request.quick_instructions,
+        "combined_prompt": combined_prompt,
+        "character_count": len(combined_prompt),
+    }
+
 
 
 @router.put("/{template_id}", response_model=CustomTemplateResponse)
@@ -116,34 +163,3 @@ async def get_template(template_id: str) -> dict:
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
 
-
-@router.post("/preview")
-async def preview_combined_prompt(
-    template_ids: List[str],
-    quick_instructions: str = None,
-) -> dict:
-    """Preview the combined prompt without generating a script.
-    
-    This endpoint allows users to see how templates will be combined
-    before actually generating a script.
-    
-    Args:
-        template_ids: List of template IDs in display order.
-        quick_instructions: Optional additional instructions.
-        
-    Returns:
-        Dictionary containing the combined prompt.
-    """
-    service = get_prompt_template_service()
-    
-    combined_prompt = await service.build_prompt(
-        template_ids=template_ids,
-        quick_instructions=quick_instructions,
-    )
-    
-    return {
-        "template_ids": template_ids,
-        "quick_instructions": quick_instructions,
-        "combined_prompt": combined_prompt,
-        "character_count": len(combined_prompt),
-    }

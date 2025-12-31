@@ -159,6 +159,9 @@ class PromptTemplateService:
         template_ids: List[str],
         quick_instructions: Optional[str] = None,
         system_prompt_override: Optional[str] = None,
+        preferred_languages: Optional[List[str]] = None,
+        speaker1_languages: Optional[List[str]] = None,
+        speaker2_languages: Optional[List[str]] = None,
     ) -> str:
         """Build final prompt by combining templates.
         
@@ -166,11 +169,54 @@ class PromptTemplateService:
             template_ids: List of template IDs in desired order.
             quick_instructions: Optional additional instructions to append.
             system_prompt_override: Optional custom base system prompt.
+            preferred_languages: Optional list of preferred output language codes.
+            speaker1_languages: Languages for Speaker 1 (Doctor/Educator role).
+            speaker2_languages: Languages for Speaker 2 (Patient/Learner role).
             
         Returns:
             Combined prompt string ready for LLM.
         """
         sections = []
+        
+        # Language code to display name mapping (native script + English)
+        # Regional variants for Chinese and Portuguese included for correct LLM output
+        lang_map = {
+            "ar": "العربية (Arabic)",
+            "bg": "Български (Bulgarian)",
+            "cs": "Čeština (Czech)",
+            "da": "Dansk (Danish)",
+            "de": "Deutsch (German)",
+            "el": "Ελληνικά (Greek)",
+            "en": "English",
+            "es": "Español (Spanish)",
+            "fi": "Suomi (Finnish)",
+            "fil": "Filipino",
+            "fr": "Français (French)",
+            "hi": "हिन्दी (Hindi)",
+            "hr": "Hrvatski (Croatian)",
+            "hu": "Magyar (Hungarian)",
+            "id": "Bahasa Indonesia (Indonesian)",
+            "it": "Italiano (Italian)",
+            "ja": "日本語 (Japanese)",
+            "ko": "한국어 (Korean)",
+            "ms": "Bahasa Melayu (Malay)",
+            "nl": "Nederlands (Dutch)",
+            "no": "Norsk (Norwegian)",
+            "pl": "Polski (Polish)",
+            "pt": "Português (Portuguese)",
+            "pt-BR": "Português Brasileiro (Brazilian Portuguese)",
+            "pt-PT": "Português Europeu (European Portuguese)",
+            "ro": "Română (Romanian)",
+            "ru": "Русский (Russian)",
+            "sk": "Slovenčina (Slovak)",
+            "sv": "Svenska (Swedish)",
+            "ta": "தமிழ் (Tamil)",
+            "tr": "Türkçe (Turkish)",
+            "uk": "Українська (Ukrainian)",
+            "zh": "中文 (Chinese)",
+            "zh-TW": "繁體中文 (Traditional Chinese)",
+            "zh-CN": "簡體中文 (Simplified Chinese)"
+        }
         
         # 1. Base system prompt (use override if provided)
         if system_prompt_override:
@@ -183,7 +229,58 @@ class PromptTemplateService:
                 logger.error("Base system prompt not found!")
                 sections.append("You are a medical education script writer.")
         
-        # 2. Content type templates (in order)
+        # 2. Multi-speaker dialogue format (if both speaker languages specified)
+        if speaker1_languages and speaker2_languages:
+            speaker1_langs = [lang_map.get(code, code) for code in speaker1_languages]
+            speaker2_langs = [lang_map.get(code, code) for code in speaker2_languages]
+            
+            multi_speaker_instruction = f"""
+
+## Multi-Speaker Dialogue Format
+
+Generate the script as a dialogue between two speakers using ElevenLabs V3 format:
+
+- **Speaker 1** (Doctor/Educator/Guider): Speaks in {', '.join(speaker1_langs)}
+- **Speaker 2** (Patient/Learner): Speaks in {', '.join(speaker2_langs)}
+
+### Format Rules:
+1. Each speaker's line MUST start with `Speaker 1:` or `Speaker 2:` prefix
+2. Use audio tags like `[cheerful]`, `[curious]`, `[reassuring]` for emotion
+3. Alternate between speakers naturally for a conversational flow
+4. Speaker 1 leads the conversation with educational content
+5. Speaker 2 asks questions and responds to learn
+
+### Example Format:
+```
+Speaker 1: [reassuring] Welcome! Today I'll explain the procedure you'll be having.
+
+Speaker 2: [curious] Thank you, Doctor. What should I expect?
+
+Speaker 1: [professional] First, let me walk you through the preparation steps...
+```
+"""
+            sections.append(multi_speaker_instruction)
+        
+        # 3. Single/multi-language instruction (if preferred_languages specified, but not multi-speaker)
+        elif preferred_languages:
+            # Filter valid languages
+            langs = [lang_map[code] for code in preferred_languages if code in lang_map]
+            
+            if len(langs) == 1:
+                # Single language specific instructions
+                code = preferred_languages[0]
+                if code == "zh-TW":
+                    sections.append("\n\n## Language Requirement\nGenerate the script in Traditional Chinese (繁體中文). Use culturally appropriate expressions for Taiwan.")
+                elif code == "en":
+                    sections.append("\n\n## Language Requirement\nGenerate the script in English. Use clear, accessible language suitable for patients.")
+                elif code == "zh-CN":
+                    sections.append("\n\n## Language Requirement\nGenerate the script in Simplified Chinese (简体中文).")
+            elif len(langs) > 1:
+                # Multi-language instructions
+                lang_str = ", ".join(langs)
+                sections.append(f"\n\n## Language Requirement\nGenerate the script in the following languages: {lang_str}. Provide the content in all requested languages, organizing it clearly (e.g., sequentially or side-by-side where appropriate).")
+        
+        # 4. Content type templates (in order)
         if template_ids:
             sections.append("\n---\n\n# Content Structure\n")
             for template_id in template_ids:
@@ -194,7 +291,7 @@ class PromptTemplateService:
                 except (ValueError, FileNotFoundError) as e:
                     logger.warning(f"Skipping template {template_id}: {e}")
         
-        # 3. Quick instructions
+        # 5. Quick instructions
         if quick_instructions and quick_instructions.strip():
             sections.append("\n# Additional Instructions\n")
             sections.append(quick_instructions.strip())

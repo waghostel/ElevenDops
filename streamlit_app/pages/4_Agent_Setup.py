@@ -113,6 +113,24 @@ with st.form("create_agent_form"):
         format_func=lambda x: STYLE_OPTIONS[x]
     )
     
+    # Language Selection
+    st.subheader("Conversation Language")
+    LANGUAGE_OPTIONS = {
+        "zh": "中文 (Traditional Chinese)",
+        "en": "English",
+        "es": "Español (Spanish)",
+        "fr": "Français (French)",
+        "de": "Deutsch (German)",
+        "ja": "日本語 (Japanese)",
+        "ko": "한국어 (Korean)",
+    }
+    selected_language = st.selectbox(
+        "Select Conversation Language",
+        options=list(LANGUAGE_OPTIONS.keys()),
+        format_func=lambda x: LANGUAGE_OPTIONS[x],
+        help="Language that the agent will use for conversations"
+    )
+    
     submitted = st.form_submit_button("Create Agent")
     
     if submitted:
@@ -128,7 +146,8 @@ with st.form("create_agent_form"):
                         name=name,
                         knowledge_ids=selected_doc_ids,
                         voice_id=selected_voice_id,
-                        answer_style=selected_style
+                        answer_style=selected_style,
+                        language=selected_language
                     ))
                 st.success(f"Agent '{name}' created successfully!")
                 get_cached_agents.clear()
@@ -148,8 +167,20 @@ with st.container(border=True):
         st.info("No agents created yet.")
     else:
         for agent in agents:
+            # Language display mapping
+            LANGUAGE_DISPLAY = {
+                "zh": "中文 (Traditional Chinese)",
+                "en": "English",
+                "es": "Español (Spanish)",
+                "fr": "Français (French)",
+                "de": "Deutsch (German)",
+                "ja": "日本語 (Japanese)",
+                "ko": "한국어 (Korean)",
+            }
+            
             with st.expander(f"🤖 {agent.name}", expanded=False):
                 st.write(f"**Description:** {agent.answer_style.title()} style")
+                st.write(f"**Language:** {LANGUAGE_DISPLAY.get(agent.language, agent.language)}")
                 st.caption(f"ID: {agent.agent_id}")
                 st.caption(f"Created: {agent.created_at.strftime('%Y-%m-%d %H:%M')}")
                 

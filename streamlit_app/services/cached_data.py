@@ -38,7 +38,7 @@ def get_documents_cached() -> List[KnowledgeDocument]:
     manual session state management.
     """
     try:
-        return asyncio.run(client.get_knowledge_documents())
+        return run_async(client.get_knowledge_documents())
     except Exception as e:
         st.error(f"Unable to load documents. Please check your connection. (Error: {e})")
         return []
@@ -52,7 +52,7 @@ def get_voices_cached() -> List[VoiceOption]:
     manual session state management.
     """
     try:
-        return asyncio.run(client.get_available_voices())
+        return run_async(client.get_available_voices())
     except Exception as e:
         st.error(f"Unable to load voice options. (Error: {e})")
         return []

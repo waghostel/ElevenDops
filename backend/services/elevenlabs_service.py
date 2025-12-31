@@ -256,7 +256,7 @@ class ElevenLabsService:
             audio_generator = self.client.text_to_speech.convert(
                 voice_id=voice_id,
                 text=text,
-                model_id="eleven_multilingual_v2"
+                model_id="eleven_v3"
             )
             
             # Consume the generator to get the full audio bytes
@@ -268,36 +268,43 @@ class ElevenLabsService:
             raise ElevenLabsTTSError(f"Failed to generate audio: {str(e)}")
 
     def get_voices(self) -> list[dict]:
-        """Get available voices from ElevenLabs.
+        """Get curated V3-optimized voices with language metadata.
 
         Returns:
-            list[dict]: List of voice dictionaries containing id, name, etc.
-            
-        Raises:
-            ElevenLabsTTSError: If fetching voices fails.
+            list[dict]: List of voice dictionaries with id, name, languages.
         """
+        # 24 curated multilingual voices, sorted by language count (most first)
+        CURATED_VOICES = [
+            {"voice_id": "FUfBrNit0NNZAwb58KWH", "name": "Angela - Conversational and Friendly", "preview_url": None, "description": "21 languages", "languages": ["da", "el", "en", "es", "hi", "hr", "hu", "it", "ko", "ms", "nl", "pl", "pt", "ro", "ru", "sk", "sv", "ta", "tr", "uk", "zh"]},
+            {"voice_id": "P1bg08DkjqiVEzOn76yG", "name": "Viraj - Rich and Soft", "preview_url": None, "description": "20 languages", "languages": ["ar", "cs", "de", "el", "es", "fi", "fil", "fr", "hi", "hr", "hu", "id", "it", "ko", "no", "pl", "pt", "ro", "sk", "sv"]},
+            {"voice_id": "RILOU7YmBhvwJGDGjNmP", "name": "Jane - Professional Audiobook Reader", "preview_url": None, "description": "18 languages", "languages": ["cs", "da", "el", "en", "fil", "fr", "hr", "hu", "it", "ko", "pl", "pt", "ru", "sk", "sv", "tr", "uk", "zh"]},
+            {"voice_id": "NNl6r8mD7vthiJatiJt1", "name": "Bradford - Expressive and Articulate", "preview_url": None, "description": "18 languages", "languages": ["de", "el", "en", "es", "fil", "fr", "hu", "it", "ko", "pl", "pt", "ro", "ru", "sk", "ta", "tr", "uk", "zh"]},
+            {"voice_id": "wyWA56cQNU2KqUW4eCsI", "name": "Clyde - Full, Diplomatic and Inviting", "preview_url": None, "description": "17 languages", "languages": ["da", "de", "el", "en", "es", "hi", "id", "it", "pl", "pt", "ru", "sk", "sv", "ta", "tr", "uk", "zh"]},
+            {"voice_id": "Z3R5wn05IrDiVCyEkUrK", "name": "Arabella - Mysterious and Emotive", "preview_url": None, "description": "17 languages", "languages": ["cs", "da", "de", "en", "fr", "hi", "hu", "it", "ko", "nl", "no", "pl", "pt", "sk", "sv", "ta", "tr"]},
+            {"voice_id": "2zRM7PkgwBPiau2jvVXc", "name": "Monika Sogam - Deep and Natural", "preview_url": None, "description": "17 languages", "languages": ["ar", "el", "en", "es", "fil", "hi", "hr", "id", "it", "ko", "nl", "pl", "pt", "ro", "sk", "tr", "uk"]},
+            {"voice_id": "1SM7GgM6IMuvQlz2BwM3", "name": "Mark - Casual, Relaxed and Light", "preview_url": None, "description": "17 languages", "languages": ["ar", "cs", "da", "en", "es", "fi", "fr", "hi", "hr", "it", "ko", "nl", "pt", "ro", "sk", "tr", "uk"]},
+            {"voice_id": "lcMyyd2HUfFzxdCaC4Ta", "name": "Lucy - Fresh & Casual", "preview_url": None, "description": "16 languages", "languages": ["da", "de", "el", "en", "hr", "hu", "ko", "ms", "pl", "ro", "ru", "sk", "sv", "ta", "uk", "zh"]},
+            {"voice_id": "tnSpp4vdxKPjI9w0GnoV", "name": "Hope - upbeat and clear", "preview_url": None, "description": "16 languages", "languages": ["bg", "cs", "el", "en", "fil", "fr", "hi", "hr", "hu", "it", "pt", "ro", "ru", "sk", "ta", "tr"]},
+            {"voice_id": "93nuHbke4dTER9x2pDwE", "name": "Adam - warm and friendly", "preview_url": None, "description": "16 languages", "languages": ["en", "es", "fr", "hi", "hr", "ko", "ms", "pl", "pt", "ro", "ru", "sk", "sv", "ta", "uk", "zh"]},
+            {"voice_id": "MFZUKuGQUsGJPQjTS4wC", "name": "Jon - Warm & Grounded Storyteller", "preview_url": None, "description": "15 languages", "languages": ["da", "en", "es", "fr", "hi", "hr", "it", "ko", "pl", "pt", "ro", "ru", "sk", "ta", "tr"]},
+            {"voice_id": "NOpBlnGInO9m6vDvFkFC", "name": "Spuds Oxley - Wise and Approachable", "preview_url": None, "description": "15 languages", "languages": ["cs", "el", "en", "es", "fi", "fil", "fr", "hi", "hr", "hu", "it", "pt", "ru", "sv", "tr"]},
+            {"voice_id": "EkK5I93UQWFDigLMpZcX", "name": "James - Husky, Engaging and Bold", "preview_url": None, "description": "14 languages", "languages": ["el", "en", "es", "fr", "hr", "hu", "it", "ms", "nl", "ro", "ru", "sv", "ta", "tr"]},
+            {"voice_id": "Sm1seazb4gs7RSlUVw7c", "name": "Anika - Animated, Friendly and Engaging", "preview_url": None, "description": "13 languages", "languages": ["ar", "el", "fr", "hi", "hr", "hu", "it", "no", "pt", "ro", "ru", "sk", "tr"]},
+            {"voice_id": "B8gJV1IhpuegLxdpXFOE", "name": "Kuon - Cheerful, Clear and Steady", "preview_url": None, "description": "12 languages", "languages": ["el", "es", "hi", "hu", "id", "it", "ja", "ms", "nl", "pl", "ro", "uk"]},
+            {"voice_id": "bhJUNIXWQQ94l8eI2VUf", "name": "Amy - Friendly, Young and Natural", "preview_url": None, "description": "12 languages", "languages": ["el", "en", "fi", "fr", "hi", "hr", "it", "nl", "pt", "sk", "sv", "zh"]},
+            {"voice_id": "tgfcQY9SGvn3GfmnNWIi", "name": "Larry - Easygoing Customer Care Agent", "preview_url": None, "description": "12 languages", "languages": ["da", "en", "es", "fr", "hr", "hu", "pt", "ru", "sk", "ta", "tr", "zh"]},
+            {"voice_id": "c6SfcYrb2t09NHXiT80T", "name": "Jarnathan - Confident and Versatile", "preview_url": None, "description": "11 languages", "languages": ["el", "en", "fr", "hu", "ko", "nl", "pt", "ro", "sk", "ta", "tr"]},
+            {"voice_id": "1t1EeRixsJrKbiF1zwM6", "name": "Jerry B - Realistic and Conversational", "preview_url": None, "description": "11 languages", "languages": ["en", "fi", "it", "ko", "ms", "nl", "pt", "ro", "sk", "ta", "zh"]},
+            {"voice_id": "4O1sYUnmtThcBoSBrri7", "name": "Maya - Friendly and Cheerful", "preview_url": None, "description": "11 languages", "languages": ["cs", "en", "es", "hi", "hr", "hu", "no", "pt", "ru", "sk", "zh"]},
+            {"voice_id": "dn9HtxgDwCH96MVX9iAO", "name": "Xavian - Deep, Steady and Reassuring", "preview_url": None, "description": "10 languages", "languages": ["bg", "el", "en", "es", "fr", "hr", "hu", "it", "ru", "zh"]},
+            {"voice_id": "Dnd9VXpAjEGXiRGBf1O6", "name": "Parker Springfield - TV Broadcaster", "preview_url": None, "description": "8 languages", "languages": ["en", "fr", "hr", "pt", "ru", "sk", "ta", "uk"]},
+            {"voice_id": "scOwDtmlUjD3prqpp97I", "name": "Sam - Support Agent", "preview_url": None, "description": "8 languages", "languages": ["da", "en", "hi", "hr", "ro", "ru", "sv", "ta"]},
+        ]
+        
         if self.use_mock:
-            logging.info("[MOCK] get_voices called")
-            return [
-                {"voice_id": "mock_voice_1", "name": "Mock Rachel", "preview_url": None, "description": "Mock female voice"},
-                {"voice_id": "mock_voice_2", "name": "Mock Adam", "preview_url": None, "description": "Mock male voice"},
-            ]
-
-        try:
-            response = self.client.voices.get_all()
-            # response.voices is a list of Voice objects
-            return [
-                {
-                    "voice_id": voice.voice_id,
-                    "name": voice.name,
-                    "preview_url": voice.preview_url,
-                    "description": getattr(voice, "description", None) or f"{voice.category} voice"
-                }
-                for voice in response.voices
-            ]
-        except Exception as e:
-            logging.error(f"Failed to fetch voices: {e}")
-            raise ElevenLabsTTSError(f"Failed to fetch voices: {str(e)}")
+            logging.info("[MOCK] get_voices called - returning curated voices")
+        
+        return CURATED_VOICES
 
     @retry(
         wait=wait_exponential(multiplier=1, min=2, max=10),
@@ -310,6 +317,7 @@ class ElevenLabsService:
         system_prompt: str,
         knowledge_base_ids: list[str],
         voice_id: str,
+        language: str = "zh",
     ) -> str:
         """Create a conversational AI agent in ElevenLabs.
 
@@ -318,6 +326,7 @@ class ElevenLabsService:
             system_prompt: System prompt defining agent behavior.
             knowledge_base_ids: List of knowledge base document IDs.
             voice_id: ID of the voice to use.
+            language: Language code for conversations (ISO 639-1 format, e.g., 'zh', 'en').
 
         Returns:
             str: The created agent ID.
@@ -340,7 +349,7 @@ class ElevenLabsService:
                     "prompt": system_prompt
                 },
                 "first_message": "您好，我是您的醫療助手。請問有什麼我可以幫您的？", # Traditional Chinese
-                "language": "en" # Use 'en' as safe default, the prompt instructs Chinese
+                "language": language  # Use dynamic language parameter
             }
             
             # Add KB if present

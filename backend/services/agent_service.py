@@ -98,6 +98,7 @@ class AgentService:
                 system_prompt=system_prompt,
                 knowledge_base_ids=synced_knowledge_ids,
                 voice_id=request.voice_id,
+                language=request.language,
             )
 
             # 3. Create local agent record
@@ -108,6 +109,7 @@ class AgentService:
                 knowledge_ids=request.knowledge_ids, # Keep original local IDs
                 voice_id=request.voice_id,
                 answer_style=request.answer_style,
+                language=request.language,
                 elevenlabs_agent_id=elevenlabs_agent_id,
                 doctor_id=request.doctor_id,
                 created_at=datetime.utcnow(),

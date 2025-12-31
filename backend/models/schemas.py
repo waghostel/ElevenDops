@@ -157,6 +157,39 @@ class TemplateConfig(BaseModel):
         None,
         description="Custom base system prompt to use instead of default"
     )
+    preferred_languages: List[str] = Field(
+        default_factory=list,
+        description="Preferred output languages for transcript generation (e.g., ['zh-TW', 'en'])"
+    )
+    speaker1_languages: List[str] = Field(
+        default_factory=list,
+        description="Languages for Speaker 1 (Doctor/Educator role)"
+    )
+    speaker2_languages: List[str] = Field(
+        default_factory=list,
+        description="Languages for Speaker 2 (Patient/Learner role)"
+    )
+
+    @field_validator("preferred_languages", "speaker1_languages", "speaker2_languages")
+    @classmethod
+    def validate_language_lists(cls, v: List[str]) -> List[str]:
+        if not v:
+            return v
+        
+        # All languages supported by ElevenLabs voices
+        # Includes regional variants for Chinese (zh-TW/zh-CN) and Portuguese (pt-BR/pt-PT)
+        valid_languages = {
+            "ar", "bg", "cs", "da", "de", "el", "en", "es", "fi", "fil",
+            "fr", "hi", "hr", "hu", "id", "it", "ja", "ko", "ms", "nl",
+            "no", "pl", "pt", "pt-BR", "pt-PT", "ro", "ru", "sk", "sv", "ta", "tr", "uk", "zh",
+            "zh-TW", "zh-CN"
+        }
+        for lang in v:
+            if lang not in valid_languages:
+                raise ValueError(
+                    f"Invalid language code '{lang}'. Must be a valid ElevenLabs language code."
+                )
+        return v
 
 
 class TemplateInfoResponse(BaseModel):
@@ -193,6 +226,13 @@ class CustomTemplateResponse(TemplateInfoResponse):
     created_at: datetime = Field(..., description="Creation timestamp")
     category: str = Field(..., description="Template category: base, content_type, or custom")
     preview: str = Field(default="", description="First 200 chars of template content")
+
+
+class PromptPreviewRequest(BaseModel):
+    """Request body for prompt preview endpoint."""
+
+    template_ids: List[str] = Field(..., description="List of template IDs in display order")
+    quick_instructions: Optional[str] = Field(None, description="Additional instructions")
 
 
 class ScriptGenerateResponse(BaseModel):
@@ -270,6 +310,7 @@ class AgentCreateRequest(BaseModel):
     knowledge_ids: List[str] = Field(default_factory=list, description="IDs of linked knowledge documents")
     voice_id: str = Field(..., description="ID of the voice to use")
     answer_style: AnswerStyle = Field(..., description="Style of the agent's answers")
+    language: str = Field(default="zh", description="Language code for agent conversations (ISO 639-1)")
     doctor_id: str = Field(default="default_doctor", description="ID of the creating doctor")
 
     @field_validator("name")
@@ -278,6 +319,21 @@ class AgentCreateRequest(BaseModel):
         """Validate that agent name is not empty or whitespace only."""
         if not v.strip():
             raise ValueError("Agent name cannot be empty or whitespace only")
+        return v
+    
+    @field_validator("language")
+    @classmethod
+    def validate_language(cls, v: str) -> str:
+        """Validate that language code is supported."""
+        # Common ISO 639-1 codes supported by ElevenLabs
+        supported_languages = {
+            "zh", "en", "es", "fr", "de", "hi", "it", "ja", "ko", "nl", "pl", "pt", "ru", "tr",
+            "ar", "cs", "da", "fi", "el", "he", "hu", "id", "ms", "no", "ro", "sk", "sv", "th", "uk", "vi", "zh-TW"
+        }
+        if v not in supported_languages:
+            raise ValueError(
+                f"Unsupported language code '{v}'. Must be a valid ISO 639-1 code supported by ElevenLabs."
+            )
         return v
 
 
@@ -289,6 +345,7 @@ class AgentResponse(BaseModel):
     knowledge_ids: List[str] = Field(..., description="IDs of linked knowledge documents")
     voice_id: str = Field(..., description="ID of the voice used")
     answer_style: AnswerStyle = Field(..., description="Style of the agent's answers")
+    language: str = Field(default="zh", description="Language code for agent conversations (ISO 639-1)")
     elevenlabs_agent_id: str = Field(..., description="ID of the agent in ElevenLabs")
     doctor_id: str = Field(..., description="ID of the creating doctor")
     created_at: datetime = Field(..., description="Creation timestamp")

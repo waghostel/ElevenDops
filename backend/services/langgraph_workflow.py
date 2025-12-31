@@ -261,6 +261,7 @@ async def generate_script_node(state: ScriptGenerationState) -> dict:
             temperature=0.7,
             timeout=30,  # 30 second timeout for API calls
             max_retries=2,  # Retry on transient failures
+            max_output_tokens=4096,  # Allow for much longer script generation
         )
         
         # Determine strictness? For now simple prompt
@@ -282,7 +283,20 @@ async def generate_script_node(state: ScriptGenerationState) -> dict:
                 "error": f"API timeout: Model '{model_name}' did not respond within 35 seconds. "
                          "Please verify your API key or try a different model."
             }
-        return {"generated_script": response.content}
+        
+        # Normalize response content: some models return a list of content blocks
+        content = response.content
+        if isinstance(content, list):
+            # Extract text from content blocks (e.g., [{"type": "text", "text": "..."}])
+            text_parts = []
+            for item in content:
+                if isinstance(item, dict) and "text" in item:
+                    text_parts.append(item["text"])
+                elif isinstance(item, str):
+                    text_parts.append(item)
+            content = "".join(text_parts) if text_parts else str(content)
+        
+        return {"generated_script": content}
     except Exception as e:
         # Improved error handling with detailed logging and meaningful error messages
         error_type = type(e).__name__
@@ -488,6 +502,7 @@ async def generate_script_stream(
             google_api_key=api_key,
             temperature=0.7,
             streaming=True,  # Enable streaming mode
+            max_output_tokens=4096,  # Allow for much longer script generation
         )
         
         messages = [
@@ -500,9 +515,23 @@ async def generate_script_stream(
         
         async for chunk in llm.astream(messages):
             if chunk.content:
-                full_content += chunk.content
+                # Normalize chunk content: some models return a list of content blocks
+                raw_content = chunk.content
+                if isinstance(raw_content, list):
+                    # Extract text from content blocks (e.g., [{"type": "text", "text": "..."}])
+                    text_parts = []
+                    for item in raw_content:
+                        if isinstance(item, dict) and "text" in item:
+                            text_parts.append(item["text"])
+                        elif isinstance(item, str):
+                            text_parts.append(item)
+                    content_str = "".join(text_parts) if text_parts else str(raw_content)
+                else:
+                    content_str = raw_content
+                
+                full_content += content_str
                 chunk_count += 1
-                yield {"type": "token", "content": chunk.content}
+                yield {"type": "token", "content": content_str}
         
         logger.info(f"Streaming complete: {chunk_count} chunks, {len(full_content)} chars total")
         
