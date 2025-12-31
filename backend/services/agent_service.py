@@ -51,26 +51,30 @@ class AgentService:
         """Get Traditional Chinese system prompt based on answer style."""
         return SYSTEM_PROMPTS.get(style, SYSTEM_PROMPTS[AnswerStyle.PROFESSIONAL])
 
-    async def _get_synced_knowledge_ids(self, knowledge_ids: List[str]) -> List[str]:
-        """Filter knowledge IDs to only include synced documents.
+    async def _get_synced_knowledge_base(self, knowledge_ids: List[str]) -> List[dict]:
+        """Get synced knowledge base items with full metadata.
         
         Args:
             knowledge_ids: List of knowledge document IDs (local UUIDs).
             
         Returns:
-            List of ElevenLabs document IDs that are synced.
+            List of dicts with 'id', 'name', 'type' for ElevenLabs API.
         """
         if not knowledge_ids:
             return []
             
-        synced_ids = []
+        kb_items = []
         for kid in knowledge_ids:
             # We must await the coroutine
             doc = await self.data_service.get_knowledge_document(kid)
             if doc and doc.sync_status == SyncStatus.COMPLETED and doc.elevenlabs_document_id:
-                synced_ids.append(doc.elevenlabs_document_id)
+                kb_items.append({
+                    "id": doc.elevenlabs_document_id,
+                    "name": doc.disease_name,  # Use disease_name as document name
+                    "type": "file"  # Documents are uploaded as files
+                })
         
-        return synced_ids 
+        return kb_items 
 
     async def create_agent(self, request: AgentCreateRequest) -> AgentResponse:
         """Create a new agent.
@@ -89,16 +93,16 @@ class AgentService:
             # 1. Generate system prompt
             system_prompt = self._get_system_prompt(request.answer_style)
             
-            # 1.5 Filter knowledge base IDs
-            synced_knowledge_ids = await self._get_synced_knowledge_ids(request.knowledge_ids)
+            # 1.5 Filter knowledge base with full metadata
+            synced_knowledge_base = await self._get_synced_knowledge_base(request.knowledge_ids)
 
             # 2. Create agent in ElevenLabs
             elevenlabs_agent_id = self.elevenlabs.create_agent(
                 name=request.name,
                 system_prompt=system_prompt,
-                knowledge_base_ids=synced_knowledge_ids,
+                knowledge_base=synced_knowledge_base,
                 voice_id=request.voice_id,
-                language=request.language,
+                languages=request.languages,
             )
 
             # 3. Create local agent record
@@ -109,7 +113,7 @@ class AgentService:
                 knowledge_ids=request.knowledge_ids, # Keep original local IDs
                 voice_id=request.voice_id,
                 answer_style=request.answer_style,
-                language=request.language,
+                languages=request.languages,
                 elevenlabs_agent_id=elevenlabs_agent_id,
                 doctor_id=request.doctor_id,
                 created_at=datetime.utcnow(),

@@ -160,7 +160,7 @@ class AgentConfig:
     knowledge_ids: list[str]
     voice_id: str
     answer_style: str
-    language: str = "zh"
+    languages: list[str] = None
     elevenlabs_agent_id: str = ""
     doctor_id: str = ""
     created_at: datetime = None

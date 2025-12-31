@@ -803,7 +803,7 @@ class BackendAPIClient:
         knowledge_ids: List[str],
         voice_id: str,
         answer_style: str,
-        language: str = "zh",
+        languages: List[str] = None,
         doctor_id: str = "default_doctor",
     ) -> AgentConfig:
         """Create a new agent.
@@ -813,7 +813,7 @@ class BackendAPIClient:
             knowledge_ids: List of linked knowledge document IDs.
             voice_id: Voice ID.
             answer_style: Answer style.
-            language: Language code for conversations (ISO 639-1).
+            languages: List of language codes for conversations (ISO 639-1).
             doctor_id: Doctor ID.
 
         Returns:
@@ -825,7 +825,7 @@ class BackendAPIClient:
                 "knowledge_ids": knowledge_ids,
                 "voice_id": voice_id,
                 "answer_style": answer_style,
-                "language": language,
+                "languages": languages or ["zh"],
                 "doctor_id": doctor_id,
             }
             async with self._get_client() as client:
@@ -838,7 +838,7 @@ class BackendAPIClient:
                     knowledge_ids=data["knowledge_ids"],
                     voice_id=data["voice_id"],
                     answer_style=data["answer_style"],
-                    language=data.get("language", "zh"),
+                    languages=data.get("languages", ["zh"]),
                     elevenlabs_agent_id=data["elevenlabs_agent_id"],
                     doctor_id=data["doctor_id"],
                     created_at=datetime.fromisoformat(data["created_at"]),

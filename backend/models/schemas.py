@@ -326,7 +326,7 @@ class AgentCreateRequest(BaseModel):
     knowledge_ids: List[str] = Field(default_factory=list, description="IDs of linked knowledge documents")
     voice_id: str = Field(..., description="ID of the voice to use")
     answer_style: AnswerStyle = Field(..., description="Style of the agent's answers")
-    language: str = Field(default="zh", description="Language code for agent conversations (ISO 639-1)")
+    languages: List[str] = Field(default_factory=lambda: ["zh"], description="Language codes for agent (first is primary)")
     doctor_id: str = Field(default="default_doctor", description="ID of the creating doctor")
 
     @field_validator("name")
@@ -337,19 +337,22 @@ class AgentCreateRequest(BaseModel):
             raise ValueError("Agent name cannot be empty or whitespace only")
         return v
     
-    @field_validator("language")
+    @field_validator("languages")
     @classmethod
-    def validate_language(cls, v: str) -> str:
-        """Validate that language code is supported."""
+    def validate_languages(cls, v: List[str]) -> List[str]:
+        """Validate that language codes are supported."""
+        if not v:
+            raise ValueError("At least one language is required")
         # Common ISO 639-1 codes supported by ElevenLabs
         supported_languages = {
             "zh", "en", "es", "fr", "de", "hi", "it", "ja", "ko", "nl", "pl", "pt", "ru", "tr",
             "ar", "cs", "da", "fi", "el", "he", "hu", "id", "ms", "no", "ro", "sk", "sv", "th", "uk", "vi", "zh-TW"
         }
-        if v not in supported_languages:
-            raise ValueError(
-                f"Unsupported language code '{v}'. Must be a valid ISO 639-1 code supported by ElevenLabs."
-            )
+        for lang in v:
+            if lang not in supported_languages:
+                raise ValueError(
+                    f"Unsupported language code '{lang}'. Must be a valid ISO 639-1 code supported by ElevenLabs."
+                )
         return v
 
 
@@ -361,7 +364,7 @@ class AgentResponse(BaseModel):
     knowledge_ids: List[str] = Field(..., description="IDs of linked knowledge documents")
     voice_id: str = Field(..., description="ID of the voice used")
     answer_style: AnswerStyle = Field(..., description="Style of the agent's answers")
-    language: str = Field(default="zh", description="Language code for agent conversations (ISO 639-1)")
+    languages: List[str] = Field(default_factory=lambda: ["zh"], description="Language codes for agent (first is primary)")
     elevenlabs_agent_id: str = Field(..., description="ID of the agent in ElevenLabs")
     doctor_id: str = Field(..., description="ID of the creating doctor")
     created_at: datetime = Field(..., description="Creation timestamp")
