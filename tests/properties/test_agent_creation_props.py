@@ -21,8 +21,11 @@ def test_system_prompt_language_consistency(style):
     assert isinstance(prompt, str)
     assert len(prompt) > 0
     
-    # Check for Traditional Chinese instructions
-    assert "繁體中文" in prompt
+    # Check for structured prompt sections (ElevenLabs format)
+    assert "# Personality" in prompt
+    assert "# Goal" in prompt
+    assert "# Guardrails" in prompt
+    assert "# Tone" in prompt
     
     # Check that it matches the constant definitions
     assert prompt == SYSTEM_PROMPTS[style]
@@ -70,18 +73,24 @@ async def test_knowledge_base_filtering_by_sync_status(knowledge_ids, sync_statu
     
     data_service.get_knowledge_document.side_effect = get_doc
     
+    # Add disease_name attribute for the method
+    for doc in mock_docs.values():
+        doc.disease_name = f"Disease_{doc.knowledge_id}"
+    
     # 2. Initialize service
     service = AgentService(elevenlabs_service=MagicMock(), data_service=data_service)
     
-    # 3. Call method
-    result = await service._get_synced_knowledge_ids(test_k_ids)
+    # 3. Call method (_get_synced_knowledge_base returns list of dicts)
+    result = await service._get_synced_knowledge_base(test_k_ids)
     
-    # 4. Verify
-    assert len(result) == len(expected_ids)
-    assert set(result) == set(expected_ids)
+    # 4. Verify - result is now List[dict] with 'id', 'name', 'type' keys
+    result_ids = [item['id'] for item in result]
+    assert len(result_ids) == len(expected_ids)
+    assert set(result_ids) == set(expected_ids)
     
     # Verify SyncStatus logic specifically
-    for el_id in result:
+    for item in result:
+        el_id = item['id']
         # Find which original doc this came from
         original_doc = next(d for d in mock_docs.values() if d.elevenlabs_document_id == el_id)
         assert original_doc.sync_status == SyncStatus.COMPLETED

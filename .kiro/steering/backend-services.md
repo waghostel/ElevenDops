@@ -19,12 +19,38 @@ All ElevenLabs API interactions:
 - `get_signed_url(agent_id)` - WebSocket auth
 - `get_conversation(conversation_id)` - Fetch transcript
 
-### data_service.py
-Firestore operations (when implemented):
+### langgraph_workflow.py
+LangGraph-based AI script generation:
+- `ScriptGenerationState` - TypedDict for workflow state
+- `create_script_generation_graph()` - Build workflow graph
+- Nodes: prepare_context → generate_script → post_process
+
+### script_generation_service.py
+Script generation orchestration:
+- `ScriptGenerationService` - Main service class
+- `generate_script(knowledge_id, model, prompt)` - Generate TTS-optimized scripts
+- Integrates LangGraph workflow with Firestore data
+
+### prompt_template_service.py
+Prompt template management:
+- Load default prompts from `backend/config/`
+- Support custom prompt overrides
+- ElevenLabs voice optimization guidelines
+
+### langsmith_tracer.py
+LangSmith observability integration:
+- Trace LangGraph workflow executions
+- Debug LLM calls and responses
+
+### firestore_data_service.py
+Firestore operations:
 - Knowledge document CRUD
 - Agent configuration storage
 - Conversation log management
 - Dashboard statistics
+
+### data_service.py
+Legacy data service (being migrated to firestore_data_service.py)
 
 ## API Endpoints
 
@@ -42,6 +68,11 @@ POST /api/audio
 - Generate TTS from script
 - Body: { script_content, voice_id, disease_name }
 - Returns: { audio_url, duration_seconds }
+
+POST /api/audio/generate-script
+- AI-powered script generation
+- Body: { knowledge_id, model?, custom_prompt? }
+- Returns: { script_content, model_used, generation_time_ms }
 ```
 
 ### Agent Management

@@ -23,6 +23,12 @@ st.markdown("Configure your AI assistants with medical knowledge bases and voice
 if "loading" not in st.session_state:
     st.session_state.loading = False
 
+# Initialize session state for custom system prompts
+if "custom_agent_system_prompt" not in st.session_state:
+    st.session_state.custom_agent_system_prompt = {}  # {style: custom_prompt}
+if "cached_agent_system_prompts" not in st.session_state:
+    st.session_state.cached_agent_system_prompts = None
+
 # Initialize client
 client = get_backend_client()
 
@@ -57,10 +63,75 @@ def run_async(coroutine):
         loop.close()
 
 
+@st.dialog("Edit System Prompt")
+def render_agent_system_prompt_editor(style: str):
+    """Render dialog to edit system prompt for the selected answer style."""
+    style_display = {
+        "professional": "Professional",
+        "friendly": "Friendly",
+        "educational": "Educational"
+    }
+    st.markdown(f"Edit the system prompt for **{style_display.get(style, style)}** style.")
+    
+    # Fetch default prompts if not cached
+    def get_default_prompts():
+        try:
+            return run_async(client.get_agent_system_prompts())
+        except Exception as e:
+            add_error_to_log(f"Failed to load system prompts: {e}")
+            return {}
+    
+    if st.session_state.cached_agent_system_prompts is None:
+        st.session_state.cached_agent_system_prompts = get_default_prompts()
+    
+    default_prompts = st.session_state.cached_agent_system_prompts
+    default_prompt = default_prompts.get(style, "")
+    
+    # Use fragment for partial rerun without closing dialog
+    @st.fragment
+    def system_prompt_editor_fragment():
+        # Check for pending reset
+        reset_key = f"_reset_agent_system_prompt_{style}"
+        if st.session_state.get(reset_key):
+            st.session_state[reset_key] = False
+            # Remove custom prompt for this style
+            if style in st.session_state.custom_agent_system_prompt:
+                del st.session_state.custom_agent_system_prompt[style]
+            st.session_state[f"agent_system_prompt_textarea_{style}"] = default_prompt
+            st.toast("Reset to default!", icon="🔄")
+        
+        # Get current prompt (custom if exists, else default)
+        current_prompt = st.session_state.custom_agent_system_prompt.get(style, default_prompt)
+        
+        new_prompt = st.text_area(
+            "System Prompt Content",
+            value=current_prompt,
+            height=400,
+            key=f"agent_system_prompt_textarea_{style}"
+        )
+        
+        fc1, fc2, fc3 = st.columns(3)
+        with fc1:
+            if st.button("Save", type="primary", use_container_width=True):
+                st.session_state.custom_agent_system_prompt[style] = new_prompt
+                st.toast("System prompt saved!", icon="✅")
+                st.rerun()  # Full rerun to close dialog
+        with fc2:
+            if st.button("Reset to Default", use_container_width=True):
+                st.session_state[reset_key] = True
+                st.rerun(scope="fragment")  # Fragment rerun - stays in dialog
+        with fc3:
+            if st.button("Cancel", use_container_width=True):
+                st.rerun()  # Full rerun to close dialog
+    
+    system_prompt_editor_fragment()
+
+
 # Refresh Button
 if st.button("🔄 Refresh Data"):
     get_cached_documents.clear()
     get_cached_agents.clear()
+    st.session_state.cached_agent_system_prompts = None
     # Voices usually don't need frequent refresh, but we can if needed
     st.rerun()
 
@@ -108,6 +179,33 @@ if selected_voice_id and selected_voice_id in voice_map:
 
 st.divider()
 
+# Style Selection OUTSIDE form for dynamic system prompt editor
+st.subheader("Answer Style")
+
+# Initialize session state for style selection
+if "agent_selected_style" not in st.session_state:
+    st.session_state.agent_selected_style = AnswerStyle.PROFESSIONAL.value
+
+selected_style = st.selectbox(
+    "Select Answer Style",
+    options=list(STYLE_OPTIONS.keys()),
+    format_func=lambda x: STYLE_OPTIONS[x],
+    key="agent_selected_style"
+)
+
+# Edit System Prompt button
+col_edit, col_status = st.columns([2, 3])
+with col_edit:
+    if st.button("⚙️ Edit System Prompt", use_container_width=True):
+        render_agent_system_prompt_editor(selected_style)
+with col_status:
+    if selected_style in st.session_state.custom_agent_system_prompt:
+        st.caption("✓ Using custom system prompt")
+    else:
+        st.caption("Using default system prompt")
+
+st.divider()
+
 with st.form("create_agent_form"):
     name = st.text_input("Agent Name", placeholder="e.g., Diabetes Specialist")
     
@@ -124,19 +222,11 @@ with st.form("create_agent_form"):
         st.info("No knowledge documents available. Please upload some first.")
         selected_doc_ids = []
     
-    # Style Selection
-    st.subheader("Answer Style")
-    selected_style = st.selectbox(
-        "Select Answer Style",
-        options=list(STYLE_OPTIONS.keys()),
-        format_func=lambda x: STYLE_OPTIONS[x]
-    )
-    
     # Language Selection
     st.subheader("Conversation Languages")
     LANGUAGE_OPTIONS = {
-        "zh": "中文 (Traditional Chinese)",
         "en": "English",
+        "zh": "中文 (Traditional Chinese)",
         "es": "Español (Spanish)",
         "fr": "Français (French)",
         "de": "Deutsch (German)",
@@ -146,7 +236,7 @@ with st.form("create_agent_form"):
     selected_languages = st.multiselect(
         "Select Conversation Languages",
         options=list(LANGUAGE_OPTIONS.keys()),
-        default=["zh"],
+        default=["en"],
         format_func=lambda x: LANGUAGE_OPTIONS[x],
         help="First language is primary. Multiple languages enable auto-detection."
     )
@@ -163,13 +253,17 @@ with st.form("create_agent_form"):
         else:
             client = get_backend_client()
             try:
+                # Get custom prompt if exists
+                custom_prompt = st.session_state.custom_agent_system_prompt.get(selected_style)
+                
                 with st.spinner("Creating agent in ElevenLabs..."):
                     run_async(client.create_agent(
                         name=name,
                         knowledge_ids=selected_doc_ids,
                         voice_id=selected_voice_id,
                         answer_style=selected_style,
-                        languages=selected_languages
+                        languages=selected_languages,
+                        system_prompt_override=custom_prompt
                     ))
                 st.success(f"Agent '{name}' created successfully!")
                 get_cached_agents.clear()
@@ -191,8 +285,8 @@ with st.container(border=True):
         for agent in agents:
             # Language display mapping
             LANGUAGE_DISPLAY = {
-                "zh": "中文 (Traditional Chinese)",
                 "en": "English",
+                "zh": "中文 (Traditional Chinese)",
                 "es": "Español (Spanish)",
                 "fr": "Français (French)",
                 "de": "Deutsch (German)",
@@ -203,7 +297,7 @@ with st.container(border=True):
             with st.expander(f"🤖 {agent.name}", expanded=False):
                 st.write(f"**Description:** {agent.answer_style.title()} style")
                 # Handle list of languages
-                langs = agent.languages if hasattr(agent, "languages") and agent.languages else ["zh"]
+                langs = agent.languages if hasattr(agent, "languages") and agent.languages else ["en"]
                 lang_names = [LANGUAGE_DISPLAY.get(lang, lang) for lang in langs]
                 st.write(f"**Languages:** {', '.join(lang_names)}")
                 st.caption(f"ID: {agent.agent_id}")
@@ -232,4 +326,5 @@ with st.container(border=True):
 
 render_error_console()
 render_footer()
+
 

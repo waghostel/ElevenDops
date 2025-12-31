@@ -326,8 +326,9 @@ class AgentCreateRequest(BaseModel):
     knowledge_ids: List[str] = Field(default_factory=list, description="IDs of linked knowledge documents")
     voice_id: str = Field(..., description="ID of the voice to use")
     answer_style: AnswerStyle = Field(..., description="Style of the agent's answers")
-    languages: List[str] = Field(default_factory=lambda: ["zh"], description="Language codes for agent (first is primary)")
+    languages: List[str] = Field(default_factory=lambda: ["en"], description="Language codes for agent (first is primary)")
     doctor_id: str = Field(default="default_doctor", description="ID of the creating doctor")
+    system_prompt_override: Optional[str] = Field(None, description="Custom system prompt to use instead of style-based default")
 
     @field_validator("name")
     @classmethod

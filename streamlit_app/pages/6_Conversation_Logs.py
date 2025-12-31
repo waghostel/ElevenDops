@@ -3,13 +3,18 @@ import asyncio
 import base64
 import streamlit as st
 import logging
-from datetime import datetime, time
+from datetime import datetime, time, date
 
 from streamlit_app.services.backend_api import get_backend_client, BackendAPIClient
 from streamlit_app.services.models import ConversationSummary, ConversationDetail
 from streamlit_app.components.sidebar import render_sidebar
 from streamlit_app.components.footer import render_footer
 from streamlit_app.components.error_console import add_error_to_log, render_error_console
+from streamlit_app.services.demo_data import (
+    generate_demo_conversations,
+    generate_demo_conversation_detail,
+    generate_demo_statistics,
+)
 
 # Page Configuration
 st.set_page_config(
@@ -74,21 +79,45 @@ def render_filters():
     """Render filters in a horizontal layout at the top of the page."""
     st.subheader("Filter Logs")
     
+    # Initialize session state for demo mode
+    if "logs_patient_id" not in st.session_state:
+        st.session_state.logs_patient_id = ""
+    if "logs_demo_mode" not in st.session_state:
+        st.session_state.logs_demo_mode = False
+    if "logs_start_date" not in st.session_state:
+        st.session_state.logs_start_date = None
+    if "logs_end_date" not in st.session_state:
+        st.session_state.logs_end_date = None
+    if "logs_demo_conversations" not in st.session_state:
+        st.session_state.logs_demo_conversations = None
+    
     with st.container(border=True):
+        if st.button("🎯 Demo Patient ID", help="Load demo patient with cataract surgery post-op conversations (June 2025)"):
+            st.session_state.logs_patient_id = "A123456789"
+            st.session_state.logs_start_date = date(2025, 6, 1)
+            st.session_state.logs_end_date = date(2025, 6, 30)
+            st.session_state.logs_demo_mode = True
+            st.session_state.logs_demo_conversations = generate_demo_conversations("A123456789")
+            st.rerun()
+        
         col1, col2, col3, col4 = st.columns([2, 2, 2, 1], vertical_alignment="bottom")
         start_date = None
         end_date = None
         
         with col1:
-            patient_id = st.text_input("Patient ID", placeholder="Enter ID...")
+            patient_id = st.text_input("Patient ID", value=st.session_state.logs_patient_id, placeholder="Enter ID...")
+            # If patient ID changes from demo ID, exit demo mode
+            if patient_id != st.session_state.logs_patient_id:
+                st.session_state.logs_demo_mode = False
+                st.session_state.logs_demo_conversations = None
         
         with col2:
-            start_d = st.date_input("Start Date", value=None)
+            start_d = st.date_input("Start Date", value=st.session_state.logs_start_date)
             if start_d:
                 start_date = datetime.combine(start_d, time.min)
                 
         with col3:
-            end_d = st.date_input("End Date", value=None)
+            end_d = st.date_input("End Date", value=st.session_state.logs_end_date)
             if end_d:
                 end_date = datetime.combine(end_d, time.max)
                 
@@ -156,12 +185,22 @@ def render_conversation_list(conversations: list[ConversationSummary]):
 
 async def render_detail_view(conversation_id: str):
     """Render detailed view of a single conversation."""
-    client = get_backend_client()
-    try:
-        detail = await client.get_conversation_detail(conversation_id)
-    except Exception as e:
-        add_error_to_log(f"Failed to load details: {e}")
-        return
+    # Use demo data if in demo mode
+    if st.session_state.get("logs_demo_mode", False):
+        detail = generate_demo_conversation_detail(
+            conversation_id, 
+            st.session_state.get("logs_patient_id", "A123456789")
+        )
+        if not detail:
+            add_error_to_log(f"Demo conversation not found: {conversation_id}")
+            return
+    else:
+        client = get_backend_client()
+        try:
+            detail = await client.get_conversation_detail(conversation_id)
+        except Exception as e:
+            add_error_to_log(f"Failed to load details: {e}")
+            return
 
     st.divider()
     
@@ -236,7 +275,7 @@ async def render_detail_view(conversation_id: str):
                 st.info("No answered questions.")
 
 async def main():
-    st.title("💬 Patient Conversation Review")
+    st.title("💬 Patient Conversation Review(Mockup)")
     st.markdown("Review and analyze past conversations between patients and AI agents.")
     
     # --- Filters Section (Top) ---
@@ -245,21 +284,35 @@ async def main():
     st.divider()
     
     # --- Load Data ---
-    client = get_backend_client()
-    try:
-        with st.spinner("Loading logs..."):
-            conversations = await client.get_conversation_logs(
-                patient_id=patient_id,
-                start_date=start_date,
-                end_date=end_date,
-                requires_attention_only=requires_attention
-            )
-            stats = await client.get_conversation_statistics()
-    except Exception as e:
-        add_error_to_log(f"Failed to fetch logs: {e}")
-        render_error_console()
-        render_footer()
-        return
+    # Use demo data if in demo mode
+    if st.session_state.get("logs_demo_mode", False) and st.session_state.get("logs_demo_conversations"):
+        conversations = st.session_state.logs_demo_conversations
+        
+        # Apply filters to demo data
+        if requires_attention:
+            conversations = [c for c in conversations if c.requires_attention]
+        if start_date:
+            conversations = [c for c in conversations if c.created_at >= start_date]
+        if end_date:
+            conversations = [c for c in conversations if c.created_at <= end_date]
+            
+        stats = generate_demo_statistics(conversations)
+    else:
+        client = get_backend_client()
+        try:
+            with st.spinner("Loading logs..."):
+                conversations = await client.get_conversation_logs(
+                    patient_id=patient_id,
+                    start_date=start_date,
+                    end_date=end_date,
+                    requires_attention_only=requires_attention
+                )
+                stats = await client.get_conversation_statistics()
+        except Exception as e:
+            add_error_to_log(f"Failed to fetch logs: {e}")
+            render_error_console()
+            render_footer()
+            return
 
     # --- Stats Section ---
     render_stats_display(stats)

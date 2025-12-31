@@ -55,8 +55,14 @@ if "conversation_history" not in st.session_state:
     st.session_state.conversation_history: list[ConversationMessage] = []
 
 # --- Patient ID Section ---
+
 st.subheader("1. Patient ID")
+
+
 with st.container(border=True):
+    if st.button("🎯 Demo Patient ID", help="Load Demo Patient ID"):
+        st.session_state.patient_id = "A123456789"
+        st.rerun()
     patient_id_input = st.text_input(
         "Enter Patient ID",
         value=st.session_state.patient_id,

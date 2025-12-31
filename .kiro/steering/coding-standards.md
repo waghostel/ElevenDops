@@ -8,12 +8,18 @@ inclusion: always
 ```
 backend/           # FastAPI backend with business logic
   api/             # API route handlers
-  services/        # Service layer (elevenlabs, data)
+    routes/        # Modular route files (audio, agent, knowledge, etc.)
+  config/          # Configuration files and prompts
+    prompts/       # Prompt templates
+  services/        # Service layer (elevenlabs, langgraph, data)
   models/          # Pydantic schemas
 streamlit_app/     # Streamlit UI (presentation only)
   pages/           # Multi-page app structure
   services/        # Backend API client
 tests/             # Property-based and unit tests
+  properties/      # Property test helpers
+docs/              # Documentation and API references
+.kiro/specs/       # Feature specifications
 ```
 
 ## Key Principles
@@ -47,8 +53,11 @@ tests/             # Property-based and unit tests
 
 ## Environment Variables
 Required in `.env`:
-- `ELEVENLABS_API_KEY`
-- Firestore credentials (when implemented)
+- `ELEVENLABS_API_KEY` - ElevenLabs API access
+- `GOOGLE_API_KEY` - Google Gemini API for script generation
+- `LANGCHAIN_API_KEY` - LangSmith tracing (optional)
+- `LANGCHAIN_PROJECT` - LangSmith project name
+- Firestore credentials (service account JSON)
 
 ## Language
 - Code: English

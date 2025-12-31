@@ -30,8 +30,10 @@ Each page in `streamlit_app/pages/` follows this pattern:
 
 ### 3_Education_Audio.py
 - Select knowledge document
-- Generate script preview (LLM)
-- Doctor review/edit
+- **LLM Model Selector**: Choose Gemini model (flash/pro)
+- **Prompt Editor**: Customize generation prompt with popup dialog
+- Generate script preview (AI-powered via LangGraph)
+- Doctor review/edit script
 - Generate TTS audio
 - Display audio player and URL
 
@@ -67,6 +69,21 @@ with st.form("form_key"):
     if st.form_submit_button("提交"):
         result = api.some_endpoint(input_value)
         st.success("完成")
+
+# LLM Model Selection Pattern
+selected_model = st.selectbox(
+    "選擇 AI 模型",
+    options=["gemini-2.5-flash", "gemini-2.5-pro"],
+    index=0
+)
+
+# Popup Dialog Pattern (for prompt editor)
+@st.dialog("編輯提示詞")
+def show_prompt_editor():
+    prompt = st.text_area("提示詞", value=st.session_state.custom_prompt)
+    if st.button("儲存"):
+        st.session_state.custom_prompt = prompt
+        st.rerun()
 ```
 
 ## Error Handling

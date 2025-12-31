@@ -393,9 +393,9 @@ class ElevenLabsService:
         if not voice_id:
              raise ElevenLabsAgentError("Voice ID is required")
         
-        # Default to Chinese if no languages provided
+        # Default to English if no languages provided
         if not languages:
-            languages = ["zh"]
+            languages = ["en"]
 
         if self.use_mock:
             mock_id = f"mock_agent_{uuid.uuid4()}"
@@ -409,7 +409,7 @@ class ElevenLabsService:
                 "prompt": {
                     "prompt": system_prompt
                 },
-                "first_message": "您好，我是您的醫療助手。請問有什麼我可以幫您的？", # Traditional Chinese
+                "first_message": "Hello! I'm your medical assistant. How can I help you today?",
                 "language": primary_language  # Primary language
             }
             

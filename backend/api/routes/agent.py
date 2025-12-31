@@ -52,3 +52,15 @@ async def delete_agent(
         raise HTTPException(status_code=502, detail=f"ElevenLabs error: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@router.get("/system-prompts")
+async def get_system_prompts(
+    service: AgentService = Depends(get_agent_service),
+):
+    """Get all system prompts by answer style.
+    
+    Returns:
+        dict: Mapping of style value to system prompt text.
+    """
+    return service.get_system_prompts()

@@ -21,6 +21,8 @@ ElevenDops is an intelligent medical assistant system combining ElevenLabs voice
 - **Backend**: FastAPI
 - **Database**: Firestore (primary data source)
 - **Voice AI**: ElevenLabs (Knowledge Base, Agents, TTS, Conversational AI)
+- **LLM**: Google Gemini (via LangChain/LangGraph)
+- **Observability**: LangSmith (tracing and debugging)
 - **Deployment**: Cloud Run
 
 ## Architecture Principles
@@ -32,6 +34,16 @@ ElevenDops is an intelligent medical assistant system combining ElevenLabs voice
 ## Main Features (Phase 1)
 1. **Knowledge Upload** - Doctors upload medical education documents
 2. **Education Audio** - Generate TTS audio from medical scripts
-3. **Agent Setup** - Configure AI assistants with knowledge bases
-4. **Patient Test** - Voice conversation interface for patients
-5. **Conversation Logs** - Track patient questions for doctor review
+3. **AI Script Generation** - LLM-powered script generation with LangGraph workflow
+4. **Agent Setup** - Configure AI assistants with knowledge bases
+5. **Patient Test** - Voice conversation interface for patients
+6. **Conversation Logs** - Track patient questions for doctor review
+
+## Current Implementation Status
+- ✅ Backend services: elevenlabs, audio, agent, knowledge, conversation, storage
+- ✅ LangGraph workflow for AI script generation
+- ✅ Prompt template service with configurable prompts
+- ✅ LangSmith tracing integration
+- ✅ Firestore data service
+- 🔄 AI Script Generation frontend integration (in progress)
+- 🔄 Property-based testing coverage expansion

@@ -805,6 +805,7 @@ class BackendAPIClient:
         answer_style: str,
         languages: List[str] = None,
         doctor_id: str = "default_doctor",
+        system_prompt_override: Optional[str] = None,
     ) -> AgentConfig:
         """Create a new agent.
 
@@ -815,6 +816,7 @@ class BackendAPIClient:
             answer_style: Answer style.
             languages: List of language codes for conversations (ISO 639-1).
             doctor_id: Doctor ID.
+            system_prompt_override: Optional custom system prompt.
 
         Returns:
             AgentConfig object.
@@ -825,9 +827,11 @@ class BackendAPIClient:
                 "knowledge_ids": knowledge_ids,
                 "voice_id": voice_id,
                 "answer_style": answer_style,
-                "languages": languages or ["zh"],
+                "languages": languages or ["en"],
                 "doctor_id": doctor_id,
             }
+            if system_prompt_override:
+                payload["system_prompt_override"] = system_prompt_override
             async with self._get_client() as client:
                 response = await client.post("/api/agent", json=payload)
                 response.raise_for_status()
@@ -838,7 +842,7 @@ class BackendAPIClient:
                     knowledge_ids=data["knowledge_ids"],
                     voice_id=data["voice_id"],
                     answer_style=data["answer_style"],
-                    languages=data.get("languages", ["zh"]),
+                    languages=data.get("languages", ["en"]),
                     elevenlabs_agent_id=data["elevenlabs_agent_id"],
                     doctor_id=data["doctor_id"],
                     created_at=datetime.fromisoformat(data["created_at"]),
@@ -869,7 +873,7 @@ class BackendAPIClient:
                         knowledge_ids=d["knowledge_ids"],
                         voice_id=d["voice_id"],
                         answer_style=d["answer_style"],
-                        language=d.get("language", "zh"),
+                        languages=d.get("languages", ["en"]),
                         elevenlabs_agent_id=d["elevenlabs_agent_id"],
                         doctor_id=d["doctor_id"],
                         created_at=datetime.fromisoformat(d["created_at"]),
@@ -881,6 +885,25 @@ class BackendAPIClient:
         except httpx.HTTPStatusError as e:
             raise APIError(
                 message=f"Failed to get agents: {self._parse_error_message(e.response)}",
+                status_code=e.response.status_code,
+            ) from e
+
+    async def get_agent_system_prompts(self) -> dict:
+        """Get all agent system prompts by answer style.
+        
+        Returns:
+            Dict mapping style value (str) to system prompt (str).
+        """
+        try:
+            async with self._get_client() as client:
+                response = await client.get("/api/agent/system-prompts")
+                response.raise_for_status()
+                return response.json()
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Failed to get system prompts: {self._parse_error_message(e.response)}",
                 status_code=e.response.status_code,
             ) from e
 
