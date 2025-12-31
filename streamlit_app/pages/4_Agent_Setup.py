@@ -83,6 +83,31 @@ STYLE_OPTIONS = {
 # --- Create New Agent Column ---
 
 st.header("Create New Agent")
+
+# Voice Selection OUTSIDE form for dynamic audio preview
+st.subheader("🎙️ Voice Configuration")
+voice_map = {v.voice_id: v for v in voices}
+
+# Initialize session state for voice selection
+if "agent_selected_voice_id" not in st.session_state:
+    st.session_state.agent_selected_voice_id = list(voice_map.keys())[0] if voice_map else None
+
+selected_voice_id = st.selectbox(
+    "Select Voice",
+    options=list(voice_map.keys()),
+    format_func=lambda x: voice_map[x].name if x in voice_map else x,
+    key="agent_selected_voice_id"
+)
+
+# Dynamic voice preview - updates immediately on selection change
+if selected_voice_id and selected_voice_id in voice_map:
+    voice = voice_map[selected_voice_id]
+    st.caption(voice.description or "Voice preview")
+    if voice.preview_url:
+        st.audio(voice.preview_url, format="audio/mpeg")
+
+st.divider()
+
 with st.form("create_agent_form"):
     name = st.text_input("Agent Name", placeholder="e.g., Diabetes Specialist")
     
@@ -98,21 +123,6 @@ with st.form("create_agent_form"):
     else:
         st.info("No knowledge documents available. Please upload some first.")
         selected_doc_ids = []
-
-    # Voice Selection
-    st.subheader("Voice Configuration")
-    voice_map = {v.voice_id: v for v in voices}
-    selected_voice_id = st.selectbox(
-        "Select Voice",
-        options=list(voice_map.keys()),
-        format_func=lambda x: voice_map[x].name if x in voice_map else x
-    )
-    
-    if selected_voice_id and selected_voice_id in voice_map:
-        voice = voice_map[selected_voice_id]
-        st.caption(voice.description or "No description")
-        if voice.preview_url:
-            st.audio(voice.preview_url)
     
     # Style Selection
     st.subheader("Answer Style")

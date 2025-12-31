@@ -759,6 +759,15 @@ async def render_script_editor():
 async def render_audio_generation():
     """Render voice selection with dynamic language filtering (isolated fragment)."""
     st.subheader("3. Voice & Generation")
+    
+    # Second Multi-Speaker toggle (synchronized with the one in Script Editor)
+    # Using the same session state key ensures both toggles stay in sync
+    st.session_state.multi_speaker_enabled = st.toggle(
+        "🎭 Multi-Speaker Dialogue",
+        value=st.session_state.multi_speaker_enabled,
+        help="Enable dialogue between Doctor/Educator and Patient/Learner",
+        key="multi_speaker_toggle_voice_section"
+    )
 
     if not st.session_state.generated_script:
         st.info("Generate or write a script to proceed.")
@@ -803,79 +812,65 @@ async def render_audio_generation():
     # Check if multi-speaker mode is active
     speaker1_langs = st.session_state.get("speaker1_languages", [])
     speaker2_langs = st.session_state.get("speaker2_languages", [])
-    is_multi_speaker = bool(speaker1_langs and speaker2_langs)
+    is_multi_speaker = st.session_state.get("multi_speaker_enabled", False)
     
+    # Always show both speaker columns for visual balance
     if is_multi_speaker:
         st.caption("🎭 **Multi-Speaker Mode Active** - Select voices for each speaker")
+    else:
+        st.caption("🎙️ **Single-Speaker Mode** - Speaker 2 is disabled")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("**Speaker 1** (Doctor/Educator)")
+        speaker1_voices = filter_voices_by_languages(st.session_state.voices, speaker1_langs)
+        speaker1_options = build_voice_options(speaker1_voices)
         
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("**Speaker 1** (Doctor/Educator)")
-            speaker1_voices = filter_voices_by_languages(st.session_state.voices, speaker1_langs)
-            speaker1_options = build_voice_options(speaker1_voices)
+        if speaker1_options:
+            speaker1_voice_name = st.selectbox(
+                "Speaker 1 Voice",
+                options=list(speaker1_options.keys()),
+                help=f"Showing {len(speaker1_voices)} voices" + (f" supporting: {', '.join(speaker1_langs)}" if speaker1_langs else "")
+            )
+            speaker1_voice = speaker1_options[speaker1_voice_name]
+            st.session_state.speaker1_voice_id = speaker1_voice.voice_id
+            st.session_state.selected_voice_id = speaker1_voice.voice_id
             
-            if speaker1_options:
-                speaker1_voice_name = st.selectbox(
-                    "Speaker 1 Voice",
-                    options=list(speaker1_options.keys()),
-                    help=f"Showing {len(speaker1_voices)} voices supporting: {', '.join(speaker1_langs)}"
-                )
-                speaker1_voice = speaker1_options[speaker1_voice_name]
-                st.session_state.speaker1_voice_id = speaker1_voice.voice_id
-                
-                if speaker1_voice.preview_url:
-                    st.audio(speaker1_voice.preview_url, format="audio/mpeg")
-            else:
-                st.warning("No voices found for Speaker 1 languages")
+            if speaker1_voice.preview_url:
+                st.audio(speaker1_voice.preview_url, format="audio/mpeg")
+        else:
+            st.warning("No voices found for Speaker 1 languages")
+    
+    with col2:
+        st.markdown("**Speaker 2** (Patient/Learner)")
+        # In single-speaker mode, use Speaker 1 languages to filter voices for display
+        # but keep the controls disabled
+        display_langs = speaker2_langs if is_multi_speaker else speaker1_langs
+        speaker2_voices = filter_voices_by_languages(st.session_state.voices, display_langs)
+        speaker2_options = build_voice_options(speaker2_voices)
         
-        with col2:
-            st.markdown("**Speaker 2** (Patient/Learner)")
-            speaker2_voices = filter_voices_by_languages(st.session_state.voices, speaker2_langs)
-            speaker2_options = build_voice_options(speaker2_voices)
-            
-            if speaker2_options:
-                speaker2_voice_name = st.selectbox(
-                    "Speaker 2 Voice",
-                    options=list(speaker2_options.keys()),
-                    help=f"Showing {len(speaker2_voices)} voices supporting: {', '.join(speaker2_langs)}"
-                )
+        if speaker2_options:
+            speaker2_voice_name = st.selectbox(
+                "Speaker 2 Voice",
+                options=list(speaker2_options.keys()),
+                help=f"Showing {len(speaker2_voices)} voices" + (f" supporting: {', '.join(display_langs)}" if display_langs else "") if is_multi_speaker else "Enable Multi-Speaker Dialogue to use Speaker 2",
+                disabled=not is_multi_speaker
+            )
+            if is_multi_speaker:
                 speaker2_voice = speaker2_options[speaker2_voice_name]
                 st.session_state.speaker2_voice_id = speaker2_voice.voice_id
-                
-                if speaker2_voice.preview_url:
-                    st.audio(speaker2_voice.preview_url, format="audio/mpeg")
-            else:
-                st.warning("No voices found for Speaker 2 languages")
-        
-        # Use speaker1 voice for now (multi-speaker TTS would need separate API)
-        st.session_state.selected_voice_id = st.session_state.speaker1_voice_id
-        st.info("💡 Multi-speaker audio will be generated. ElevenLabs V3 uses voice assignments from your script formatting.")
-    
-    else:
-        # Single speaker mode - use preferred_languages or show all
-        selected_langs = st.session_state.get("preferred_languages", [])
-        filtered_voices = filter_voices_by_languages(st.session_state.voices, selected_langs)
-        voice_options = build_voice_options(filtered_voices)
-        
-        col1, col2 = st.columns([1, 1])
-        
-        with col1:
-            selected_voice_name = st.selectbox(
-                "Select Voice",
-                options=list(voice_options.keys()),
-                help=f"Showing {len(filtered_voices)} voices" + (f" supporting: {', '.join(selected_langs)}" if selected_langs else "")
-            )
             
-        selected_voice = voice_options[selected_voice_name]
-        st.session_state.selected_voice_id = selected_voice.voice_id
-        
-        with col2:
-            if hasattr(selected_voice, 'languages') and selected_voice.languages:
-                st.caption(f"Supports: {', '.join(selected_voice.languages[:10])}{'...' if len(selected_voice.languages) > 10 else ''}")
-            if selected_voice.preview_url:
-                st.audio(selected_voice.preview_url, format="audio/mpeg")
-                st.caption("Voice Preview")
+            # Show audio preview (also visually affected by disabled state context)
+            if speaker2_options:
+                preview_voice = speaker2_options[speaker2_voice_name]
+                if preview_voice.preview_url:
+                    st.audio(preview_voice.preview_url, format="audio/mpeg")
+        else:
+            st.warning("No voices found for Speaker 2 languages")
+    
+    if is_multi_speaker:
+        st.info("💡 Multi-speaker audio will be generated. ElevenLabs V3 uses voice assignments from your script formatting.")
 
     st.divider()
     
