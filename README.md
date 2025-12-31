@@ -169,4 +169,6 @@ docker run -p 8501:8501 -p 8000:8000 \
 
 ## License
 
-© 2024 ElevenDops Team. All rights reserved.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+© 2024 ElevenDops Team
