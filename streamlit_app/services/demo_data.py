@@ -364,3 +364,37 @@ def generate_demo_statistics(conversations: List[ConversationSummary]) -> dict:
         "average_duration_formatted": f"{minutes}m {seconds}s",
         "attention_percentage": (attention_count / total) * 100,
     }
+
+
+def generate_demo_patient_summary() -> dict:
+    """Generate aggregated patient summary across all demo conversations.
+    
+    Returns:
+        Dictionary with:
+        - answered_questions: List of all questions successfully answered by AI
+        - unanswered_questions: List of questions that couldn't be fully answered
+        - doctor_action_items: List of items requiring doctor confirmation/discussion
+    """
+    all_answered = []
+    all_unanswered = []
+    
+    for conv in DEMO_CONVERSATIONS:
+        all_answered.extend(conv["answered_questions"])
+        all_unanswered.extend(conv["unanswered_questions"])
+    
+    # Doctor action items - derived from unanswered questions and attention-required conversations
+    doctor_action_items = [
+        "Discuss IOL options (monofocal vs multifocal) for second eye surgery",
+        "Review patient's headache/nausea episode on June 3rd - check IOP history",
+        "Follow up on floaters/flashes episode on June 12th - confirm retinal exam results",
+        "Confirm patient is ready for second eye surgery scheduling",
+    ]
+    
+    return {
+        "answered_questions": all_answered,
+        "unanswered_questions": all_unanswered,
+        "doctor_action_items": doctor_action_items,
+        "total_answered": len(all_answered),
+        "total_unanswered": len(all_unanswered),
+        "attention_episodes": sum(1 for c in DEMO_CONVERSATIONS if c["requires_attention"]),
+    }

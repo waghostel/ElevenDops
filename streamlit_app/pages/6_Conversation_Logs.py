@@ -14,6 +14,7 @@ from streamlit_app.services.demo_data import (
     generate_demo_conversations,
     generate_demo_conversation_detail,
     generate_demo_statistics,
+    generate_demo_patient_summary,
 )
 
 # Page Configuration
@@ -98,6 +99,7 @@ def render_filters():
             st.session_state.logs_end_date = date(2025, 6, 30)
             st.session_state.logs_demo_mode = True
             st.session_state.logs_demo_conversations = generate_demo_conversations("A123456789")
+            st.session_state.selected_conversation_id = "CONV_001"  # Auto-select first conversation
             st.rerun()
         
         col1, col2, col3, col4 = st.columns([2, 2, 2, 1], vertical_alignment="bottom")
@@ -142,9 +144,43 @@ def render_stats_display(stats: dict):
         # Placeholder or other stat
         pass
 
+def render_patient_summary_cards(summary: dict):
+    """Render patient summary cards for doctor quick review."""
+    st.subheader("📊 Patient Condition Summary")
+    st.markdown(":gray[Aggregated insights from all patient-AI conversations]")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        with st.container(border=True):
+            st.markdown("### :green[✅ Answered Questions]")
+            st.caption(f"Total: {summary['total_answered']} questions addressed by AI")
+            for q in summary["answered_questions"]:
+                st.markdown(f"- {q}")
+    
+    with col2:
+        with st.container(border=True):
+            st.markdown("### :red[❓ Unanswered Questions]")
+            st.caption(f"Total: {summary['total_unanswered']} questions need doctor input")
+            if summary["unanswered_questions"]:
+                for q in summary["unanswered_questions"]:
+                    st.markdown(f"- {q}")
+            else:
+                st.success("All patient questions were addressed!")
+    
+    with col3:
+        with st.container(border=True):
+            st.markdown("### :orange[📝 Doctor Action Items]")
+            st.caption(f"{summary['attention_episodes']} episodes required attention")
+            for item in summary["doctor_action_items"]:
+                st.markdown(f"- {item}")
+    
+    st.divider()
+
 def render_conversation_list(conversations: list[ConversationSummary]):
     """Render list of conversations as selectable items."""
     st.subheader(f"Conversation List ({len(conversations)})")
+    st.markdown(":blue[💡 **Tip:** Click on a row to view the detailed conversation transcript and analysis.]")
     
     if not conversations:
         st.info("No logs found matching criteria.")
@@ -316,6 +352,11 @@ async def main():
 
     # --- Stats Section ---
     render_stats_display(stats)
+    
+    # --- Patient Summary Cards (Demo mode only) ---
+    if st.session_state.get("logs_demo_mode", False):
+        patient_summary = generate_demo_patient_summary()
+        render_patient_summary_cards(patient_summary)
     
     # --- Handle Selection State ---
     if "selected_conversation_id" not in st.session_state:
