@@ -127,13 +127,7 @@ def render_agent_system_prompt_editor(style: str):
     system_prompt_editor_fragment()
 
 
-# Refresh Button
-if st.button("🔄 Refresh Data"):
-    get_cached_documents.clear()
-    get_cached_agents.clear()
-    st.session_state.cached_agent_system_prompts = None
-    # Voices usually don't need frequent refresh, but we can if needed
-    st.rerun()
+
 
 # Load data using cached functions
 try:

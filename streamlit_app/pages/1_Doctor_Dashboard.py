@@ -141,13 +141,16 @@ def render_dashboard() -> None:
         col1, col2, col3 = st.columns(3)
 
         with col1:
-            st.button("📤 Upload Document", use_container_width=True, disabled=True)
+            if st.button("📤 Knowledge Base", use_container_width=True):
+                st.switch_page("pages/2_Upload_Knowledge.py")
         with col2:
-            st.button("➕ Create Agent", use_container_width=True, disabled=True)
+            if st.button("🎧 Education Audio", use_container_width=True):
+                st.switch_page("pages/3_Education_Audio.py")
         with col3:
-            st.button("� Start Session", use_container_width=True, disabled=True)
+            if st.button("🎙️ Voice Agent", use_container_width=True):
+                st.switch_page("pages/4_Agent_Setup.py")
 
-        st.caption("*Quick actions will be available in future updates.*")
+        st.caption("*Use these shortcuts to quickly navigate to key features.*")
     else:
         # Error state - retry button first, then error messages
 

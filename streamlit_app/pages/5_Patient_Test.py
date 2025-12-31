@@ -89,6 +89,7 @@ if st.session_state.patient_id and st.session_state.patient_id.isalnum():
             
             if not agents:
                 st.warning("⚠️ No agents available")
+                st.info("📢 The voice agent will be ready to serve you soon. In the meantime, please listen to the education audio.")
             else:
                 agent_options = {a.name: a for a in agents}  # Store full agent objects
                 selected_agent_name = st.selectbox(
@@ -104,6 +105,8 @@ if st.session_state.patient_id and st.session_state.patient_id.isalnum():
                         
         except Exception as e:
             add_error_to_log(f"Failed to load agent list: {str(e)}")
+            st.warning("⚠️ No agents available")
+            st.info("📢 The voice agent will be ready to serve you soon. In the meantime, please listen to the education audio.")
 
 # --- Education Audio Section ---
 # Only show if agent is selected

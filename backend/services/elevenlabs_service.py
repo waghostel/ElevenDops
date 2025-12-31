@@ -425,13 +425,21 @@ class ElevenLabsService:
             if knowledge_base:
                  agent_config["prompt"]["knowledge_base"] = knowledge_base
                  
+            # Determine TTS model based on language configuration
+            # - English-only agents (language="en") MUST use turbo_v2 or flash_v2
+            # - Multilingual/Non-English agents use turbo_v2_5
+            if len(languages) == 1 and languages[0] == "en":
+                model_id = "eleven_turbo_v2"
+            else:
+                model_id = "eleven_turbo_v2_5"
+
             response = self.client.conversational_ai.agents.create(
                 name=name,
                 conversation_config={
                     "agent": agent_config,
                     "tts": {
                         "voice_id": voice_id,
-                        "model_id": "eleven_turbo_v2_5"  # Required for non-English languages
+                        "model_id": model_id
                     }
                 }
             )
