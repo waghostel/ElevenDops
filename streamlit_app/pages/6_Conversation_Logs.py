@@ -152,14 +152,14 @@ def render_patient_summary_cards(summary: dict):
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        with st.container(border=True):
+        with st.container(border=True, height=300):
             st.markdown("### :green[✅ Answered Questions]")
             st.caption(f"Total: {summary['total_answered']} questions addressed by AI")
             for q in summary["answered_questions"]:
                 st.markdown(f"- {q}")
     
     with col2:
-        with st.container(border=True):
+        with st.container(border=True, height=300):
             st.markdown("### :red[❓ Unanswered Questions]")
             st.caption(f"Total: {summary['total_unanswered']} questions need doctor input")
             if summary["unanswered_questions"]:
@@ -169,13 +169,13 @@ def render_patient_summary_cards(summary: dict):
                 st.success("All patient questions were addressed!")
     
     with col3:
-        with st.container(border=True):
+        with st.container(border=True, height=300):
             st.markdown("### :orange[📝 Doctor Action Items]")
             st.caption(f"{summary['attention_episodes']} episodes required attention")
             for item in summary["doctor_action_items"]:
                 st.markdown(f"- {item}")
     
-    st.divider()
+
 
 def render_conversation_list(conversations: list[ConversationSummary]):
     """Render list of conversations as selectable items."""

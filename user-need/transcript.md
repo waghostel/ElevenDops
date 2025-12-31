@@ -6,18 +6,22 @@ Patients sometimes may forget what docor say when they come back home but don't 
 
 The communication between Physician and patient is not efficient especially in the regin far from the hospital or country which has higher patient to doctor ratio 
 
-That’s where ElevenDops comes in.
+ElevenDops is being build to improve the communication by creating education audio and voice AI
+by leveraging the powerful Elevenlabs voice ai model.
 
 Doctors can first upload the medical education material.
 
-ElevenDops will help to turn it into education material and the knowledge base of Voice agent.
+ElevenDops will help to turn them into education material and the knowledge base of Voice agent.
 
-so patients can listen to the education material when they forget and the Voice agent can help to answer common questions and record 
+The education video help the doctor to answer common questions such as Surgey preparation, post sugery educaiton, Disease FAQ, Medication Instructions and Lifestyle guide.
+
+Doctor can quickly create these education audio from the document they upload. 
+
+Patient can listen to these audio anytime before or after any medical visiting so doctor can focuing on answering the critical questions when patient visit. 
+
+The Voice agent can help to answer common questions based on the knowledge databse. It can also collect and summarize the questions which cannot be answer by voice agent or the action docter need to take.
 
 Before the next appointment, doctors already know what patients are confused or concerned about.
 
-Clearer communication. Better care. Powered by ElevenLabs voice AI.
+The patient visiting time can them be efficiently use to solve critical problems.
 
-We build ElevenDops as a minimum viable product build to demostrate how we can relief doctor's burdance by integratiing education audio and Voice agent into their daily parctice.
-
-Doctor can first crete 
