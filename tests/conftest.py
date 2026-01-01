@@ -7,33 +7,30 @@ sys.modules["elevenlabs"] = MagicMock()
 sys.modules["elevenlabs.client"] = MagicMock()
 
 # Mock google.cloud modules for testing without GCP dependencies
-mock_firestore = MagicMock()
-mock_firestore.Client = MagicMock()
-sys.modules["google.cloud.firestore"] = mock_firestore
-sys.modules["google.cloud"] = MagicMock()
-sys.modules["google.cloud"].firestore = mock_firestore
+# Mock google.cloud modules for testing without GCP dependencies
+# Only mock if NOT testing against emulator
+if os.environ.get("TEST_AGAINST_EMULATOR") != "true":
+    mock_firestore = MagicMock()
+    mock_firestore.Client = MagicMock()
+    sys.modules["google.cloud.firestore"] = mock_firestore
+    sys.modules["google.cloud"] = MagicMock()
+    sys.modules["google.cloud"].firestore = mock_firestore
 
-# Mock google.cloud.storage for GCS
-mock_storage = MagicMock()
-mock_storage.Client = MagicMock()
-sys.modules["google.cloud.storage"] = mock_storage
-sys.modules["google.cloud"].storage = mock_storage
+    # Mock google.cloud.storage for GCS
+    mock_storage = MagicMock()
+    mock_storage.Client = MagicMock()
+    sys.modules["google.cloud.storage"] = mock_storage
+    sys.modules["google.cloud"].storage = mock_storage
+else:
+    # When testing against emulator, ensure we don't mock them
+    # But we might need to set env vars for the emulator hosts if not already set
+    if "FIRESTORE_EMULATOR_HOST" not in os.environ:
+        os.environ["FIRESTORE_EMULATOR_HOST"] = "localhost:8080"
+    if "STORAGE_EMULATOR_HOST" not in os.environ:
+        os.environ["STORAGE_EMULATOR_HOST"] = "http://localhost:4443"
 
-# Mock langgraph modules
-mock_langgraph = MagicMock()
-mock_langgraph.graph = MagicMock()
-mock_langgraph.graph.StateGraph = MagicMock()
-mock_langgraph.graph.END = "END"
-sys.modules["langgraph"] = mock_langgraph
-sys.modules["langgraph.graph"] = mock_langgraph.graph
-
-# Mock langchain modules
-mock_langchain = MagicMock()
-sys.modules["langchain"] = mock_langchain
-sys.modules["langchain_core"] = MagicMock()
-sys.modules["langchain_core.messages"] = MagicMock()
-sys.modules["langchain_core.prompts"] = MagicMock()
-sys.modules["langchain_google_genai"] = MagicMock()
+# We use real langgraph and langchain modules for testing logic
+# ensuring we test against the actual library behaviors
 
 # Also mock other potential missing deps if needed
 

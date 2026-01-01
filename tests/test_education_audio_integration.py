@@ -101,7 +101,7 @@ def test_script_generation_flow(mock_client):
         at.button(key="generate_script_btn").click().run()
         
         # Verify script appears in text area
-        assert at.text_area(key="script_editor_area").value == "Generated script"
+        assert at.text_area(key="script_editor_area_1").value == "Generated script"
         
         # Verify audio generation section appears (2nd selectbox)
         assert len(at.selectbox) >= 2, f"Audio section not rendered. Selectboxes: {len(at.selectbox)}"
@@ -113,7 +113,12 @@ def test_script_generation_flow(mock_client):
             custom_prompt=None,
             template_ids=["pre_surgery"],
             quick_instructions="",
-            system_prompt_override=None
+            system_prompt_override=None,
+            preferred_languages=[],
+            speaker1_languages=None,
+            speaker2_languages=None,
+            target_duration_minutes=3,
+            is_multi_speaker=False
         )
 
 def test_audio_generation_flow(mock_client):
@@ -136,14 +141,15 @@ def test_audio_generation_flow(mock_client):
         assert not at.error, f"Errors: {[e.value for e in at.error]}"
         assert not at.warning, f"Warnings: {[w.value for w in at.warning]}"
         
-        # There should be 3 selectboxes: 
+        # There should be 4 selectboxes: 
         # 0: Document
         # 1: AI Model (in script editor)
-        # 2: Voice (in audio generation)
-        assert len(at.selectbox) >= 3
+        # 2: Speech Duration
+        # 3: Voice (in audio generation)
+        assert len(at.selectbox) >= 4
         
         # "Rachel" is at index 0 of the voices list (mocked)
-        at.selectbox[2].select("Rachel").run()
+        at.selectbox[3].select("Rachel").run()
         
         # 4. Generate Audio
         audio_btn = at.button(key="generate_audio_btn")
@@ -170,7 +176,7 @@ def test_reset_on_document_change(mock_client):
         at.button(key="generate_script_btn").click().run()
         
         # Verify script
-        assert at.text_area(key="script_editor_area").value == "Generated script"
+        assert at.text_area(key="script_editor_area_1").value == "Generated script"
         
         # Change document
         # To test doc change, we need the page to reload with new docs.
@@ -212,7 +218,7 @@ def test_reset_on_document_change(mock_client):
             at.button(key="generate_script_btn").click().run()
              
             # Verify script
-            assert at.text_area(key="script_editor_area").value == "Generated script"
+            assert at.text_area(key="script_editor_area_1").value == "Generated script"
             
             # Change document
             doc2 = replace(MOCK_DOCS[0], knowledge_id="doc_2", disease_name="Cold")
@@ -243,7 +249,8 @@ def test_reset_on_document_change(mock_client):
             # "Flu" was selected.
             at.selectbox[0].select("Cold").run()
             
-            # Script area should be gone
-            # Filter for the specific key
-            script_areas = [ta for ta in at.text_area if ta.key == "script_editor_area"]
-            assert len(script_areas) == 0, f"Script text area should be gone. Found {len(script_areas)}"
+            # Script area should be empty (reset)
+            # Filter for the specific key - key increments on reset to force clear
+            script_areas = [ta for ta in at.text_area if ta.key == "script_editor_area_2"]
+            assert len(script_areas) == 1, "Script text area should be present"
+            assert script_areas[0].value == "", "Script text area should be empty"

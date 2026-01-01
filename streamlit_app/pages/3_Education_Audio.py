@@ -281,6 +281,8 @@ async def render_document_selection(documents: List[KnowledgeDocument]):
         ):
             st.session_state.generated_script = ""
             st.session_state.selected_voice_id = None
+            # Force new widget key for script editor to ensure it clears
+            st.session_state.generation_id += 1
             
         st.session_state.selected_document = selected_doc
         

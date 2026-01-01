@@ -107,5 +107,10 @@ def test_script_generation_parameters(mock_client):
             custom_prompt="My custom prompt",
             template_ids=None,
             quick_instructions=None,
-            system_prompt_override=None
+            system_prompt_override=None,
+            preferred_languages=None,
+            speaker1_languages=None,
+            speaker2_languages=None,
+            target_duration_minutes=None,
+            is_multi_speaker=False
         )
