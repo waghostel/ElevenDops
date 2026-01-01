@@ -16,6 +16,12 @@ from backend.api.routes.debug import router as debug_router
 from backend.api.routes.templates import router as templates_router
 
 from backend.config import get_settings
+from backend.utils.logging import setup_application_logging, get_logger
+
+# Initialize structured logging based on environment
+settings = get_settings()
+setup_application_logging(settings.app_env)
+logger = get_logger(__name__)
 
 # Application configuration
 APP_TITLE = "ElevenDops Backend API"
@@ -23,7 +29,7 @@ APP_DESCRIPTION = "Backend API for ElevenDops intelligent medical assistant syst
 APP_VERSION = "0.1.0"
 
 # CORS configuration - managed by centralized config
-CORS_ORIGINS = get_settings().get_cors_origins_list()
+CORS_ORIGINS = settings.get_cors_origins_list()
 
 app = FastAPI(
     title=APP_TITLE,
@@ -52,7 +58,6 @@ app.include_router(debug_router)
 app.include_router(templates_router)
 
 # Mount static files for mock storage mode
-settings = get_settings()
 if settings.use_mock_storage:
     from pathlib import Path
     from fastapi.staticfiles import StaticFiles
@@ -65,6 +70,7 @@ if settings.use_mock_storage:
 @app.get("/")
 async def root():
     """Root endpoint."""
+    logger.info("Root endpoint accessed")
     return {"message": APP_TITLE, "version": APP_VERSION}
 
 
@@ -74,18 +80,35 @@ from fastapi.responses import JSONResponse
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     """Global exception handler for unexpected errors."""
-    import logging
     from backend.utils.errors import get_error_response, map_exception_to_status_code
+    from backend.utils.logging import log_error_with_context
     
     # Determine status code and response content
     status_code = map_exception_to_status_code(exc)
     error_response = get_error_response(exc)
 
-    # Log based on severity
+    # Log based on severity using structured logging
     if status_code >= 500:
-        logging.error(f"Global exception: {exc}", exc_info=True)
+        log_error_with_context(
+            logger,
+            f"Global exception: {exc}",
+            exc,
+            status_code=status_code,
+            path=str(request.url.path),
+            method=request.method,
+        )
     else:
-        logging.warning(f"Handled exception: {exc} (Status: {status_code})")
+        logger.warning(
+            f"Handled exception: {exc}",
+            extra={
+                "extra_fields": {
+                    "status_code": status_code,
+                    "path": str(request.url.path),
+                    "method": request.method,
+                    "error_type": type(exc).__name__,
+                }
+            }
+        )
 
     return JSONResponse(
         status_code=status_code,

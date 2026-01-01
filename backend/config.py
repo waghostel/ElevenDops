@@ -175,6 +175,24 @@ class Settings(BaseSettings):
             
         return self
 
+    @model_validator(mode='after')
+    def ensure_localhost_cors_in_production(self) -> 'Settings':
+        """Ensure localhost origins are included in CORS for internal communication.
+        
+        In Cloud Run, the frontend (Streamlit) communicates with the backend (FastAPI)
+        via localhost. This validator ensures localhost origins are always included.
+        """
+        localhost_origins = ["http://localhost:8000", "http://127.0.0.1:8000"]
+        current_origins = self.get_cors_origins_list()
+        
+        # Add localhost origins if not present
+        origins_to_add = [o for o in localhost_origins if o not in current_origins]
+        if origins_to_add:
+            updated_origins = current_origins + origins_to_add
+            self.cors_origins = ",".join(updated_origins)
+            
+        return self
+
     def get_cors_origins_list(self) -> list[str]:
         """Get CORS origins as a list."""
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
@@ -265,6 +283,9 @@ def validate_critical_config(settings: Settings) -> None:
 
     if settings.google_cloud_project is None:
         missing.append("GOOGLE_CLOUD_PROJECT")
+
+    if settings.google_api_key is None:
+        missing.append("GOOGLE_API_KEY")
 
     if missing:
         raise ConfigurationError(missing)

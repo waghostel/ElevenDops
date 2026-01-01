@@ -1,0 +1,97 @@
+# Cloud Run Service Configuration for ElevenDops
+# This file defines the declarative deployment configuration for Cloud Run
+# Reference: Requirements 4.1, 4.2, 4.3, 4.4, 4.5, 4.6
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: elevendops
+  labels:
+    cloud.googleapis.com/location: asia-east1
+  annotations:
+    run.googleapis.com/description: "ElevenDops intelligent medical assistant system"
+spec:
+  template:
+    metadata:
+      annotations:
+        # Auto-scaling configuration (Requirements 4.3, 4.4)
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "10"
+        # CPU allocation settings for better performance
+        run.googleapis.com/cpu-throttling: "false"
+        run.googleapis.com/startup-cpu-boost: "true"
+    spec:
+      # Concurrency and timeout settings
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      
+      # Service account for IAM permissions (Requirement 4.3)
+      serviceAccountName: elevendops-sa@PROJECT_ID.iam.gserviceaccount.com
+      
+      containers:
+        - image: REGION-docker.pkg.dev/PROJECT_ID/elevendops/app:latest
+          ports:
+            - containerPort: 8080
+          
+          # Resource limits (Requirement 4.2: minimum 2 CPU, 1GB memory)
+          resources:
+            limits:
+              cpu: "2"
+              memory: "1Gi"
+          
+          # Environment variables
+          env:
+            - name: APP_ENV
+              value: "production"
+            - name: GOOGLE_CLOUD_PROJECT
+              value: "PROJECT_ID"
+            - name: GCS_BUCKET_NAME
+              value: "elevendops-audio"
+            - name: CORS_ORIGINS
+              value: "https://elevendops-HASH-REGION.a.run.app,http://localhost:8000"
+            - name: LANGSMITH_PROJECT
+              value: "elevendops-production"
+            - name: LANGSMITH_TRACING_ENABLED
+              value: "true"
+            - name: USE_FIRESTORE_EMULATOR
+              value: "false"
+            - name: USE_GCS_EMULATOR
+              value: "false"
+            - name: BACKEND_API_URL
+              value: "http://localhost:8000"
+            
+            # Secret references for API keys (Requirement 4.3)
+            - name: ELEVENLABS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: elevenlabs-api-key
+                  key: latest
+            - name: GOOGLE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: google-api-key
+                  key: latest
+            - name: LANGSMITH_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: langsmith-api-key
+                  key: latest
+          
+          # Startup probe - waits for backend to be ready (Requirement 4.5, 4.6)
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 12
+            timeoutSeconds: 5
+          
+          # Liveness probe - ensures container stays healthy (Requirement 4.5)
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            periodSeconds: 30
+            failureThreshold: 3
+            timeoutSeconds: 10

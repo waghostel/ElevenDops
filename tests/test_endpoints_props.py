@@ -7,6 +7,11 @@ Validates: Requirements 2.1
 Property 2: Dashboard stats response completeness
 - Test response contains all required fields with correct types
 Validates: Requirements 2.2
+
+Property 4 (cloud-run-deployment): Health Endpoint Returns Valid Response
+- For any request to /api/health, the response SHALL contain status, timestamp, 
+  and version fields with valid values
+Validates: Requirements 4.5
 """
 
 from datetime import datetime
@@ -194,3 +199,73 @@ class TestDashboardStatsEndpointProperties:
         assert data["document_count"] >= 0
         assert data["agent_count"] >= 0
         assert data["audio_count"] >= 0
+
+
+class TestHealthEndpointValidResponse:
+    """Property 4: Health Endpoint Returns Valid Response.
+    
+    Feature: cloud-run-deployment
+    **Validates: Requirements 4.5**
+    
+    For any request to /api/health, the response SHALL contain status, 
+    timestamp, and version fields with valid values.
+    """
+
+    @given(st.just(None))
+    @settings(max_examples=100)
+    def test_health_endpoint_returns_valid_response(self, _: None) -> None:
+        """Property: Health endpoint always returns valid response structure.
+        
+        For any request to /api/health, the response SHALL contain:
+        - status: a non-empty string indicating health status
+        - timestamp: a valid ISO format timestamp
+        - version: a non-empty string indicating application version
+        """
+        response = client.get("/api/health")
+        
+        # Response should be successful
+        assert response.status_code == 200
+        
+        data = response.json()
+        
+        # Verify status field exists and is valid
+        assert "status" in data, "Response must contain 'status' field"
+        assert isinstance(data["status"], str), "status must be a string"
+        assert len(data["status"]) > 0, "status must not be empty"
+        assert data["status"] in ["healthy", "unhealthy"], "status must be 'healthy' or 'unhealthy'"
+        
+        # Verify timestamp field exists and is valid ISO format
+        assert "timestamp" in data, "Response must contain 'timestamp' field"
+        assert isinstance(data["timestamp"], str), "timestamp must be a string"
+        # Validate ISO format by parsing
+        parsed_timestamp = datetime.fromisoformat(data["timestamp"])
+        assert isinstance(parsed_timestamp, datetime), "timestamp must be valid ISO format"
+        
+        # Verify version field exists and is valid
+        assert "version" in data, "Response must contain 'version' field"
+        assert isinstance(data["version"], str), "version must be a string"
+        assert len(data["version"]) > 0, "version must not be empty"
+
+    @given(st.integers(min_value=1, max_value=10))
+    @settings(max_examples=100)
+    def test_health_endpoint_consistent_across_multiple_requests(self, num_requests: int) -> None:
+        """Property: Health endpoint returns consistent structure across multiple requests.
+        
+        For any number of consecutive requests, the response structure should remain
+        consistent with the same required fields.
+        """
+        required_fields = {"status", "timestamp", "version"}
+        
+        for _ in range(num_requests):
+            response = client.get("/api/health")
+            assert response.status_code == 200
+            data = response.json()
+            
+            # All required fields must be present in every response
+            assert required_fields.issubset(data.keys()), \
+                f"Missing required fields. Expected {required_fields}, got {data.keys()}"
+            
+            # Types must be consistent
+            assert isinstance(data["status"], str)
+            assert isinstance(data["timestamp"], str)
+            assert isinstance(data["version"], str)

@@ -1,2 +1,13 @@
+[server]
+# Disable browser auto-open (required for Cloud Run)
+headless = true
+# Enable CORS for Cloud Run
+enableCORS = false
+enableXsrfProtection = false
+
+[browser]
+# Disable automatic browser opening (Cloud Run doesn't have a browser)
+gatherUsageStats = false
+
 [client]
 showSidebarNavigation = false
