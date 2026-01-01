@@ -87,11 +87,81 @@ with st.expander("Details"):
 
 ---
 
+## 5. Section-Level Fragment Isolation
+
+When a page has multiple independent sections (tabs, sidebar panels, column groups), wrap each section in its own fragment. This prevents changes in one section from re-rendering unrelated sections.
+
+### The Pattern
+
+```python
+@st.fragment
+async def render_script_editor():
+    col1, col2 = st.columns([1.5, 2.5])
+
+    with col1:
+        settings_tab, content_tab = st.tabs(["⚙️ Settings", "📝 Content"])
+
+        with settings_tab:
+            # Wrap entire tab in a fragment
+            @st.fragment
+            def render_settings_tab():
+                st.selectbox("Duration", options=[3, 5, 10])
+                st.selectbox("AI Model", options=["model-a", "model-b"])
+
+            render_settings_tab()
+
+    with col2:
+        # Script editor stays stable when settings change
+        st.text_area("Script", height=600)
+```
+
+**Benefits**:
+
+- Changes in Settings tab don't re-render the script text area
+- Each tab operates independently, reducing flicker
+- Particularly useful for column layouts where one column has controls and another has content
+
+---
+
+## 6. Conditional Full Rerun Pattern
+
+When a fragment needs to propagate state changes to other fragments, use `st.rerun()` explicitly. This is essential when selection changes should reset dependent components.
+
+### The Pattern
+
+```python
+@st.fragment
+async def render_document_selection(documents):
+    selected = st.selectbox("Choose document:", options=documents)
+
+    if selected:
+        # Check if selection actually changed
+        if (st.session_state.current_doc
+            and st.session_state.current_doc.id != selected.id):
+            # Reset dependent state
+            st.session_state.generated_content = ""
+            st.session_state.current_doc = selected
+            # Trigger full rerun to propagate changes
+            st.rerun()
+
+        st.session_state.current_doc = selected
+```
+
+**Benefits**:
+
+- Fragment isolation for normal interactions (browsing the dropdown)
+- Full rerun only when actually needed (document change)
+- Clear separation between local UI updates and global state propagation
+
+---
+
 ## Summary Table
 
-| Technique            | When to Use                                         | Impact                                            |
-| -------------------- | --------------------------------------------------- | ------------------------------------------------- |
-| **Nested Fragments** | When light widgets share a fragment with heavy ones | Prevents flicker in large components              |
-| **Stable Keys**      | When using interactive custom components            | Preserves internal component state (drag, scroll) |
-| **Callbacks**        | When state updates should happen before logic       | Controls rerun flow and batches updates           |
-| **Lazy Expanders**   | When showing detailed metadata                      | Reduces DOM size and initial render time          |
+| Technique             | When to Use                                         | Impact                                            |
+| --------------------- | --------------------------------------------------- | ------------------------------------------------- |
+| **Nested Fragments**  | When light widgets share a fragment with heavy ones | Prevents flicker in large components              |
+| **Stable Keys**       | When using interactive custom components            | Preserves internal component state (drag, scroll) |
+| **Callbacks**         | When state updates should happen before logic       | Controls rerun flow and batches updates           |
+| **Lazy Expanders**    | When showing detailed metadata                      | Reduces DOM size and initial render time          |
+| **Section Fragments** | When page has independent sections (tabs, columns)  | Isolates section reruns from each other           |
+| **Conditional Rerun** | When fragment changes need to propagate globally    | Balances isolation with state propagation         |

@@ -255,39 +255,48 @@ async def generate_audio(knowledge_id: str, script: str, voice_id: str):
         add_error_to_log(f"Audio generation failed. Please check your quota or try again. (Error: {e})")
 
 
+@st.fragment
 async def render_document_selection(documents: List[KnowledgeDocument]):
-    """Render document selection section."""
+    """Render document selection section (isolated fragment).
+    
+    Uses st.fragment to prevent full page reruns when browsing documents.
+    Only triggers a full rerun when the selected document actually changes.
+    """
     st.subheader("1. Select Knowledge Document")
     
-    if not documents:
-        st.info("No knowledge documents found. Please upload documents in the Knowledge Base first.")
-        return
+    with st.container(border=True):
+        if not documents:
+            st.info("No knowledge documents found. Please upload documents in the Knowledge Base first.")
+            return
 
-    doc_options = {doc.disease_name: doc for doc in documents}
-    selected_name = st.selectbox(
-        "Choose a condition/procedure:",
-        options=list(doc_options.keys()),
-        index=None,
-        placeholder="Select a document...",
-    )
+        doc_options = {doc.disease_name: doc for doc in documents}
+        selected_name = st.selectbox(
+            "Choose a condition/procedure:",
+            options=list(doc_options.keys()),
+            index=None,
+            placeholder="Select a document...",
+        )
 
-    if selected_name:
-        selected_doc = doc_options[selected_name]
-        
-        # If selection changed, reset state
-        if (
-            st.session_state.selected_document
-            and st.session_state.selected_document.knowledge_id != selected_doc.knowledge_id
-        ):
-            st.session_state.generated_script = ""
-            st.session_state.selected_voice_id = None
-            # Force new widget key for script editor to ensure it clears
-            st.session_state.generation_id += 1
+        if selected_name:
+            selected_doc = doc_options[selected_name]
             
-        st.session_state.selected_document = selected_doc
-        
-        with st.expander("View Document Content", expanded=False):
-            st.markdown(selected_doc.raw_content)
+            # If selection changed, reset state and trigger full rerun
+            if (
+                st.session_state.selected_document
+                and st.session_state.selected_document.knowledge_id != selected_doc.knowledge_id
+            ):
+                st.session_state.generated_script = ""
+                st.session_state.selected_voice_id = None
+                # Force new widget key for script editor to ensure it clears
+                st.session_state.generation_id += 1
+                st.session_state.selected_document = selected_doc
+                # Full rerun to propagate document change to other fragments
+                st.rerun()
+                
+            st.session_state.selected_document = selected_doc
+            
+            with st.expander("View Document Content", expanded=False):
+                st.markdown(selected_doc.raw_content)
 
 
 @st.dialog("Customize Prompt")
@@ -521,33 +530,30 @@ async def render_script_editor():
         ])
         
         with settings_tab:
-            with st.container(height=580):
-
+            # Wrap entire Settings tab in a fragment to isolate from script editor
+            @st.fragment
+            def render_settings_tab():
+                """Isolated fragment for all Settings tab content.
                 
-                # Speech duration selection (based on ~150 words per minute)
-                DURATION_OPTIONS = {
-                    3: "3 min (~400–500 words)",
-                    5: "5 min (~650–850 words)",
-                    10: "10 min (~1,300–1,700 words)",
-                    15: "15 min (~2,000–2,500 words)",
-                }
-                st.session_state.target_duration_minutes = st.selectbox(
-                    "🕐 Speech Duration",
-                    options=list(DURATION_OPTIONS.keys()),
-                    format_func=lambda x: DURATION_OPTIONS[x],
-                    index=list(DURATION_OPTIONS.keys()).index(st.session_state.target_duration_minutes),
-                    help="Target length of the generated audio"
-                )
-                
-                
-                # Speaker configuration in isolated fragment to prevent script editor reruns
-                @st.fragment
-                def render_speaker_config():
-                    """Isolated fragment for multi-speaker and language settings.
+                Changes to Speech Duration, Speaker config, or AI Model
+                only re-render this fragment, not the script editor in col2.
+                """
+                with st.container(height=580):
+                    # Speech duration selection (based on ~150 words per minute)
+                    DURATION_OPTIONS = {
+                        3: "3 min (~400–500 words)",
+                        5: "5 min (~650–850 words)",
+                        10: "10 min (~1,300–1,700 words)",
+                        15: "15 min (~2,000–2,500 words)",
+                    }
+                    st.session_state.target_duration_minutes = st.selectbox(
+                        "🕐 Speech Duration",
+                        options=list(DURATION_OPTIONS.keys()),
+                        format_func=lambda x: DURATION_OPTIONS[x],
+                        index=list(DURATION_OPTIONS.keys()).index(st.session_state.target_duration_minutes),
+                        help="Target length of the generated audio"
+                    )
                     
-                    Changes to these widgets only re-render this fragment,
-                    not the entire script editor area.
-                    """
                     # All ElevenLabs supported languages with native script + English
                     LANGUAGE_OPTIONS = [
                         "ar", "bg", "cs", "da", "de", "el", "en", "es", "fi", "fil",
@@ -635,33 +641,37 @@ async def render_script_editor():
                         key="_speaker2_lang_widget",
                         on_change=on_speaker2_lang_change
                     )
-                
-                # Render the isolated speaker config fragment
-                render_speaker_config()
 
-                st.divider()
+                    st.divider()
 
-                # AI Model selection
-                st.session_state.selected_llm_model = st.selectbox(
-                    "AI Model",
-                    options=["gemini-2.5-flash-lite", "gemini-3-flash", "gemini-3-pro"],
-                    index=1,
-                    help="Select the AI model for script generation"
-                )
+                    # AI Model selection
+                    st.session_state.selected_llm_model = st.selectbox(
+                        "AI Model",
+                        options=["gemini-2.5-flash-lite", "gemini-3-flash", "gemini-3-pro"],
+                        index=1,
+                        help="Select the AI model for script generation"
+                    )
+            
+            # Render the isolated settings tab fragment
+            render_settings_tab()
         with content_tab:
-            with st.container(height=580):
-                # Mode toggle: Template vs Custom
-                st.session_state.use_template_mode = st.toggle(
-                    "Use Template Mode",
-                    value=st.session_state.use_template_mode,
-                    help="Enable template-based prompt building"
-                )
+            # Wrap entire Content tab in a fragment to isolate from script editor
+            @st.fragment
+            def render_content_tab():
+                """Isolated fragment for all Content tab content.
                 
-                if st.session_state.use_template_mode:
-                    # Template selection in isolated fragment to prevent full page reruns
-                    @st.fragment
-                    def render_template_selection():
-                        """Isolated fragment for template selection to minimize re-renders."""
+                Changes to Template Mode toggle, Content Modules, or Additional Instructions
+                only re-render this fragment, not the script editor in col2.
+                """
+                with st.container(height=580):
+                    # Mode toggle: Template vs Custom
+                    st.session_state.use_template_mode = st.toggle(
+                        "Use Template Mode",
+                        value=st.session_state.use_template_mode,
+                        help="Enable template-based prompt building"
+                    )
+                    
+                    if st.session_state.use_template_mode:
                         if not st.session_state.available_templates:
                             st.info("No templates available.")
                             return
@@ -686,7 +696,7 @@ async def render_script_editor():
                             on_change=on_template_change
                         )
                         
-                        # Check for streamlit-sortables availability
+                        # Sortables - no nested scroll, entire tab container scrolls
                         try:
                             from streamlit_sortables import sort_items
                             
@@ -694,8 +704,10 @@ async def render_script_editor():
                                 st.caption("Drag to reorder content modules:")
                                 selected_names = [template_options[t].display_name if t in template_options else t for t in selected]
                                 
-                                # Dynamic key based on selection - forces rebuild when items change
-                                sorter_key = f"template_sorter_{hash(tuple(selected))}"
+                                # Semi-stable key: changes when items added/removed, stays same during reorder
+                                # frozenset ignores order, so dragging doesn't change the key
+                                # but adding/removing items changes the set, triggering rebuild
+                                sorter_key = f"template_sorter_{hash(frozenset(selected))}"
                                 
                                 ordered_names = sort_items(
                                     selected_names,
@@ -713,17 +725,17 @@ async def render_script_editor():
                         except ImportError:
                             st.warning("streamlit-sortables not installed. Reordering disabled.")
                             st.session_state.selected_templates = selected if selected else ["pre_surgery"]
-                        
 
-
-                        # Quick instructions
-                        st.session_state.quick_instructions = st.text_area(
-                            "💬 Additional Instructions",
-                            value=st.session_state.quick_instructions,
-                            placeholder="e.g., Focus on elderly patients, use simple language...",
-                            height=220,
-                            help="Add extra instructions without modifying templates"
-                        )
+                        # Quick instructions in expander - collapses when not needed
+                        with st.expander("💬 Additional Instructions", expanded=False):
+                            st.session_state.quick_instructions = st.text_area(
+                                "Instructions",
+                                value=st.session_state.quick_instructions,
+                                placeholder="e.g., Focus on elderly patients, use simple language...",
+                                height=150,
+                                help="Add extra instructions without modifying templates",
+                                label_visibility="collapsed"
+                            )
                         # Show template descriptions - only compute when expanded
                         if selected:
                             with st.expander("📖 Template Details", expanded=False):
@@ -737,49 +749,58 @@ async def render_script_editor():
                                 # Manage Templates Button - placed at bottom of Template Details expander
                                 if st.button("🛠️ Manage Templates", use_container_width=True, key="manage_templates_btn"):
                                     render_template_manager()
-                    
-                    # Render the isolated template selection fragment
-                    render_template_selection()
-                    
-                    
 
-                else:
-                    # Custom prompt mode (legacy)
-                    st.info("📝 Custom prompt mode enabled")
-                    if st.button("⚙️ Customize Prompt", use_container_width=True):
-                        render_prompt_editor_dialog()
-                    
-                    if st.session_state.custom_prompt:
-                        st.caption("✓ Using custom prompt")
+                    else:
+                        # Custom prompt mode (legacy)
+                        st.info("📝 Custom prompt mode enabled")
+                        if st.button("⚙️ Customize Prompt", use_container_width=True):
+                            render_prompt_editor_dialog()
+                        
+                        if st.session_state.custom_prompt:
+                            st.caption("✓ Using custom prompt")
+            
+            # Render the isolated content tab fragment
+            render_content_tab()
         
         with advanced_tab:
-            with st.container(height=580):
-                if st.session_state.use_template_mode:
-                    st.markdown("### Prompt Settings")
-                    st.caption("Advanced configuration for AI script generation")
-                    
-                    if st.button("👁️ Preview Combined Prompt", use_container_width=True, key="preview_prompt_btn"):
-                        try:
-                            preview_text = await client.preview_combined_prompt(
-                                st.session_state.selected_templates,
-                                st.session_state.quick_instructions
-                            )
-                            render_preview_dialog(preview_text)
-                        except Exception as e:
-                            add_error_to_log(f"Preview failed: {e}")
-                    
-                    # System prompt editor button
-                    if st.button("⚙️ Edit System Prompt", use_container_width=True, key="edit_system_prompt_btn"):
-                        render_system_prompt_editor()
+            # Wrap entire Advanced tab in a fragment to isolate from script editor
+            @st.fragment
+            async def render_advanced_tab():
+                """Isolated fragment for all Advanced tab content.
+                
+                Changes to Preview Prompt, Edit System Prompt, or Manage Templates
+                only re-render this fragment, not the script editor in col2.
+                """
+                with st.container(height=580):
+                    if st.session_state.use_template_mode:
+                        st.markdown("### Prompt Settings")
+                        st.caption("Advanced configuration for AI script generation")
                         
-                    if st.session_state.custom_system_prompt:
-                        st.caption("✓ Using custom system prompt")
-                    
-                    # Duplicate Manage Templates button for quick access
-                    if st.button("🛠️ Manage Templates", use_container_width=True, key="manage_templates_advanced_btn"):
-                        render_template_manager()
-                else:
-                    st.info("💡 Advanced settings available in Template Mode")
+                        if st.button("👁️ Preview Combined Prompt", use_container_width=True, key="preview_prompt_btn"):
+                            try:
+                                preview_text = await client.preview_combined_prompt(
+                                    st.session_state.selected_templates,
+                                    st.session_state.quick_instructions
+                                )
+                                render_preview_dialog(preview_text)
+                            except Exception as e:
+                                add_error_to_log(f"Preview failed: {e}")
+                        
+                        # System prompt editor button
+                        if st.button("⚙️ Edit System Prompt", use_container_width=True, key="edit_system_prompt_btn"):
+                            render_system_prompt_editor()
+                            
+                        if st.session_state.custom_system_prompt:
+                            st.caption("✓ Using custom system prompt")
+                        
+                        # Duplicate Manage Templates button for quick access
+                        if st.button("🛠️ Manage Templates", use_container_width=True, key="manage_templates_advanced_btn"):
+                            render_template_manager()
+                    else:
+                        st.info("💡 Advanced settings available in Template Mode")
+            
+            # Render the isolated advanced tab fragment
+            await render_advanced_tab()
         
 
 
