@@ -80,18 +80,16 @@ def edit_document_dialog(doc):
 if "upload_form_id" not in st.session_state:
     st.session_state["upload_form_id"] = 0
 
-# Header and Submit button on the same line
-col_header, col_btn = st.columns([10, 1], vertical_alignment="center")
-with col_header:
-    st.subheader("Submits New Document")
+st.subheader("Submit New Document")
 
+# Using st.form to batch all widget interactions - page only re-renders on submit
+with st.form(f"upload_document_form_{st.session_state.upload_form_id}", clear_on_submit=False):
     col1, col2 = st.columns(2)
     
     with col1:
         disease_name = st.text_input(
             "Disease/Condition Name", 
-            placeholder="e.g., Hypertension", 
-            key=f"disease_name_{st.session_state.upload_form_id}"
+            placeholder="e.g., Hypertension"
         )
     
     with col2:
@@ -99,18 +97,15 @@ with col_header:
             "Document Tags",
             options=DEFAULT_DOCUMENT_TAGS,
             default=["faq"],
-            format_func=lambda x: x.replace("_", " ").title(),
-            key=f"document_tags_{st.session_state.upload_form_id}"
+            format_func=lambda x: x.replace("_", " ").title()
         )
-    
     
     uploaded_file = st.file_uploader(
         "Choose a file", 
-        type=["txt", "md"], 
-        key=f"file_uploader_{st.session_state.upload_form_id}"
-    )  
-    # Button aligned right using columns
-    submitted = st.button("Save & Sync", type="primary")
+        type=["txt", "md"]
+    )
+    
+    submitted = st.form_submit_button("Save & Sync", type="primary")
 
 if submitted:
     # Get values from session state using the dynamic keys
@@ -151,109 +146,114 @@ if submitted:
                     add_error_to_log(f"An unexpected error occurred: {e}")
 
 # --- Document List Section ---
-# --- Document List Section ---
+# Using @st.fragment to isolate document list interactions from upload form
+@st.fragment
+def render_document_list():
+    """Render document list in an isolated fragment.
+    
+    Actions like Refresh, Edit, Delete only re-render this section,
+    keeping the upload form state stable.
+    """
+    with st.container(border=True):
+        # Refresh button - only triggers fragment re-render
+        if st.button("Refresh List"):
+            get_cached_documents.clear()
+
+        try:
+            documents = get_cached_documents()
+            
+            if not documents:
+                st.info("No documents uploaded yet.")
+            else:
+                # Convert to list of dicts for dataframe, or custom display
+                # Let's use a dataframe for clean display
+                data = []
+                for doc in documents:
+                    data.append({
+                        "ID": doc.knowledge_id,
+                        "Disease": doc.disease_name,
+                        "Tags": ", ".join(doc.tags),
+                        "Created At": doc.created_at.strftime("%Y-%m-%d %H:%M"),
+                        "Modified At": doc.modified_at.strftime("%Y-%m-%d %H:%M") if doc.modified_at else "-",
+                        "Sync Status": doc.sync_status
+                    })
+                    
+                st.dataframe(data, use_container_width=True, hide_index=True)
+                
+                # Actions for each document (Delete / Retry)
+                st.markdown("### Document Actions")
+                
+                for doc in documents:
+                    # Normal Display Row - edit form now opens in a dialog
+                    col1, col2, col3, col4, col5 = st.columns([3, 2, 1, 1, 1])
+                    with col1:
+                        st.text(f"{doc.disease_name} ({', '.join(doc.tags)})")
+                    
+                    with col2:
+                        # Status display with color and retry count
+                        status_color = "green"
+                        if doc.sync_status == "failed":
+                            status_color = "red"
+                        elif doc.sync_status == "syncing":
+                            status_color = "blue"
+                        elif doc.sync_status == "pending":
+                            status_color = "orange"
+                        
+                        status_label = doc.sync_status
+                        if doc.sync_retry_count > 0:
+                            status_label += f" (Retry {doc.sync_retry_count})"
+
+                        st.markdown(f":{status_color}[{status_label}]")
+                        
+                        # Show error details for failed syncs
+                        if doc.sync_status == "failed" and doc.sync_error_message:
+                            with st.expander("Error Details"):
+                                st.error(doc.sync_error_message)
+                        
+                    with col3:
+                        # Edit button now opens a dialog for isolated editing
+                        if st.button("Edit", key=f"edit_btn_{doc.knowledge_id}"):
+                            edit_document_dialog(doc)
+
+                    with col4:
+                        # Check if this specific document is in confirmation mode
+                        if st.session_state.get("delete_confirmation") == doc.knowledge_id:
+                            # Confirmation buttons - no st.rerun() needed with fragment
+                            if st.button("Confirm?", key=f"conf_del_{doc.knowledge_id}", type="primary"):
+                                try:
+                                    asyncio.run(client.delete_knowledge_document(doc.knowledge_id))
+                                    get_cached_documents.clear()
+                                    st.success("Deleted!")
+                                    st.session_state.delete_confirmation = None
+                                except APIError as e:
+                                    add_error_to_log(f"Delete failed: {e.message}")
+                            if st.button("Cancel", key=f"cancel_del_{doc.knowledge_id}"):
+                                st.session_state.delete_confirmation = None
+                        else:
+                            if st.button("Delete", key=f"del_{doc.knowledge_id}"):
+                                st.session_state["delete_confirmation"] = doc.knowledge_id
+
+                    with col5:
+                        # Retry button - only for failed documents
+                        if doc.sync_status == "failed":
+                            if st.button("Retry", key=f"retry_{doc.knowledge_id}", disabled=(doc.sync_status == "syncing")):
+                                try:
+                                    asyncio.run(client.retry_knowledge_sync(doc.knowledge_id))
+                                    get_cached_documents.clear()
+                                    st.success("Retry initiated.")
+                                except APIError as e:
+                                    add_error_to_log(f"Retry failed: {e.message}")
+
+        except APIError as e:
+            add_error_to_log(f"Failed to load documents: {e.message}")
+        except Exception as e:
+            add_error_to_log(f"An unexpected error occurred loading documents: {e}")
+
+
 st.divider()
 st.subheader("Existing Documents")
-with st.container(border=True):
-    # Header and Refresh button on the same line
-    if st.button("Refresh List"):
-        st.rerun()
-
-    try:
-        documents = get_cached_documents()
-        
-        if not documents:
-            st.info("No documents uploaded yet.")
-        else:
-            # Convert to list of dicts for dataframe, or custom display
-            # Let's use a dataframe for clean display
-            data = []
-            for doc in documents:
-                data.append({
-                    "ID": doc.knowledge_id,
-                    "Disease": doc.disease_name,
-                    "Tags": ", ".join(doc.tags),
-                    "Created At": doc.created_at.strftime("%Y-%m-%d %H:%M"),
-                    "Modified At": doc.modified_at.strftime("%Y-%m-%d %H:%M") if doc.modified_at else "-",
-                    "Sync Status": doc.sync_status
-                })
-                
-            st.dataframe(data, use_container_width=True, hide_index=True)
-            
-            # Actions for each document (Delete / Retry)
-            st.markdown("### Document Actions")
-            
-            for doc in documents:
-                # Normal Display Row - edit form now opens in a dialog
-                col1, col2, col3, col4, col5 = st.columns([3, 2, 1, 1, 1])
-                with col1:
-                    st.text(f"{doc.disease_name} ({', '.join(doc.tags)})")
-                
-                with col2:
-                    # Status display with color and retry count
-                    status_color = "green"
-                    if doc.sync_status == "failed":
-                        status_color = "red"
-                    elif doc.sync_status == "syncing":
-                        status_color = "blue"
-                    elif doc.sync_status == "pending":
-                        status_color = "orange"
-                    
-                    status_label = doc.sync_status
-                    if doc.sync_retry_count > 0:
-                        status_label += f" (Retry {doc.sync_retry_count})"
-
-                    st.markdown(f":{status_color}[{status_label}]")
-                    
-                    # Show error details for failed syncs
-                    if doc.sync_status == "failed" and doc.sync_error_message:
-                        with st.expander("Error Details"):
-                            st.error(doc.sync_error_message)
-                    
-                with col3:
-                    # Edit button now opens a dialog for isolated editing
-                    if st.button("Edit", key=f"edit_btn_{doc.knowledge_id}"):
-                        edit_document_dialog(doc)
-
-                with col4:
-                    # Check if this specific document is in confirmation mode
-                    if st.session_state.get("delete_confirmation") == doc.knowledge_id:
-                        # Stack confirm/cancel or side-by-side? Column is small.
-                        # Just show Confirm? User clicked Delete once.
-                        # Existing logic had confirm/cancel.
-                        if st.button("Confirm?", key=f"conf_del_{doc.knowledge_id}", type="primary"):
-                            try:
-                                asyncio.run(client.delete_knowledge_document(doc.knowledge_id))
-                                get_cached_documents.clear()
-                                st.success("Deleted!")
-                                st.session_state.delete_confirmation = None
-                                st.rerun()
-                            except APIError as e:
-                                add_error_to_log(f"Delete failed: {e.message}")
-                        if st.button("Cancel", key=f"cancel_del_{doc.knowledge_id}"):
-                            st.session_state.delete_confirmation = None
-                            st.rerun()
-                    else:
-                        if st.button("Delete", key=f"del_{doc.knowledge_id}"):
-                            st.session_state["delete_confirmation"] = doc.knowledge_id
-                            st.rerun()
-
-                with col5:
-                    # Retry button - only for failed documents
-                    if doc.sync_status == "failed":
-                        if st.button("Retry", key=f"retry_{doc.knowledge_id}", disabled=(doc.sync_status == "syncing")):
-                            try:
-                                asyncio.run(client.retry_knowledge_sync(doc.knowledge_id))
-                                get_cached_documents.clear()
-                                st.success("Retry initiated.")
-                                st.rerun()
-                            except APIError as e:
-                                add_error_to_log(f"Retry failed: {e.message}")
-
-    except APIError as e:
-        add_error_to_log(f"Failed to load documents: {e.message}")
-    except Exception as e:
-        add_error_to_log(f"An unexpected error occurred loading documents: {e}")
+render_document_list()
 
 render_error_console()
 render_footer()
+

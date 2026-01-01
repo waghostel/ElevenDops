@@ -535,93 +535,109 @@ async def render_script_editor():
             index=list(DURATION_OPTIONS.keys()).index(st.session_state.target_duration_minutes),
             help="Target length of the generated audio"
         )
-        
         st.divider()
         
-        # Multi-speaker toggle and language selection
-        st.session_state.multi_speaker_enabled = st.toggle(
-            "🎭 Multi-Speaker Dialogue",
-            value=st.session_state.multi_speaker_enabled,
-            help="Enable dialogue between Doctor/Educator and Patient/Learner"
-        )
-        
-        st.caption("💡 Speaker 1 is the Doctor/Educator/Guider voice")
-        
-        # All ElevenLabs supported languages with native script + English
-        # Chinese and Portuguese have regional variants for correct character/spelling output
-        LANGUAGE_OPTIONS = [
-            "ar", "bg", "cs", "da", "de", "el", "en", "es", "fi", "fil",
-            "fr", "hi", "hr", "hu", "id", "it", "ja", "ko", "ms", "nl",
-            "no", "pl", "pt-BR", "pt-PT", "ro", "ru", "sk", "sv", "ta", "tr", "uk", "zh-TW", "zh-CN"
-        ]
-        LANGUAGE_DISPLAY = {
-            "ar": "العربية (Arabic)",
-            "bg": "Български (Bulgarian)",
-            "cs": "Čeština (Czech)",
-            "da": "Dansk (Danish)",
-            "de": "Deutsch (German)",
-            "el": "Ελληνικά (Greek)",
-            "en": "English",
-            "es": "Español (Spanish)",
-            "fi": "Suomi (Finnish)",
-            "fil": "Filipino",
-            "fr": "Français (French)",
-            "hi": "हिन्दी (Hindi)",
-            "hr": "Hrvatski (Croatian)",
-            "hu": "Magyar (Hungarian)",
-            "id": "Bahasa Indonesia (Indonesian)",
-            "it": "Italiano (Italian)",
-            "ja": "日本語 (Japanese)",
-            "ko": "한국어 (Korean)",
-            "ms": "Bahasa Melayu (Malay)",
-            "nl": "Nederlands (Dutch)",
-            "no": "Norsk (Norwegian)",
-            "pl": "Polski (Polish)",
-            "pt-BR": "Português Brasileiro (Brazilian Portuguese)",
-            "pt-PT": "Português Europeu (European Portuguese)",
-            "ro": "Română (Romanian)",
-            "ru": "Русский (Russian)",
-            "sk": "Slovenčina (Slovak)",
-            "sv": "Svenska (Swedish)",
-            "ta": "தமிழ் (Tamil)",
-            "tr": "Türkçe (Turkish)",
-            "uk": "Українська (Ukrainian)",
-            "zh-TW": "繁體中文 (Traditional Chinese)",
-            "zh-CN": "簡體中文 (Simplified Chinese)"
-        }
-        
-        st.session_state.speaker1_languages = st.multiselect(
-            "Speaker 1 Languages",
-            options=LANGUAGE_OPTIONS,
-            default=st.session_state.speaker1_languages,
-            format_func=lambda x: LANGUAGE_DISPLAY.get(x, x),
-            help="Languages for the Doctor/Educator speaker"
-        )
-        
-        # Speaker 2 is grayed out when multi-speaker is disabled
-        speaker2_disabled = not st.session_state.multi_speaker_enabled
-        
-        # Clear Speaker 2 languages when multi-speaker is disabled
-        if speaker2_disabled:
-            speaker2_default = []
-        else:
-            speaker2_default = st.session_state.speaker2_languages
-        
-        st.session_state.speaker2_languages = st.multiselect(
-            "Speaker 2 Languages",
-            options=LANGUAGE_OPTIONS,
-            default=speaker2_default,
-            format_func=lambda x: LANGUAGE_DISPLAY.get(x, x),
-            help="Languages for the Patient/Learner speaker" if not speaker2_disabled else "Enable Multi-Speaker Dialogue to use Speaker 2",
-            disabled=speaker2_disabled
-        )
-        
-        st.divider()
-
-        # Manage Templates Button
-        if st.button("🛠️ Manage Templates", use_container_width=True):
-            render_template_manager()
+        # Speaker configuration in isolated fragment to prevent script editor reruns
+        @st.fragment
+        def render_speaker_config():
+            """Isolated fragment for multi-speaker and language settings.
             
+            Changes to these widgets only re-render this fragment,
+            not the entire script editor area.
+            """
+            # Multi-speaker toggle
+            st.session_state.multi_speaker_enabled = st.toggle(
+                "🎭 Multi-Speaker Dialogue",
+                value=st.session_state.multi_speaker_enabled,
+                help="Enable dialogue between Doctor/Educator and Patient/Learner"
+            )
+            
+            st.caption("💡 Speaker 1 is the Doctor/Educator/Guider voice")
+            
+            # All ElevenLabs supported languages with native script + English
+            LANGUAGE_OPTIONS = [
+                "ar", "bg", "cs", "da", "de", "el", "en", "es", "fi", "fil",
+                "fr", "hi", "hr", "hu", "id", "it", "ja", "ko", "ms", "nl",
+                "no", "pl", "pt-BR", "pt-PT", "ro", "ru", "sk", "sv", "ta", "tr", "uk", "zh-TW", "zh-CN"
+            ]
+            LANGUAGE_DISPLAY = {
+                "ar": "العربية (Arabic)",
+                "bg": "Български (Bulgarian)",
+                "cs": "Čeština (Czech)",
+                "da": "Dansk (Danish)",
+                "de": "Deutsch (German)",
+                "el": "Ελληνικά (Greek)",
+                "en": "English",
+                "es": "Español (Spanish)",
+                "fi": "Suomi (Finnish)",
+                "fil": "Filipino",
+                "fr": "Français (French)",
+                "hi": "हिन्दी (Hindi)",
+                "hr": "Hrvatski (Croatian)",
+                "hu": "Magyar (Hungarian)",
+                "id": "Bahasa Indonesia (Indonesian)",
+                "it": "Italiano (Italian)",
+                "ja": "日本語 (Japanese)",
+                "ko": "한국어 (Korean)",
+                "ms": "Bahasa Melayu (Malay)",
+                "nl": "Nederlands (Dutch)",
+                "no": "Norsk (Norwegian)",
+                "pl": "Polski (Polish)",
+                "pt-BR": "Português Brasileiro (Brazilian Portuguese)",
+                "pt-PT": "Português Europeu (European Portuguese)",
+                "ro": "Română (Romanian)",
+                "ru": "Русский (Russian)",
+                "sk": "Slovenčina (Slovak)",
+                "sv": "Svenska (Swedish)",
+                "ta": "தமிழ் (Tamil)",
+                "tr": "Türkçe (Turkish)",
+                "uk": "Українська (Ukrainian)",
+                "zh-TW": "繁體中文 (Traditional Chinese)",
+                "zh-CN": "簡體中文 (Simplified Chinese)"
+            }
+            
+            # Speaker 1 Languages
+            def on_speaker1_lang_change():
+                st.session_state.speaker1_languages = st.session_state._speaker1_lang_widget
+            
+            if "_speaker1_lang_widget" not in st.session_state:
+                st.session_state._speaker1_lang_widget = st.session_state.speaker1_languages
+            
+            st.multiselect(
+                "Speaker 1 Languages",
+                options=LANGUAGE_OPTIONS,
+                default=st.session_state.speaker1_languages,
+                format_func=lambda x: LANGUAGE_DISPLAY.get(x, x),
+                help="Languages for the Doctor/Educator speaker",
+                key="_speaker1_lang_widget",
+                on_change=on_speaker1_lang_change
+            )
+            
+            # Speaker 2 Languages (disabled when multi-speaker is off)
+            speaker2_disabled = not st.session_state.multi_speaker_enabled
+            speaker2_default = [] if speaker2_disabled else st.session_state.speaker2_languages
+            
+            def on_speaker2_lang_change():
+                if not speaker2_disabled:
+                    st.session_state.speaker2_languages = st.session_state._speaker2_lang_widget
+            
+            if "_speaker2_lang_widget" not in st.session_state:
+                st.session_state._speaker2_lang_widget = speaker2_default
+            
+            st.multiselect(
+                "Speaker 2 Languages",
+                options=LANGUAGE_OPTIONS,
+                default=speaker2_default,
+                format_func=lambda x: LANGUAGE_DISPLAY.get(x, x),
+                help="Languages for the Patient/Learner speaker" if not speaker2_disabled else "Enable Multi-Speaker Dialogue to use Speaker 2",
+                disabled=speaker2_disabled,
+                key="_speaker2_lang_widget",
+                on_change=on_speaker2_lang_change
+            )
+        
+        # Render the isolated speaker config fragment
+        render_speaker_config()
+        
         st.divider()
         
         # Mode toggle: Template vs Custom
@@ -632,19 +648,31 @@ async def render_script_editor():
         )
         
         if st.session_state.use_template_mode:
-            # Template selection
-            if st.session_state.available_templates:
+            # Template selection in isolated fragment to prevent full page reruns
+            @st.fragment
+            def render_template_selection():
+                """Isolated fragment for template selection to minimize re-renders."""
+                if not st.session_state.available_templates:
+                    st.info("No templates available.")
+                    return
+                
                 template_options = {t.template_id: t for t in st.session_state.available_templates}
+                
+                # Use on_change callback to update state without triggering parent rerun
+                def on_template_change():
+                    """Callback when template selection changes."""
+                    pass  # State already updated by widget via key
                 
                 selected = st.multiselect(
                     "📋 Content Modules",
                     options=list(template_options.keys()),
                     default=st.session_state.selected_templates,
                     format_func=lambda x: template_options[x].display_name if x in template_options else x,
-                    help="Select content types to include in the prompt"
+                    help="Select content types to include in the prompt",
+                    on_change=on_template_change
                 )
                 
-                # Check for streamlit-sortables availability (it should be installed now)
+                # Check for streamlit-sortables availability
                 try:
                     from streamlit_sortables import sort_items
                     
@@ -652,8 +680,8 @@ async def render_script_editor():
                         st.caption("Drag to reorder content modules:")
                         selected_names = [template_options[t].display_name if t in template_options else t for t in selected]
                         
-                        # Dynamic key ensures component re-initializes when selection changes
-                        sorter_key = f"template_sorter_{len(selected)}_{hash(tuple(selected))}"
+                        # Stable key - let component handle internal updates to preserve drag state
+                        sorter_key = "template_sorter_main"
                         
                         ordered_names = sort_items(
                             selected_names,
@@ -661,12 +689,10 @@ async def render_script_editor():
                             key=sorter_key
                         )
                         
-                        # Map back to IDs (careful with duplicate display names if any, but template names should be unique)
-                        # We use a reverse lookup mapping
+                        # Map back to IDs
                         name_to_id = {template_options[t].display_name: t for t in selected if t in template_options}
                         
                         # Reconstruct selected_templates based on sorted order
-                        # ordered_names comes from UI, map back to IDs
                         st.session_state.selected_templates = [name_to_id[n] for n in ordered_names if n in name_to_id]
                     else:
                         st.session_state.selected_templates = selected if selected else ["pre_surgery"]
@@ -674,14 +700,22 @@ async def render_script_editor():
                     st.warning("streamlit-sortables not installed. Reordering disabled.")
                     st.session_state.selected_templates = selected if selected else ["pre_surgery"]
                 
-                # Show template descriptions
+                # Show template descriptions - only compute when expanded
                 if selected:
                     with st.expander("📖 Template Details", expanded=False):
-                        for tid in selected:
+                        for tid in st.session_state.selected_templates:
                             if tid in template_options:
                                 t = template_options[tid]
                                 st.markdown(f"**{t.display_name}**")
                                 st.caption(t.description)
+                        
+                        st.divider()
+                        # Manage Templates Button - placed at bottom of Template Details expander
+                        if st.button("🛠️ Manage Templates", use_container_width=True, key="manage_templates_btn"):
+                            render_template_manager()
+            
+            # Render the isolated template selection fragment
+            render_template_selection()
             
             st.divider()
             
@@ -694,21 +728,22 @@ async def render_script_editor():
                 help="Add extra instructions without modifying templates"
             )
             
-            if st.button("👁️ Preview Combined Prompt", use_container_width=True):
-                try:
-                    preview_text = await client.preview_combined_prompt(
-                        st.session_state.selected_templates,
-                        st.session_state.quick_instructions
-                    )
-                    render_preview_dialog(preview_text)
-                except Exception as e:
-                    add_error_to_log(f"Preview failed: {e}")
-            
-            # System prompt editor button
-            if st.button("⚙️ Edit System Prompt", use_container_width=True):
-                render_system_prompt_editor()
-            if st.session_state.custom_system_prompt:
-                st.caption("✓ Using custom system prompt")
+            with st.expander("⚙️ Prompt Settings", expanded=False):
+                if st.button("👁️ Preview Combined Prompt", use_container_width=True, key="preview_prompt_btn"):
+                    try:
+                        preview_text = await client.preview_combined_prompt(
+                            st.session_state.selected_templates,
+                            st.session_state.quick_instructions
+                        )
+                        render_preview_dialog(preview_text)
+                    except Exception as e:
+                        add_error_to_log(f"Preview failed: {e}")
+                
+                # System prompt editor button
+                if st.button("⚙️ Edit System Prompt", use_container_width=True, key="edit_system_prompt_btn"):
+                    render_system_prompt_editor()
+                if st.session_state.custom_system_prompt:
+                    st.caption("✓ Using custom system prompt")
         else:
             # Custom prompt mode (legacy)
             if st.button("⚙️ Customize Prompt", use_container_width=True):
