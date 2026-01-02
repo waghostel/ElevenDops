@@ -72,6 +72,12 @@ if "speaker2_voice_id" not in st.session_state:
     st.session_state.speaker2_voice_id = None
 if "target_duration_minutes" not in st.session_state:
     st.session_state.target_duration_minutes = 3
+# Simulated doctor_id for local development (mimics logged-in doctor)
+if "doctor_id" not in st.session_state:
+    st.session_state.doctor_id = "dr_demo_001"
+# Audio history view mode: "document" = document-specific, "doctor" = all doctor's audio
+if "audio_view_mode" not in st.session_state:
+    st.session_state.audio_view_mode = "document"
 # Pending template operations (for async handling outside dialogs)
 if "_pending_template_op" not in st.session_state:
     st.session_state._pending_template_op = None
@@ -243,11 +249,13 @@ async def generate_script(knowledge_id: str, script_placeholder: Optional[Any] =
         st.rerun()
 
 
-async def generate_audio(knowledge_id: str, script: str, voice_id: str):
+async def generate_audio(
+    knowledge_id: str, script: str, voice_id: str, doctor_id: str = "default_doctor"
+):
     """Generate audio from script."""
     try:
         with st.spinner("Synthesizing audio with ElevenLabs..."):
-            await client.generate_audio(knowledge_id, script, voice_id)
+            await client.generate_audio(knowledge_id, script, voice_id, doctor_id=doctor_id)
             st.toast("Audio generated successfully!", icon="✅")
             # Invalidate audio history cache so it refreshes on next render
             st.session_state["_audio_history_cache_id"] = None
@@ -644,11 +652,13 @@ async def render_script_editor():
 
                     st.divider()
 
+                    from backend.config import GEMINI_MODELS
+                    
                     # AI Model selection
                     st.session_state.selected_llm_model = st.selectbox(
                         "AI Model",
-                        options=["gemini-2.5-flash-lite", "gemini-3-flash", "gemini-3-pro"],
-                        index=1,
+                        options=list(GEMINI_MODELS.keys()),
+                        index=0,
                         help="Select the AI model for script generation"
                     )
             
@@ -964,32 +974,68 @@ async def render_audio_generation():
             st.session_state.selected_document.knowledge_id,
             st.session_state.generated_script,
             st.session_state.selected_voice_id,
+            doctor_id=st.session_state.doctor_id,
         )
 
 
 @st.fragment
 async def render_audio_history():
-    """Render audio history for the selected document (isolated fragment)."""
-    if not st.session_state.selected_document:
-        return
-
+    """Render audio history with toggle for document-specific vs all-doctor audio."""
     st.subheader("Audio History")
-
-    knowledge_id = st.session_state.selected_document.knowledge_id
+    
+    # View mode toggle
+    col_toggle, col_refresh = st.columns([3, 1])
+    
+    with col_toggle:
+        view_options = ["📄 Document Audio", "👨‍⚕️ All My Audio"]
+        view_mode_idx = 0 if st.session_state.audio_view_mode == "document" else 1
+        selected_view = st.radio(
+            "View Mode",
+            options=view_options,
+            index=view_mode_idx,
+            horizontal=True,
+            key="audio_view_mode_radio",
+            help="Toggle between viewing audio for the current document or all your generated audio"
+        )
+        # Update session state based on selection
+        new_mode = "document" if selected_view == view_options[0] else "doctor"
+        if new_mode != st.session_state.audio_view_mode:
+            st.session_state.audio_view_mode = new_mode
+            # Invalidate cache when mode changes
+            st.session_state["_audio_history_cache_id"] = None
+            st.rerun()
+    
+    with col_refresh:
+        if st.button("🔄 Refresh", key="refresh_audio_history"):
+            st.session_state["_audio_history_cache_id"] = None
+            st.rerun()
+    
     cache_key = "_audio_history_cache"
     cache_id_key = "_audio_history_cache_id"
-
-    # Refresh button inside fragment
-    if st.button("🔄 Refresh Audio List", key="refresh_audio_history"):
-        st.session_state[cache_id_key] = None
-
+    
+    # Build cache identifier based on view mode
+    if st.session_state.audio_view_mode == "document":
+        if not st.session_state.selected_document:
+            st.caption("Select a document to view its audio history.")
+            return
+        current_cache_id = f"doc_{st.session_state.selected_document.knowledge_id}"
+    else:
+        current_cache_id = f"doctor_{st.session_state.doctor_id}"
+    
     # Check cache validity
-    if st.session_state.get(cache_id_key) != knowledge_id:
+    if st.session_state.get(cache_id_key) != current_cache_id:
         # Cache miss or stale, fetch fresh data
         try:
-            audio_files = await client.get_audio_files(knowledge_id)
+            if st.session_state.audio_view_mode == "document":
+                audio_files = await client.get_audio_files(
+                    knowledge_id=st.session_state.selected_document.knowledge_id
+                )
+            else:
+                audio_files = await client.get_audio_files(
+                    doctor_id=st.session_state.doctor_id
+                )
             st.session_state[cache_key] = audio_files
-            st.session_state[cache_id_key] = knowledge_id
+            st.session_state[cache_id_key] = current_cache_id
         except Exception as e:
             add_error_to_log(f"Unable to load audio history. (Error: {e})")
             return
@@ -997,13 +1043,21 @@ async def render_audio_history():
         audio_files = st.session_state.get(cache_key, [])
 
     if not audio_files:
-        st.caption("No audio files generated yet for this document.")
+        if st.session_state.audio_view_mode == "document":
+            st.caption("No audio files generated yet for this document.")
+        else:
+            st.caption(f"No audio files found for doctor: {st.session_state.doctor_id}")
         return
+    
+    st.caption(f"Showing {len(audio_files)} audio file(s)")
 
     for audio in audio_files:
         with st.container(border=True):
             col1, col2 = st.columns([3, 1])
             with col1:
+                # In doctor view mode, show associated document name
+                if st.session_state.audio_view_mode == "doctor":
+                    st.markdown(f"**Document:** `{audio.knowledge_id[:12]}...`")
                 st.markdown(f"**Generated:** {audio.created_at.strftime('%Y-%m-%d %H:%M')}")
                 with st.expander("View Script"):
                     st.text(audio.script[:100] + "..." if len(audio.script) > 100 else audio.script)

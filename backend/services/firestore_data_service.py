@@ -91,6 +91,7 @@ class FirestoreDataService(DataServiceInterface):
             audio_url=doc_dict["audio_url"],
             duration_seconds=doc_dict.get("duration_seconds"),
             created_at=doc_dict["created_at"],
+            doctor_id=doc_dict.get("doctor_id", "default_doctor"),
         )
 
     def _doc_to_agent_response(self, doc_dict: dict) -> AgentResponse:
@@ -403,12 +404,14 @@ class FirestoreDataService(DataServiceInterface):
             raise
 
     async def get_audio_files(
-        self, knowledge_id: Optional[str] = None
+        self, knowledge_id: Optional[str] = None, doctor_id: Optional[str] = None
     ) -> List[AudioMetadata]:
         try:
             ref = self._db.collection(AUDIO_FILES)
             if knowledge_id:
                 ref = ref.where(filter=firestore.FieldFilter("knowledge_id", "==", knowledge_id))
+            if doctor_id:
+                ref = ref.where(filter=firestore.FieldFilter("doctor_id", "==", doctor_id))
             
             docs = ref.stream()
             return [self._doc_to_audio_metadata(d.to_dict()) for d in docs]

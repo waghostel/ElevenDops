@@ -92,9 +92,9 @@ class DataServiceInterface(ABC):
 
     @abstractmethod
     async def get_audio_files(
-        self, knowledge_id: Optional[str] = None
+        self, knowledge_id: Optional[str] = None, doctor_id: Optional[str] = None
     ) -> List[AudioMetadata]:
-        """Get audio files, optionally filtered by knowledge_id."""
+        """Get audio files, optionally filtered by knowledge_id and/or doctor_id."""
         pass
 
     @abstractmethod
@@ -416,12 +416,14 @@ class MockDataService(DataServiceInterface):
         return audio
 
     async def get_audio_files(
-        self, knowledge_id: Optional[str] = None
+        self, knowledge_id: Optional[str] = None, doctor_id: Optional[str] = None
     ) -> List[AudioMetadata]:
-        """Get audio files, optionally filtered by knowledge_id."""
+        """Get audio files, optionally filtered by knowledge_id and/or doctor_id."""
         audios = list(self._audio_files.values())
         if knowledge_id:
             audios = [a for a in audios if a.knowledge_id == knowledge_id]
+        if doctor_id:
+            audios = [a for a in audios if a.doctor_id == doctor_id]
         return audios
 
     async def get_audio_file(self, audio_id: str) -> Optional[AudioMetadata]:

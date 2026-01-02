@@ -269,6 +269,7 @@ class AudioGenerateRequest(BaseModel):
     knowledge_id: str = Field(..., description="Source document ID")
     script: str = Field(..., min_length=1, max_length=50000, description="Script to convert")
     voice_id: str = Field(..., description="ElevenLabs voice ID")
+    doctor_id: str = Field(default="default_doctor", description="ID of the doctor generating audio")
 
 
 class AudioGenerateResponse(BaseModel):
@@ -281,6 +282,7 @@ class AudioGenerateResponse(BaseModel):
     duration_seconds: Optional[float] = Field(None, description="Audio duration")
     script: str = Field(..., description="Script used for generation")
     created_at: datetime = Field(..., description="Creation timestamp")
+    doctor_id: str = Field(default="default_doctor", description="ID of the doctor who generated audio")
 
 
 class AudioMetadata(BaseModel):
@@ -293,6 +295,7 @@ class AudioMetadata(BaseModel):
     duration_seconds: Optional[float]
     script: str
     created_at: datetime
+    doctor_id: str = Field(default="default_doctor", description="ID of the doctor who generated audio")
 
 
 class AudioListResponse(BaseModel):

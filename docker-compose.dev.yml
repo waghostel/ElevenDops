@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   firestore-emulator:
@@ -9,6 +9,8 @@ services:
       --project=elevenlabs-local
     ports:
       - "8080:8080"
+    volumes:
+      - ./emulator-data/firestore:/root/.config/gcloud/emulators/firestore
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/"]
       interval: 10s
@@ -19,9 +21,14 @@ services:
     image: fsouza/fake-gcs-server
     ports:
       - "4443:4443"
-    command: -scheme http -port 4443 -backend memory
+    command: -scheme http -port 4443 -backend filesystem -filesystem-root /data
+    volumes:
+      - ./emulator-data/gcs:/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4443/storage/v1/b"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+volumes:
+  emulator-data:

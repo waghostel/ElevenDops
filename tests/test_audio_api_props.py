@@ -11,7 +11,7 @@ from backend.main import app
 from backend.services.audio_service import AudioService, get_audio_service
 from backend.services.elevenlabs_service import ElevenLabsTTSError
 
-client = TestClient(app)
+client = TestClient(app, raise_server_exceptions=False)
 
 @given(st.text(min_size=1, max_size=50000))
 def test_audio_generate_error_handling(script: str):
@@ -58,6 +58,9 @@ def test_voices_list_error_handling(reason: str):
     
     try:
         response = client.get("/api/audio/voices/list")
+        
+        if response.status_code != 502:
+             print(f"DEBUG FAIL: Status {response.status_code}, Body: {response.text}")
         
         assert response.status_code == 502
         assert response.json()["detail"] == reason

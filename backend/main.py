@@ -54,7 +54,11 @@ app.include_router(audio_router)
 app.include_router(agent_router)
 app.include_router(patient_router, prefix="/api/patient", tags=["patient"])
 app.include_router(conversation_router, prefix="/api/conversations", tags=["conversations"])
-app.include_router(debug_router)
+# Only include debug router in non-production environments (security)
+if not settings.is_production():
+    app.include_router(debug_router)
+else:
+    logger.info("Debug router disabled in production environment")
 app.include_router(templates_router)
 
 # Mount static files for mock storage mode

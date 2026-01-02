@@ -103,8 +103,10 @@ def test_script_generation_flow(mock_client):
         # Verify script appears in text area
         assert at.text_area(key="script_editor_area_1").value == "Generated script"
         
-        # Verify audio generation section appears (2nd selectbox)
-        assert len(at.selectbox) >= 2, f"Audio section not rendered. Selectboxes: {len(at.selectbox)}"
+        # Verify audio generation section appears (check for AI Model or Duration)
+        # We check for AI Model which is in the script editor section
+        model_sb = next((sb for sb in at.selectbox if sb.label == "AI Model"), None)
+        assert model_sb is not None, "AI Model selectbox not found"
         
         # Verify client call
         mock_client.generate_script_stream.assert_called_with(
@@ -131,25 +133,24 @@ def test_audio_generation_flow(mock_client):
         at.run()
         
         # 1. Select Document
-        at.selectbox[0].select_index(0).run()
+        doc_sb = next((sb for sb in at.selectbox if "Choose a condition" in sb.label), None)
+        assert doc_sb, "Document selector not found"
+        doc_sb.select_index(0).run()
         
         # 2. Generate Script
         at.button(key="generate_script_btn").click().run()
         
         # 3. Select Voice
-        # Voice selector should now be visible (index 1)
+        # Voice selector should now be visible
         assert not at.error, f"Errors: {[e.value for e in at.error]}"
         assert not at.warning, f"Warnings: {[w.value for w in at.warning]}"
         
-        # There should be 4 selectboxes: 
-        # 0: Document
-        # 1: AI Model (in script editor)
-        # 2: Speech Duration
-        # 3: Voice (in audio generation)
-        assert len(at.selectbox) >= 4
+        # Find Speaker 1 Voice selectbox
+        voice_sb = next((sb for sb in at.selectbox if sb.label == "Speaker 1 Voice"), None)
+        assert voice_sb is not None, "Speaker 1 Voice selectbox not found"
         
         # "Rachel" is at index 0 of the voices list (mocked)
-        at.selectbox[3].select("Rachel").run()
+        voice_sb.select("Rachel").run()
         
         # 4. Generate Audio
         audio_btn = at.button(key="generate_audio_btn")

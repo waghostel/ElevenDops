@@ -2,9 +2,9 @@
 
 import logging
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 import json
 
@@ -115,6 +115,7 @@ async def generate_audio(
         script=request.script,
         voice_id=request.voice_id,
         knowledge_id=request.knowledge_id,
+        doctor_id=request.doctor_id,
     )
     return AudioGenerateResponse(
         audio_id=metadata.audio_id,
@@ -124,6 +125,29 @@ async def generate_audio(
         duration_seconds=metadata.duration_seconds,
         script=metadata.script,
         created_at=metadata.created_at,
+        doctor_id=metadata.doctor_id,
+    )
+
+
+@router.get(
+    "/list",
+    response_model=AudioListResponse,
+    responses={500: {"model": ErrorResponse}},
+)
+async def list_audio_files(
+    knowledge_id: Optional[str] = Query(None, description="Filter by knowledge document ID"),
+    doctor_id: Optional[str] = Query(None, description="Filter by doctor ID"),
+    service: AudioService = Depends(get_audio_service)
+):
+    """List audio files with optional filters.
+    
+    Supports filtering by knowledge_id and/or doctor_id.
+    If both are provided, returns audio matching both criteria.
+    """
+    audio_files = await service.get_audio_files(knowledge_id=knowledge_id, doctor_id=doctor_id)
+    return AudioListResponse(
+        audio_files=audio_files,
+        total_count=len(audio_files)
     )
 
 
@@ -135,7 +159,7 @@ async def generate_audio(
 async def get_audio_files(
     knowledge_id: str, service: AudioService = Depends(get_audio_service)
 ):
-    """Get audio files for a knowledge document."""
+    """Get audio files for a knowledge document (legacy endpoint)."""
     audio_files = await service.get_audio_files(knowledge_id=knowledge_id)
     return AudioListResponse(
         audio_files=audio_files,

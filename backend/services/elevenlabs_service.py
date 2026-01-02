@@ -1,8 +1,7 @@
 """Service for ElevenLabs Knowledge Base operations."""
 
 import logging
-import os
-import tempfile
+from io import BytesIO
 import uuid
 from enum import Enum
 from typing import Optional, List, Dict, Any
@@ -187,23 +186,13 @@ class ElevenLabsService:
             return mock_id
 
         try:
-            # Create a temporary file to upload as the API expects a file-like object or path
-            with tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.md', encoding='utf-8') as tmp:
-                tmp.write(text)
-                tmp_path = tmp.name
-            
-            try:
-                with open(tmp_path, 'rb') as f:
-                    # Updates for new SDK structure: flattened API
-                    # Using tuple (name, file_obj, content_type) to ensure document name is set correctly
-                    response = self.client.conversational_ai.knowledge_base.documents.create_from_file(
-                        file=(name, f, 'text/markdown')
-                    )
-                logging.info(f"Successfully created document {name}. ID: {response.id}")
-                return response.id
-            finally:
-                if os.path.exists(tmp_path):
-                    os.unlink(tmp_path)
+            # Use in-memory BytesIO instead of temp file for better Cloud Run performance
+            file_bytes = BytesIO(text.encode('utf-8'))
+            response = self.client.conversational_ai.knowledge_base.documents.create_from_file(
+                file=(name, file_bytes, 'text/markdown')
+            )
+            logging.info(f"Successfully created document {name}. ID: {response.id}")
+            return response.id
 
         except Exception as e:
             error_type, is_retryable = self._classify_error(e)

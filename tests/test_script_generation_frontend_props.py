@@ -65,16 +65,20 @@ def test_configuration_persistence(mock_client):
         # Select document first to show script editor
         at.selectbox[0].select_index(0).run()
         
-        # Now 2 selectboxes: Doc, Model.
+        # Now 2+ selectboxes: Doc, Speech Duration, AI Model.
         assert len(at.selectbox) >= 2
-        model_sb = at.selectbox[1]
-        assert model_sb.label == "AI Model"
+        
+        # Find AI Model selectbox
+        model_sb = next((sb for sb in at.selectbox if sb.label == "AI Model"), None)
+        assert model_sb is not None, "AI Model selectbox not found"
         assert model_sb.value == "gemini-2.5-flash-lite"
         
         # Change selection to a valid option
         model_sb.select("gemini-3-flash-preview").run()
         
-        assert at.selectbox[1].value == "gemini-3-flash-preview"
+        # Re-fetch the selectbox after run
+        model_sb = next((sb for sb in at.selectbox if sb.label == "AI Model"), None)
+        assert model_sb.value == "gemini-3-flash-preview"
         assert at.session_state.selected_llm_model == "gemini-3-flash-preview"
 
 def test_script_generation_parameters(mock_client):
@@ -89,7 +93,9 @@ def test_script_generation_parameters(mock_client):
         at.selectbox[0].select_index(0).run()
         
         # Select Model (valid option)
-        at.selectbox[1].select("gemini-3-pro-preview").run()
+        model_sb = next((sb for sb in at.selectbox if sb.label == "AI Model"), None)
+        assert model_sb is not None, "AI Model selectbox not found"
+        model_sb.select("gemini-3-pro-preview").run()
         
         # Set custom prompt directly in session state since dialog testing is hard
         at.session_state.custom_prompt = "My custom prompt"

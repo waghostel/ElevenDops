@@ -79,6 +79,7 @@ class AudioResponse:
     duration_seconds: Optional[float]
     script: str
     created_at: datetime
+    doctor_id: str = "default_doctor"
 
 
 @dataclass

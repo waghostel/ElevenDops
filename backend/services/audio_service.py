@@ -178,13 +178,16 @@ class AudioService:
         ):
             yield event
 
-    async def generate_audio(self, script: str, voice_id: str, knowledge_id: str) -> AudioMetadata:
+    async def generate_audio(
+        self, script: str, voice_id: str, knowledge_id: str, doctor_id: str = "default_doctor"
+    ) -> AudioMetadata:
         """Generate audio from a script.
         
         Args:
             script: The script content.
             voice_id: The ElevenLabs voice ID.
             knowledge_id: The source knowledge document ID.
+            doctor_id: ID of the doctor generating the audio.
             
         Returns:
             AudioMetadata: Metadata of the generated audio.
@@ -211,7 +214,8 @@ class AudioService:
                 voice_id=voice_id,
                 duration_seconds=None, # ElevenLabs simple API doesn't return duration
                 script=script,
-                created_at=datetime.utcnow()
+                created_at=datetime.utcnow(),
+                doctor_id=doctor_id
             )
             
             await self.data_service.save_audio_metadata(metadata)
@@ -222,16 +226,21 @@ class AudioService:
             logging.error(f"Error in audio generation workflow: {e}")
             raise e
 
-    async def get_audio_files(self, knowledge_id: str) -> List[AudioMetadata]:
-        """Get all audio files for a knowledge document.
+    async def get_audio_files(
+        self, 
+        knowledge_id: Optional[str] = None, 
+        doctor_id: Optional[str] = None
+    ) -> List[AudioMetadata]:
+        """Get audio files filtered by knowledge_id and/or doctor_id.
         
         Args:
-            knowledge_id: ID of the knowledge document.
+            knowledge_id: Optional filter by knowledge document ID.
+            doctor_id: Optional filter by doctor ID.
             
         Returns:
             List[AudioMetadata]: List of audio files.
         """
-        return await self.data_service.get_audio_files(knowledge_id)
+        return await self.data_service.get_audio_files(knowledge_id=knowledge_id, doctor_id=doctor_id)
 
     def get_available_voices(self) -> List[VoiceOption]:
         """Get available voices.

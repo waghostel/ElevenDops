@@ -11,7 +11,7 @@ from backend.models.schemas import (
 )
 
 # Mark as integration test
-pytestmark = pytest.mark.asyncio
+pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
 async def test_complete_firestore_workflow():
     """

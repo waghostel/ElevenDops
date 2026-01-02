@@ -494,13 +494,16 @@ class BackendAPIClient:
         except httpx.TimeoutException as e:
             yield {"type": "error", "message": f"Request timed out: {e}"}
 
-    async def generate_audio(self, knowledge_id: str, script: str, voice_id: str) -> AudioResponse:
+    async def generate_audio(
+        self, knowledge_id: str, script: str, voice_id: str, doctor_id: str = "default_doctor"
+    ) -> AudioResponse:
         """Generate audio from a script.
 
         Args:
             knowledge_id: Source document ID.
             script: The script content.
             voice_id: The ElevenLabs voice ID.
+            doctor_id: ID of the doctor generating audio.
 
         Returns:
             AudioResponse object.
@@ -510,6 +513,7 @@ class BackendAPIClient:
                 "knowledge_id": knowledge_id,
                 "script": script,
                 "voice_id": voice_id,
+                "doctor_id": doctor_id,
             }
             async with self._get_client() as client:
                 response = await client.post("/api/audio/generate", json=payload)
@@ -523,6 +527,7 @@ class BackendAPIClient:
                     duration_seconds=data.get("duration_seconds"),
                     script=data["script"],
                     created_at=datetime.fromisoformat(data["created_at"]),
+                    doctor_id=data.get("doctor_id", "default_doctor"),
                 )
         except httpx.ConnectError as e:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
@@ -532,18 +537,27 @@ class BackendAPIClient:
                 status_code=e.response.status_code,
             ) from e
 
-    async def get_audio_files(self, knowledge_id: str) -> List[AudioResponse]:
-        """Get audio files for a knowledge document.
+    async def get_audio_files(
+        self, knowledge_id: Optional[str] = None, doctor_id: Optional[str] = None
+    ) -> List[AudioResponse]:
+        """Get audio files with optional filters.
 
         Args:
-            knowledge_id: ID of the knowledge document.
+            knowledge_id: Optional filter by knowledge document ID.
+            doctor_id: Optional filter by doctor ID.
 
         Returns:
             List of AudioResponse objects.
         """
         try:
             async with self._get_client() as client:
-                response = await client.get(f"/api/audio/{knowledge_id}")
+                # Use new /list endpoint with query params
+                params = {}
+                if knowledge_id:
+                    params["knowledge_id"] = knowledge_id
+                if doctor_id:
+                    params["doctor_id"] = doctor_id
+                response = await client.get("/api/audio/list", params=params)
                 response.raise_for_status()
                 data = response.json()
                 return [
@@ -555,6 +569,7 @@ class BackendAPIClient:
                         duration_seconds=d.get("duration_seconds"),
                         script=d["script"],
                         created_at=datetime.fromisoformat(d["created_at"]),
+                        doctor_id=d.get("doctor_id", "default_doctor"),
                     )
                     for d in data["audio_files"]
                 ]

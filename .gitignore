@@ -107,3 +107,6 @@ docker-compose.override.yml
 
 # Server management
 .server_jobs.json
+
+# Emulator data persistence (local development)
+emulator-data/

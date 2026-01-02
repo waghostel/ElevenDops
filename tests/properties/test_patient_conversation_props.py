@@ -17,14 +17,14 @@ def test_get_signed_url_returns_valid_format(agent_id):
         # Configure the mock chain
         mock_response = MagicMock()
         mock_response.signed_url = f"wss://api.elevenlabs.io/v1/convai/conversation?agent_id={agent_id}&token=valid"
-        service.client.conversational_ai.get_signed_url.return_value = mock_response
+        service.client.conversational_ai.conversations.get_signed_url.return_value = mock_response
 
         url = service.get_signed_url(agent_id)
         
         assert url.startswith("wss://")
         assert f"agent_id={agent_id}" in url
         # Verify call
-        service.client.conversational_ai.get_signed_url.assert_called_with(agent_id=agent_id)
+        service.client.conversational_ai.conversations.get_signed_url.assert_called_with(agent_id=agent_id)
 
 # **Feature: patient-conversation-text, Property 4: Message response contains text and audio**
 # Testing async method with Hypothesis requires explicit event loop handling or just standard pytest-asyncio for unit test style if strategies are simple.

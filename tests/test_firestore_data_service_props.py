@@ -17,6 +17,9 @@ from backend.models.schemas import (
 )
 import uuid
 
+# Mark all as integration because stateless mocks cannot support persistence tests
+pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
+
 # --- Strategies ---
 
 s_tags = st.lists(st.sampled_from(DEFAULT_DOCUMENT_TAGS), min_size=1, max_size=3)
