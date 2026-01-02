@@ -49,14 +49,19 @@ class PatientService:
         """
         session_id = str(uuid.uuid4())
         
-        # Get signed URL from ElevenLabs
+        # Look up the agent to get the ElevenLabs agent ID
+        agent = await self.data_service.get_agent(request.agent_id)
+        if not agent:
+            raise ValueError(f"Agent with id {request.agent_id} not found")
+        
+        if not agent.elevenlabs_agent_id:
+            raise ValueError(f"Agent {request.agent_id} has no ElevenLabs agent ID")
+        
+        # Get signed URL from ElevenLabs using the ElevenLabs agent ID
         try:
-            signed_url = self.elevenlabs_service.get_signed_url(request.agent_id)
+            signed_url = self.elevenlabs_service.get_signed_url(agent.elevenlabs_agent_id)
         except ElevenLabsServiceError as e:
             logging.error(f"Failed to get signed URL for session {session_id}: {e}")
-            # Depending on requirements, we might fail or return a session with empty URL
-            # but Requirement 4.1 implies successful session needs it.
-            # We re-raise or handle. Let's re-raise to bubble up to API.
             raise e
 
         # Create session object
@@ -103,9 +108,14 @@ class PatientService:
         )
         await self.data_service.add_session_message(session_id, patient_msg_obj)
         
+        # Look up the agent to get the ElevenLabs agent ID
+        agent = await self.data_service.get_agent(session.agent_id)
+        if not agent or not agent.elevenlabs_agent_id:
+            raise ValueError(f"Agent {session.agent_id} not found or has no ElevenLabs ID")
+        
         try:
             response_text, audio_bytes = await self.elevenlabs_service.send_text_message(
-                session.agent_id, message
+                agent.elevenlabs_agent_id, message
             )
         except Exception as e:
             logging.error(f"Failed to get response from ElevenLabs for session {session_id}: {e}")
