@@ -91,42 +91,79 @@ def render_filters():
         st.session_state.logs_end_date = None
     if "logs_demo_conversations" not in st.session_state:
         st.session_state.logs_demo_conversations = None
+    if "logs_requires_attention" not in st.session_state:
+        st.session_state.logs_requires_attention = False
     
     with st.container(border=True):
         if st.button("🎯 Demo Patient ID", help="Load demo patient with cataract surgery post-op conversations (June 2025)"):
             st.session_state.logs_patient_id = "A123456789"
             st.session_state.logs_start_date = date(2025, 6, 1)
             st.session_state.logs_end_date = date(2025, 6, 30)
+            
+            # Sync widget state to ensure inputs update visually and don't trigger "change" on next run
+            st.session_state.widget_patient_id = "A123456789"
+            st.session_state.widget_start_date = date(2025, 6, 1)
+            st.session_state.widget_end_date = date(2025, 6, 30)
+            
             st.session_state.logs_demo_mode = True
             st.session_state.logs_demo_conversations = generate_demo_conversations("A123456789")
             st.session_state.selected_conversation_id = "CONV_001"  # Auto-select first conversation
             st.rerun()
         
         col1, col2, col3, col4 = st.columns([2, 2, 2, 1], vertical_alignment="bottom")
-        start_date = None
-        end_date = None
         
-        with col1:
-            patient_id = st.text_input("Patient ID", value=st.session_state.logs_patient_id, placeholder="Enter ID...")
-            # If patient ID changes from demo ID, exit demo mode
-            if patient_id != st.session_state.logs_patient_id:
+        def _on_patient_id_change():
+            """Callback when patient ID changes."""
+            new_val = st.session_state.get("widget_patient_id", "")
+            if new_val != st.session_state.logs_patient_id:
                 st.session_state.logs_demo_mode = False
                 st.session_state.logs_demo_conversations = None
+                st.session_state.logs_patient_id = new_val
+
+        def _on_start_date_change():
+            """Callback when start date changes."""
+            st.session_state.logs_start_date = st.session_state.get("widget_start_date")
+
+        def _on_end_date_change():
+            """Callback when end date changes."""
+            st.session_state.logs_end_date = st.session_state.get("widget_end_date")
+
+        def _on_attention_change():
+            """Callback when attention checkbox changes."""
+            st.session_state.logs_requires_attention = st.session_state.get("widget_requires_attention", False)
+
+        with col1:
+            st.text_input(
+                "Patient ID",
+                value=st.session_state.logs_patient_id,
+                placeholder="Enter ID...",
+                key="widget_patient_id",
+                on_change=_on_patient_id_change
+            )
         
         with col2:
-            start_d = st.date_input("Start Date", value=st.session_state.logs_start_date)
-            if start_d:
-                start_date = datetime.combine(start_d, time.min)
+            st.date_input(
+                "Start Date",
+                value=st.session_state.logs_start_date,
+                key="widget_start_date",
+                on_change=_on_start_date_change
+            )
                 
         with col3:
-            end_d = st.date_input("End Date", value=st.session_state.logs_end_date)
-            if end_d:
-                end_date = datetime.combine(end_d, time.max)
+            st.date_input(
+                "End Date",
+                value=st.session_state.logs_end_date,
+                key="widget_end_date",
+                on_change=_on_end_date_change
+            )
                 
         with col4:
-            requires_attention = st.checkbox("Attention Only", value=False)
-    
-    return patient_id, start_date, end_date, requires_attention
+            st.checkbox(
+                "Attention Only",
+                value=st.session_state.logs_requires_attention,
+                key="widget_requires_attention",
+                on_change=_on_attention_change
+            )
 
 def render_stats_display(stats: dict):
     """Render aggregate statistics from backend."""
@@ -144,6 +181,7 @@ def render_stats_display(stats: dict):
         # Placeholder or other stat
         pass
 
+@st.fragment
 def render_patient_summary_cards(summary: dict):
     """Render patient summary cards for doctor quick review."""
     st.subheader("📊 Patient Condition Summary")
@@ -213,8 +251,6 @@ def render_conversation_list(conversations: list[ConversationSummary]):
     
     if len(event.selection.rows) > 0:
         selected_row_idx = event.selection.rows[0]
-        # map back to conversation ID
-        # Since df is same order as conversations list
         return conversations[selected_row_idx].conversation_id
     
     return None
@@ -315,9 +351,21 @@ async def main():
     st.markdown("Review and analyze past conversations between patients and AI agents.")
     
     # --- Filters Section (Top) ---
-    patient_id, start_date, end_date, requires_attention = render_filters()
+    render_filters()
     
     st.divider()
+    
+    # --- Read filter values from session state ---
+    patient_id = st.session_state.get("logs_patient_id", "")
+    start_date = st.session_state.get("logs_start_date")
+    end_date = st.session_state.get("logs_end_date")
+    requires_attention = st.session_state.get("logs_requires_attention", False)
+    
+    # Convert dates to datetime for filtering
+    if start_date:
+        start_date = datetime.combine(start_date, time.min)
+    if end_date:
+        end_date = datetime.combine(end_date, time.max)
     
     # --- Load Data ---
     # Use demo data if in demo mode
