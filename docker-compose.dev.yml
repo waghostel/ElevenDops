@@ -7,10 +7,12 @@ services:
       gcloud emulators firestore start
       --host-port=0.0.0.0:8080
       --project=elevenlabs-local
+      --import-data=/root/.config/gcloud/emulators/firestore
+      --export-on-exit=/root/.config/gcloud/emulators/firestore
     ports:
       - "8080:8080"
     volumes:
-      - ./emulator-data/firestore:/root/.config/gcloud/emulators/firestore
+      - ${EMULATOR_DATA_PATH:-./emulator-data}/firestore:/root/.config/gcloud/emulators/firestore
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/"]
       interval: 10s
@@ -23,7 +25,7 @@ services:
       - "4443:4443"
     command: -scheme http -port 4443 -backend filesystem -filesystem-root /data
     volumes:
-      - ./emulator-data/gcs:/data
+      - ${EMULATOR_DATA_PATH:-./emulator-data}/gcs:/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4443/storage/v1/b"]
       interval: 10s

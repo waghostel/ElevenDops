@@ -22,12 +22,13 @@ This is the documentation index for the ElevenDops project.
 
 ## Development Guide
 
-| Document                                                                       | Description              |
-| ------------------------------------------------------------------------------ | ------------------------ |
-| [guide--local-development.md](development-guide/guide--local-development.md)   | Local Development Guide  |
-| [guide--mvp1-development.md](development-guide/guide--mvp1-development.md)     | MVP1 Development Guide   |
-| [guide--postman-kiro-power.md](development-guide/guide--postman-kiro-power.md) | Postman Kiro Power Guide |
-| [guide--server-modes.md](development-guide/guide--server-modes.md)             | Server Modes Guide       |
+| Document                                                                         | Description               |
+| -------------------------------------------------------------------------------- | ------------------------- |
+| [guide--local-development.md](development-guide/guide--local-development.md)     | Local Development Guide   |
+| [guide--migrate-to-real-gcp.md](development-guide/guide--migrate-to-real-gcp.md) | Migrate to Real GCP Guide |
+| [guide--mvp1-development.md](development-guide/guide--mvp1-development.md)       | MVP1 Development Guide    |
+| [guide--postman-kiro-power.md](development-guide/guide--postman-kiro-power.md)   | Postman Kiro Power Guide  |
+| [guide--server-modes.md](development-guide/guide--server-modes.md)               | Server Modes Guide        |
 
 ---
 
