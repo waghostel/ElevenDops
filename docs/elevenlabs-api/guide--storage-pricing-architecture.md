@@ -59,17 +59,24 @@ If User A uploads a document, you must prevent User B from accessing it. You (th
 #### 1. Knowledge Base Isolation
 
 - **ElevenLabs Side:** Create documents via API. You get back a `document_id`.
-- **Your Database:** Store a mapping table:
-  ```json
-  {
-    "user_id": "user_123",
-    "kb_document_id": "doc_xyz_from_elevenlabs",
-    "agent_id": "agent_abc"
-  }
-  ```
-- **Runtime:** When User A chats, your backend looks up _their_ specific `agent_id` or injects _their_ `document_ids` into the request.
+- **Your Database:** Store a mapping table (`knowledge_documents`) that tracks ownership via `doctor_id`.
+- **Runtime:** The API filters queries by `doctor_id` so User A cannot see or use User B's documents, even though they technically reside in the same ElevenLabs account.
 
-#### 2. Quota Management (Metered Billing)
+#### 2. Safe Content Updates (Agent-Aware)
+
+ElevenLabs prevents deleting a document if it is linked to an active agent. To support content editing:
+
+- **Pattern:** Find linked agents -> Temporarily Detach -> Delete/Upload -> Re-attach new ID.
+- **Benefit:** Allows for seamless content iteration without manually breaking and re-making voice agent connections.
+
+#### 3. Reconciliation & Drift Prevention
+
+Network failures during deletion or sync can cause "ghost" documents in ElevenLabs.
+
+- **Pattern:** Periodic audit between Firestore (Truth) and ElevenLabs (Replica).
+- **Tool:** A reconciliation script identifies Orphans (ElevenLabs-only) and Unsynced (Firestore-only) records to maintain a clean environment and stay under the 20MB limit.
+
+#### 4. Quota Management (Metered Billing)
 
 - **Risk:** One heavy user can consume your entire monthly character quota.
 - **Solution:** You MUST build an internal ledger.

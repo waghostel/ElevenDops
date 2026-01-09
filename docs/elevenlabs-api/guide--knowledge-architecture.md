@@ -9,9 +9,9 @@ We utilize a **Hybrid Storage Model** where the data is split between our local 
 | Feature                  | Storage Location                      | Purpose                                                     | Source of Truth |
 | :----------------------- | :------------------------------------ | :---------------------------------------------------------- | :-------------- |
 | **Metadata & Ownership** | **Firestore** (`knowledge_documents`) | Managing permissions, UI display, edit history.             | ✅ Yes          |
-| **Raw Content**          | **Firestore**                         | Backup, displaying content to user, regenerating stats.     | ✅ Yes          |
+| **Raw Content**          | **Firestore**                         | Backup, editing, regenerating stats.                        | ✅ Yes          |
 | **Vector Embeddings**    | **ElevenLabs**                        | Semantic search (RAG) for the AI Agent during conversation. | ❌ No (derived) |
-| **Generated Audio**      | **GCS Bucket**                        | Storing final Text-to-Speech output files.                  | N/A             |
+| **Agent Links**          | **Multiple**                          | Connecting docs to bots; tracked locally for sync safety.   | Firestore       |
 
 ### Why this split?
 
@@ -25,7 +25,7 @@ We utilize a **Hybrid Storage Model** where the data is split between our local 
 
 The system treats Firestore as the "Master" and ElevenLabs as a "Replica". Changes propagate **one-way** from App -> ElevenLabs.
 
-### Upload Flow
+### Upload Flow (Create)
 
 1.  **User Uploads File:** Content is saved to Firestore immediately with status `PENDING`.
 2.  **Background Task:** System triggers an async job to call ElevenLabs API (`create_document`).
@@ -33,17 +33,47 @@ The system treats Firestore as the "Master" and ElevenLabs as a "Replica". Chang
     - _Success:_ Firestore document updated to `COMPLETED`, ElevenLabs ID saved.
     - _Failure:_ Firestore document updated to `FAILED` with error message.
 
-### Deletion Flow
+### Edit Flow (Update)
+
+Editing a document's `raw_content` triggers a re-sync:
+
+1. **Detection:** System checks if the document is currently linked to any ElevenLabs Agents.
+2. **Safety Detach:** If linked, the document is temporarily detached from those agents (ElevenLabs prevents deleting "in-use" documents).
+3. **Replacement:** The old document is deleted from ElevenLabs, and the new content is uploaded as a fresh document.
+4. **Re-attach:** If it was previously linked, the new document ID is automatically re-attached to the original agents.
+
+### Deletion Flow (Delete)
 
 1.  **User Deletes File:** User requests deletion in UI.
-2.  **Firestore Query:** System identifies the `elevenlabs_document_id`.
+2.  **Agent-aware Cleanup:**
+    - The system checks for active agent links.
+    - It detaches the document from all agents in ElevenLabs.
 3.  **Dual Deletion:**
-    - **ElevenLabs:** API call sent to remove the vector store entry. (Errors here are logged but swallowed to prevent blocking).
-    - **Firestore:** Document record is permanently deleted.
+    - **ElevenLabs:** API call sent to remove the document from the Knowledge Base.
+    - **Firestore:** Document record is permanently removed.
 
 ---
 
-## 3. Ownership & Usage
+## 3. Maintenance & Reconciliation
+
+To ensure the systems never drift apart (e.g., due to API timeouts or manual edits in the console), we provide a **Reconciliation Tool**.
+
+### CLI Tool: `reconcile--elevenlabs-knowledge.py`
+
+Located in the `scripts/` directory, this tool allows for manual audit and repair.
+
+| Mode             | Usage                                                       | Description                                               |
+| :--------------- | :---------------------------------------------------------- | :-------------------------------------------------------- |
+| `--audit`        | `python scripts/reconcile--elevenlabs-knowledge.py --audit` | **Safe.** Prints a report of Orphans vs Unsynced docs.    |
+| `--fix-orphans`  | `python scripts/reconcile... --fix-orphans`                 | Deletes ElevenLabs docs that don't exist in Firestore.    |
+| `--fix-unsynced` | `python scripts/reconcile... --fix-unsynced`                | Re-uploads Firestore docs that are missing in ElevenLabs. |
+
+> [!TIP]
+> Run `--audit` periodically to check for "Ghost" documents that might be consuming your 20MB ElevenLabs storage quota.
+
+---
+
+## 4. Ownership & Usage
 
 ElevenLabs itself works as a flat list of documents. We enforce logic and relationships layer on top via Firestore.
 

@@ -43,7 +43,7 @@ if "selected_voice_id" not in st.session_state:
 if "voices" not in st.session_state:
     st.session_state.voices = []
 if "selected_llm_model" not in st.session_state:
-    st.session_state.selected_llm_model = "gemini-2.5-flash-lite"
+    st.session_state.selected_llm_model = "gemini-3-flash-preview"
 if "custom_prompt" not in st.session_state:
     st.session_state.custom_prompt = None
 if "selected_templates" not in st.session_state:
@@ -614,7 +614,6 @@ async def render_script_editor():
                     st.multiselect(
                         "Speaker 1 Languages",
                         options=LANGUAGE_OPTIONS,
-                        default=st.session_state.speaker1_languages,
                         format_func=lambda x: LANGUAGE_DISPLAY.get(x, x),
                         help="💡 Speaker 1 is the Doctor/Educator/Guider voice. Select languages for this speaker.",
                         key="_speaker1_lang_widget",
@@ -642,7 +641,6 @@ async def render_script_editor():
                     st.multiselect(
                         "Speaker 2 Languages",
                         options=LANGUAGE_OPTIONS,
-                        default=speaker2_default,
                         format_func=lambda x: LANGUAGE_DISPLAY.get(x, x),
                         help="Languages for the Patient/Learner speaker" if not speaker2_disabled else "Enable Multi-Speaker Dialogue to use Speaker 2",
                         disabled=speaker2_disabled,
@@ -655,10 +653,11 @@ async def render_script_editor():
                     from backend.config import GEMINI_MODELS
                     
                     # AI Model selection
+                    options = list(GEMINI_MODELS.keys())
                     st.session_state.selected_llm_model = st.selectbox(
                         "AI Model",
-                        options=list(GEMINI_MODELS.keys()),
-                        index=0,
+                        options=options,
+                        index=options.index(st.session_state.selected_llm_model) if st.session_state.selected_llm_model in options else 0,
                         help="Select the AI model for script generation"
                     )
             

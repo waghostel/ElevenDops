@@ -83,6 +83,26 @@ Regularly review and update the agent’s knowledge base to ensure the informati
 
 Review conversation transcripts to identify popular topics, queries and areas where users struggle to find information. Note any knowledge gaps and add the missing context to the knowledge base.
 
+---
+
+## Maintenance & Sync Quality
+
+The system implements automated background synchronization and a manual reconciliation tool to ensure high data quality.
+
+### 1. Automated Sync
+
+When you create or edit documents in the app, the system automatically propagates those changes to ElevenLabs. If a document is in use by an agent, the system handles the replacement safely.
+
+### 2. Manual Reconciliation
+
+If you suspect data drift, use the CLI tool to audit and fix your Knowledge Base:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/reconcile--elevenlabs-knowledge.py --audit
+```
+
+See the [Knowledge Architecture Guide](./guide--knowledge-architecture.md) for deeper technical details.
+
 ## Enterprise features
 
 Need higher limits? [Contact our sales team](https://elevenlabs.io/contact-sales) to discuss enterprise plans with expanded knowledge base capabilities.

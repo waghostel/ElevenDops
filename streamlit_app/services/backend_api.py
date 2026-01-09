@@ -283,7 +283,11 @@ class BackendAPIClient:
             ) from e
 
     async def update_knowledge_document(
-        self, knowledge_id: str, disease_name: Optional[str] = None, tags: Optional[List[str]] = None
+        self, 
+        knowledge_id: str, 
+        disease_name: Optional[str] = None, 
+        tags: Optional[List[str]] = None,
+        raw_content: Optional[str] = None
     ) -> KnowledgeDocument:
         """Update a knowledge document.
         
@@ -291,6 +295,7 @@ class BackendAPIClient:
             knowledge_id: ID of the document.
             disease_name: New disease name (optional).
             tags: New document tags (optional).
+            raw_content: New document content (optional).
             
         Returns:
             Updated KnowledgeDocument object.
@@ -301,6 +306,8 @@ class BackendAPIClient:
                 payload["disease_name"] = disease_name
             if tags is not None:
                 payload["tags"] = tags
+            if raw_content is not None:
+                payload["raw_content"] = raw_content
                 
             async with self._get_client() as client:
                 response = await client.put(f"/api/knowledge/{knowledge_id}", json=payload)

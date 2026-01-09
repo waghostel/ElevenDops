@@ -76,31 +76,69 @@ async def resync_knowledge_to_elevenlabs(
     data_service: DataServiceInterface,
     elevenlabs_service: ElevenLabsService,
 ):
-    """Background task to re-sync document to ElevenLabs (Delete + Create)."""
+    """Background task to re-sync document to ElevenLabs (Delete + Create).
+    
+    Handles detaching/re-attaching if doc is linked to an agent.
+    """
     try:
         # Update status to syncing
         await data_service.update_knowledge_sync_status(knowledge_id, SyncStatus.SYNCING)
         
-        # Delete old document if it exists
+        # 1. Identify linked agents
+        agents = await data_service.get_agents()
+        linked_agents = [a for a in agents if knowledge_id in a.knowledge_ids]
+        
+        # 2. Detach from agents temporarily
+        agent_kb_backups = {} # agent_id -> full_kb_list
+        if old_elevenlabs_id:
+            for agent in linked_agents:
+                try:
+                    agent_config = elevenlabs_service.get_agent(agent.elevenlabs_agent_id)
+                    current_kb = agent_config.get("conversation_config", {}).get("agent", {}).get("prompt", {}).get("knowledge_base", [])
+                    agent_kb_backups[agent.elevenlabs_agent_id] = current_kb
+                    
+                    # Remove THIS document from KB
+                    new_kb = [d for d in current_kb if d.get("id") != old_elevenlabs_id]
+                    elevenlabs_service.update_agent_knowledge_base(agent.elevenlabs_agent_id, new_kb)
+                except Exception as e:
+                    logging.warning(f"Failed to detach doc {old_elevenlabs_id} from agent {agent.elevenlabs_agent_id}: {e}")
+
+        # 3. Delete old document if it exists
         if old_elevenlabs_id:
             try:
                 elevenlabs_service.delete_document(old_elevenlabs_id)
-            except Exception:
-                # Log error but verify if we should continue.
-                # Proceed to create new one to ensure consistency with new name.
-                pass
+            except Exception as e:
+                logging.warning(f"Failed to delete old ElevenLabs document {old_elevenlabs_id}: {e}")
 
-        # Create new in ElevenLabs
+        # 4. Create new in ElevenLabs
         try:
-            elevenlabs_id = elevenlabs_service.create_document(text=content, name=new_name)
-        except ElevenLabsSyncError as e:
-            raise e
+            new_elevenlabs_id = elevenlabs_service.create_document(text=content, name=new_name)
         except Exception as e:
+            # If creation fails, we might leave agents detached, but status is FAILED
             raise e
 
-        # Update status to completed with NEW ID
+        # 5. Re-attach to agents with NEW ID
+        for agent in linked_agents:
+            try:
+                # If we have a backup, use it and replace the ID
+                if agent.elevenlabs_agent_id in agent_kb_backups:
+                    old_kb = agent_kb_backups[agent.elevenlabs_agent_id]
+                    # Filter out old, add new
+                    updated_kb = [d for d in old_kb if d.get("id") != old_elevenlabs_id]
+                    updated_kb.append({"id": new_elevenlabs_id, "name": new_name, "type": "file"})
+                    elevenlabs_service.update_agent_knowledge_base(agent.elevenlabs_agent_id, updated_kb)
+                else:
+                    # Fallback: get current and add
+                    agent_config = elevenlabs_service.get_agent(agent.elevenlabs_agent_id)
+                    current_kb = agent_config.get("conversation_config", {}).get("agent", {}).get("prompt", {}).get("knowledge_base", [])
+                    current_kb.append({"id": new_elevenlabs_id, "name": new_name, "type": "file"})
+                    elevenlabs_service.update_agent_knowledge_base(agent.elevenlabs_agent_id, current_kb)
+            except Exception as e:
+                logging.error(f"Failed to re-attach new doc {new_elevenlabs_id} to agent {agent.elevenlabs_agent_id}: {e}")
+
+        # 6. Update status to completed with NEW ID
         await data_service.update_knowledge_sync_status(
-            knowledge_id, SyncStatus.COMPLETED, elevenlabs_id
+            knowledge_id, SyncStatus.COMPLETED, new_elevenlabs_id
         )
 
     except ElevenLabsSyncError as e:
@@ -206,6 +244,7 @@ async def update_knowledge_document(
         
     old_name = current_doc.disease_name
     old_tags = set(current_doc.tags)
+    old_content = getattr(current_doc, 'raw_content', '')
     
     # 2. Update in database
     updated_doc = await data_service.update_knowledge_document(knowledge_id, update_data)
@@ -219,9 +258,10 @@ async def update_knowledge_document(
     # Compare with values from updated_doc as they are the source of truth now
     new_name = updated_doc.disease_name
     new_tags = set(updated_doc.tags)
+    new_content = updated_doc.raw_content
     
-    # Check if either changed
-    if new_name != old_name or new_tags != old_tags:
+    # Check if name/tags or content changed
+    if new_name != old_name or new_tags != old_tags or new_content != old_content:
         tags_str = "_".join(updated_doc.tags)
         elevenlabs_doc_name = f"{new_name}_{tags_str}"
         

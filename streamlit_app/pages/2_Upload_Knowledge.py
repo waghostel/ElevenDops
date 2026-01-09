@@ -36,44 +36,116 @@ def edit_document_dialog(doc):
     """
     st.text(f"Editing: {doc.disease_name}")
     
-    edit_col1, edit_col2 = st.columns(2)
-    with edit_col1:
-        new_name = st.text_input(
-            "Disease Name", 
-            value=doc.disease_name, 
-            key=f"dialog_edit_name_{doc.knowledge_id}"
-        )
-    with edit_col2:
-        new_tags = st.multiselect(
-            "Document Tags",
-            options=DEFAULT_DOCUMENT_TAGS,
-            default=doc.tags,
-            format_func=lambda x: x.replace("_", " ").title(),
-            key=f"dialog_edit_tags_{doc.knowledge_id}"
-        )
+    new_name = st.text_input(
+        "Disease Name", 
+        value=doc.disease_name, 
+        key=f"dialog_edit_name_{doc.knowledge_id}"
+    )
     
-    btn_c1, btn_c2 = st.columns([1, 6])
+    # Merge existing tags with defaults to handle custom tags
+    combined_options = list(dict.fromkeys(DEFAULT_DOCUMENT_TAGS + doc.tags))
+    new_tags = st.multiselect(
+        "Document Tags",
+        options=combined_options,
+        default=doc.tags,
+        format_func=lambda x: x.replace("_", " ").title(),
+        key=f"dialog_edit_tags_{doc.knowledge_id}"
+    )
+
+    custom_tags_edit_input = st.text_input(
+        "Custom Tags (comma-separated)",
+        placeholder="e.g., urgent, specialist_review",
+        help="Add your own tags beyond the predefined list",
+        key=f"dialog_edit_custom_tags_{doc.knowledge_id}"
+    )
+    
+    new_content = st.text_area(
+        "Document Content",
+        value=doc.raw_content,
+        height=300,
+        key=f"dialog_edit_content_{doc.knowledge_id}"
+    )
+    
+    # Status placeholder for full-width spinner display
+    status_placeholder = st.empty()
+    
+    btn_c1, btn_c2, _ = st.columns([1.2, 1.2, 4])
     with btn_c1:
-        if st.button("Save", key=f"dialog_save_{doc.knowledge_id}", type="primary"):
-            if not new_name.strip():
-                add_error_to_log("Disease name required")
-            elif not new_tags:
-                add_error_to_log("At least one tag required")
-            else:
-                try:
-                    asyncio.run(client.update_knowledge_document(
-                        doc.knowledge_id, 
-                        disease_name=new_name.strip(),
-                        tags=new_tags
-                    ))
-                    get_cached_documents.clear()
-                    st.success("Updated!")
-                    st.rerun()
-                except APIError as e:
-                    add_error_to_log(f"Update failed: {e.message}")
+        save_clicked = st.button("Save", key=f"dialog_save_{doc.knowledge_id}", type="primary")
     with btn_c2:
         if st.button("Cancel", key=f"dialog_cancel_{doc.knowledge_id}"):
             st.rerun()
+    
+    if save_clicked:
+        # Parse custom tags from edit input
+        parsed_custom_tags = []
+        if custom_tags_edit_input and custom_tags_edit_input.strip():
+            parsed_custom_tags = [
+                tag.strip().lower().replace(" ", "_") 
+                for tag in custom_tags_edit_input.split(",") 
+                if tag.strip()
+            ]
+        
+        # Combine multiselect tags with custom tags
+        all_tags = list(dict.fromkeys(new_tags + parsed_custom_tags))
+
+        if not new_name.strip():
+            add_error_to_log("Disease name required")
+        elif not all_tags:
+            add_error_to_log("At least one tag required")
+        elif not new_content.strip():
+            add_error_to_log("Content cannot be empty")
+        else:
+            with status_placeholder:
+                with st.spinner("Saving changes..."):
+                    try:
+                        asyncio.run(client.update_knowledge_document(
+                            doc.knowledge_id, 
+                            disease_name=new_name.strip(),
+                            tags=all_tags,
+                            raw_content=new_content.strip()
+                        ))
+                        get_cached_documents.clear()
+                        st.success("Updated!")
+                        st.rerun()
+                    except APIError as e:
+                        add_error_to_log(f"Update failed: {e.message}")
+
+
+@st.dialog("Confirm Delete")
+def confirm_delete_dialog(doc):
+    """Dialog for confirming document deletion.
+    
+    Using @st.dialog isolates this confirmation from the main page,
+    providing a clear, focused UX for destructive actions.
+    
+    Args:
+        doc: The document object to delete.
+    """
+    st.warning(f"Are you sure you want to delete **{doc.disease_name}**?")
+    st.text("This will permanently remove the document from storage and ElevenLabs.")
+    
+    # Status placeholder for full-width spinner display
+    status_placeholder = st.empty()
+    
+    btn_c1, btn_c2, _ = st.columns([1.5, 1.5, 4])
+    with btn_c1:
+        delete_clicked = st.button("Delete", key=f"confirm_del_{doc.knowledge_id}", type="primary")
+    with btn_c2:
+        if st.button("Cancel", key=f"cancel_del_{doc.knowledge_id}"):
+            st.rerun()
+    
+    if delete_clicked:
+        with status_placeholder:
+            with st.spinner("Deleting document..."):
+                try:
+                    asyncio.run(client.delete_knowledge_document(doc.knowledge_id))
+                    get_cached_documents.clear()
+                    st.toast("Document deleted!")
+                    st.rerun()
+                except APIError as e:
+                    add_error_to_log(f"Delete failed: {e.message}")
+
 
 # --- File Upload Section ---
 # Initialize form ID for dynamic widget keys to allow clearing
@@ -100,6 +172,13 @@ with st.form(f"upload_document_form_{st.session_state.upload_form_id}", clear_on
             format_func=lambda x: x.replace("_", " ").title()
         )
     
+    # Custom tag entry
+    custom_tags_input = st.text_input(
+        "Custom Tags (comma-separated)",
+        placeholder="e.g., urgent, specialist_review",
+        help="Add your own tags beyond the predefined list"
+    )
+    
     uploaded_file = st.file_uploader(
         "Choose a file", 
         type=["txt", "md"]
@@ -108,13 +187,22 @@ with st.form(f"upload_document_form_{st.session_state.upload_form_id}", clear_on
     submitted = st.form_submit_button("Save & Sync", type="primary")
 
 if submitted:
-    # Get values from session state using the dynamic keys
-    # Note: Streamlit form submission already provides local variables, but we rely on the widget return values assigned above.
+    # Parse custom tags from text input
+    custom_tags = []
+    if custom_tags_input and custom_tags_input.strip():
+        custom_tags = [
+            tag.strip().lower().replace(" ", "_") 
+            for tag in custom_tags_input.split(",") 
+            if tag.strip()
+        ]
+    
+    # Combine selected tags with custom tags (deduplicated)
+    all_tags = list(dict.fromkeys(selected_tags + custom_tags))
     
     if not disease_name or not disease_name.strip():
         add_error_to_log("Please enter a disease name.")
-    elif not selected_tags:
-        add_error_to_log("Please select at least one tag.")
+    elif not all_tags:
+        add_error_to_log("Please select or enter at least one tag.")
     elif not uploaded_file:
         add_error_to_log("Please upload a file.")
     else:
@@ -130,9 +218,10 @@ if submitted:
                     doc = asyncio.run(client.upload_knowledge(
                         content=content,
                         disease_name=disease_name.strip(),
-                        tags=selected_tags
+                        tags=all_tags
                     ))
                     st.success(f"Document '{disease_name}' uploaded successfully! Sync status: {doc.sync_status}")
+
                     
                     # Clear cache and form inputs
                     get_cached_documents.clear()
@@ -216,25 +305,9 @@ def render_document_list():
                             edit_document_dialog(doc)
 
                     with col4:
-                        # Check if this specific document is in confirmation mode
-                        if st.session_state.get("delete_confirmation") == doc.knowledge_id:
-                            # Confirmation buttons - no st.rerun() needed with fragment
-                            if st.button("Confirm?", key=f"conf_del_{doc.knowledge_id}", type="primary"):
-                                try:
-                                    asyncio.run(client.delete_knowledge_document(doc.knowledge_id))
-                                    get_cached_documents.clear()
-                                    st.toast("Deleted!")
-                                    st.session_state.delete_confirmation = None
-                                    st.rerun(scope="fragment")
-                                except APIError as e:
-                                    add_error_to_log(f"Delete failed: {e.message}")
-                            if st.button("Cancel", key=f"cancel_del_{doc.knowledge_id}"):
-                                st.session_state.delete_confirmation = None
-                                st.rerun(scope="fragment")
-                        else:
-                            if st.button("Delete", key=f"del_{doc.knowledge_id}"):
-                                st.session_state["delete_confirmation"] = doc.knowledge_id
-                                st.rerun(scope="fragment")
+                        # Delete button opens confirmation dialog
+                        if st.button("Delete", key=f"del_{doc.knowledge_id}"):
+                            confirm_delete_dialog(doc)
 
                     with col5:
                         # Retry button - only for failed documents

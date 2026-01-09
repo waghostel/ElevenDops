@@ -210,6 +210,33 @@ class ElevenLabsService:
                 is_retryable=is_retryable
             )
 
+    def list_documents(self) -> List[Dict[str, Any]]:
+        """List all Knowledge Base documents.
+
+        Returns:
+            List[Dict[str, Any]]: List of document metadata.
+        """
+        if self.use_mock:
+            logging.info("[MOCK] list_documents called")
+            return []
+
+        try:
+            docs = self.client.conversational_ai.knowledge_base.list()
+            # The SDK returns an object with a 'documents' attribute or a list
+            doc_list = list(docs.documents) if hasattr(docs, 'documents') else list(docs)
+            return [
+                {
+                    "id": getattr(d, "id", None) or getattr(d, "document_id", "unknown"),
+                    "name": getattr(d, "name", "Unnamed"),
+                    "created_at": getattr(d, "created_at", None),
+                    "type": getattr(d, "type", "file")
+                }
+                for d in doc_list
+            ]
+        except Exception as e:
+            logging.error(f"Failed to list ElevenLabs documents: {e}")
+            return []
+
     def delete_document(self, document_id: str) -> bool:
         """Delete document from ElevenLabs Knowledge Base.
 
@@ -439,6 +466,40 @@ class ElevenLabsService:
             error_type, is_retryable = self._classify_error(e)
             logging.error(f"Failed to create ElevenLabs agent: {e}")
             raise ElevenLabsAgentError(f"Failed to create agent: {str(e)}", error_type=error_type, original_error=e, is_retryable=is_retryable)
+
+    def update_agent_knowledge_base(self, agent_id: str, knowledge_base: List[Dict[str, Any]]) -> bool:
+        """Update an agent's knowledge base.
+
+        Args:
+            agent_id: The ID of the agent to update.
+            knowledge_base: The new list of knowledge base items.
+
+        Returns:
+            bool: True if updated successfully.
+
+        Raises:
+            ElevenLabsAgentError: If update fails.
+        """
+        if self.use_mock:
+            logging.info(f"[MOCK] update_agent_knowledge_base called for agent {agent_id}")
+            return True
+
+        try:
+            self.client.conversational_ai.agents.update(
+                agent_id=agent_id,
+                conversation_config={
+                    "agent": {
+                        "prompt": {
+                            "knowledge_base": knowledge_base
+                        }
+                    }
+                }
+            )
+            logging.info(f"Successfully updated knowledge base for agent {agent_id}")
+            return True
+        except Exception as e:
+            logging.error(f"Failed to update ElevenLabs agent {agent_id} knowledge base: {e}")
+            raise ElevenLabsAgentError(f"Failed to update agent knowledge base: {str(e)}")
 
     def delete_agent(self, agent_id: str) -> bool:
         """Delete an agent from ElevenLabs.

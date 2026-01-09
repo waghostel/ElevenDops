@@ -86,6 +86,8 @@ class KnowledgeDocumentUpdate(BaseModel):
     disease_name: Optional[str] = Field(None, min_length=1, max_length=100, description="Name of the disease")
     tags: Optional[List[str]] = Field(None, description="List of document tags")
     
+    raw_content: Optional[str] = Field(None, min_length=1, max_length=300000, description="Updated content of the document")
+    
     @field_validator("disease_name")
     @classmethod
     def validate_disease_name(cls, v: Optional[str]) -> Optional[str]:
