@@ -104,3 +104,7 @@ flowchart LR
 | ---------------------- | ----------------------------- |
 | **User Global Memory** | 明確要求使用 oxlint 與 eslint |
 | **Package Manager**    | 明確要求使用 pnpm             |
+
+---
+
+[⬅️ 返回 GitHub Actions 工作流 索引](./index.md)

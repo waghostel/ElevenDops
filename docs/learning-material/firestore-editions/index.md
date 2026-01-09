@@ -22,3 +22,7 @@ Google Cloud 在 2024 年推出了 Firestore 的全新版本劃分。本教材�
 
 - [Google Cloud Firestore 官方文件](https://cloud.google.com/firestore)
 - [Firebase 部落格：Enterprise 版介紹](https://firebase.google.com/blog)
+
+---
+
+[⬅️ 返回學習教材總覽](../index.md)

@@ -83,3 +83,7 @@ AI 會呼叫對應工具並回傳列表，包含服務名稱、區域與網址�
 | `list_services`   | 列出服務 | "我有跑哪些服務？"              |
 | `get_service`     | 查看詳情 | "這個服務用哪個 Docker Image？" |
 | `get_service_log` | 讀取 Log | "服務為什麼剛剛 500 錯誤？"     |
+
+---
+
+[⬅️ 返回 Cloud Run MCP 索引](./index.md)

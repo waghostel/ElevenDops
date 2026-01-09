@@ -94,6 +94,10 @@ Cloud Run 會根據您在部署時設定的 **Service Account** 給出對應的 
 
 ## 參考程式碼來源
 
-| 檔案路徑                                               | 說明                                       |
-| ------------------------------------------------------ | ------------------------------------------ |
-| `docs/development-guide/guide--migrate-to-real-gcp.md` | Troubleshooting 區塊關於 Docker 的詳細說明 |
+| 檔案路徑                                                  | 說明                                       |
+| --------------------------------------------------------- | ------------------------------------------ |
+| `docs/development-guide/guide--03-migrate-to-real-gcp.md` | Troubleshooting 區塊關於 Docker 的詳細說明 |
+
+---
+
+[⬅️ 返回 Google Cloud 身分驗證 索引](./index.md)

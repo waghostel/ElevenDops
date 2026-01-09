@@ -24,3 +24,7 @@
 - [Google Firebase Emulator Suite](https://firebase.google.com/docs/emulator-suite)
 - [專案實作計畫 (Implementation Plan)](../../../.gemini/antigravity/brain/f05560b3-bce2-4757-9f71-5418cf709fa7/implementation_plan--testing-firebase-locally.md)
 - [驗證腳本 (verify_firestore_connectivity.py)](../../../tests/verify_firestore_connectivity.py)
+
+---
+
+[⬅️ 返回學習教材總覽](../index.md)

@@ -230,7 +230,7 @@ class ElevenLabsService:
                 logging.info(f"[MOCK] Deleted ElevenLabs document {document_id}")
                 return True
 
-            self.client.conversational_ai.knowledge_base.documents.delete(document_id=document_id)
+            self.client.conversational_ai.knowledge_base.documents.delete(document_id)
             logging.info(f"Successfully deleted document {document_id}")
             return True
         except Exception as e:

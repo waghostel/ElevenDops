@@ -134,6 +134,21 @@ sequenceDiagram
 
 **答：** 是的。Bucket 必須為空才能刪除。可用 `gsutil rm -r gs://bucket-name/**` 先清空。
 
+## GCS 底層冷知識 (Critical GCS Facts)
+
+### 1. 物件不可變性 (Object Immutability)
+
+在 GCS 中，物件一旦寫入就**不能修改**。
+
+- **「修改」檔案**：實際上是直接**覆蓋 (Overwrite)**，產生一個全新的物件。
+- **Versioning 如何運作**：當你開啟 Versioning 後，不論是「刪除」還是「覆蓋」，舊的版本都會被保留下來（標記為 Noncurrent）。這就是為什麼開啟 Versioning 會讓儲存成本在頻繁更新時快速上升的原因。
+
+### 2. 區域鎖定 (Region Lock)
+
+Bucket 的**地區 (Location) 一旦建立就無法修改**。
+
+- **如果選錯了怎麼辦？**：你必須建立一個新區域的 Bucket，將資料搬移過去，然後刪除舊的。因此在建立時務必確認區域（如台灣選 `asia-east1`）。
+
 ## 重點整理
 
 | 概念          | 說明           | 注意事項         |
@@ -149,3 +164,7 @@ sequenceDiagram
 | 檔案路徑                              | 說明                |
 | ------------------------------------- | ------------------- |
 | `backend/services/storage_service.py` | Bucket 初始化與操作 |
+
+---
+
+[⬅️ 返回 Cloud Storage (GCS) 深度解析索引](./index.md)

@@ -73,6 +73,25 @@ def get_storage_client():
 
 **答：** 請確認環境變數 `GOOGLE_APPLICATION_CREDENTIALS` 指向的是檔案的**絕對路徑**，且該檔案讀取權限正確。
 
+### Q3：ADC 是否有儲存 API Key？
+
+**答：沒有。**
+ADC 處理的是「身分驗證 (Authentication)」，它產生的是「短效期的 Access Token」。
+API Key 是另一種「長效期的 Secret」，通常會放在 Secret Manager 中，透過 ADC 驗證身分後去讀取。
+
+### Q4：ADC 是否管理權限 (Authorization)？
+
+**答：不直接管理。**
+ADC 只負責證明「你是誰 (Authentication)」。
+「你能做什麼 (Authorization)」是由 **IAM (Identity and Access Management)** 系統控制的。你必須在 GCP Console 中給予該身分對應的 IAM Role (e.g. `Secret Manager Secret Accessor`)。
+
+### Q5：登入後，我還需要去 GCP 賦予權限嗎？
+
+**答：視情況而定。**
+
+- **如果是你自己的專案 (你是 Owner)**：通常不需要。Owner 角色預設擁有所有權限，所以當 `gcloud` 驗證你是 Owner 後，你自動就能存取 Secret。
+- **如果是團隊專案 (你是協作者)**：要。管理員需要去 IAM 頁面，把你的 Google 帳號加入，並給予 `Secret Manager Secret Accessor` 角色，你的 ADC 才會生效。
+
 ## 重點整理
 
 | 階段         | 憑證來源                                | 安全性                 |
@@ -88,9 +107,30 @@ def get_storage_client():
 
 ---
 
+## 進階實戰
+
+關於 ADC 如何與 Secret Manager 等服務整合，以及詳細的授權流程 (Owner vs Member)，請參考下一章：
+
+👉 **[04--ADC 授權指南與實戰整合](./04--adc-authorization-and-integration.md)**
+
+---
+
 ## 參考程式碼來源
 
 | 檔案路徑                              | 說明                            |
 | ------------------------------------- | ------------------------------- |
 | `backend/main.py`                     | 專案初始化時常用的 ADC 配置起點 |
 | `backend/services/storage_service.py` | 實作 Cloud Storage 的 ADC 實例  |
+
+---
+
+## 參考程式碼來源
+
+| 檔案路徑                              | 說明                            |
+| ------------------------------------- | ------------------------------- |
+| `backend/main.py`                     | 專案初始化時常用的 ADC 配置起點 |
+| `backend/services/storage_service.py` | 實作 Cloud Storage 的 ADC 實例  |
+
+---
+
+[⬅️ 返回 Google Cloud 身分驗證 索引](./index.md)

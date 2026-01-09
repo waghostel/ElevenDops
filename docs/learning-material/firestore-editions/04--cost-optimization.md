@@ -68,3 +68,7 @@
 ## 延伸閱讀
 
 - [Optimize Firestore Costs](https://firebase.google.com/docs/firestore/storage-size)
+
+---
+
+[⬅️ 返回 Firestore 版本 索引](./index.md)

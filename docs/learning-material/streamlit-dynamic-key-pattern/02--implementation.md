@@ -243,3 +243,7 @@ st.multiselect("項目", options=items, on_change=on_selection_change)
 | 檔案路徑                                   | 說明                                                           |
 | ------------------------------------------ | -------------------------------------------------------------- |
 | `streamlit_app/pages/3_Education_Audio.py` | `render_template_selection()` 函數中的 sortables 動態 Key 實作 |
+
+---
+
+[⬅️ 返回 Streamlit 動態 Key 模式 索引](./index.md)

@@ -6,11 +6,12 @@
 
 ## 文件目錄
 
-| 文件                                                                                           | 說明                                             |
-| ---------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| [01--introduction-to-adc.md](./01--introduction-to-adc.md)                                     | 深度介紹 ADC 的核心概念與運作原理。              |
-| [02--setting-up-local-adc.md](./02--setting-up-local-adc.md)                                   | 實作教學：如何在本地開發環境配置與使用 ADC。     |
-| [03--advanced-concepts-and-troubleshooting.md](./03--advanced-concepts-and-troubleshooting.md) | 進階概念（服務帳戶 vs 個人帳戶）與常見問題排除。 |
+| 文件                                                                                           | 說明                                                 |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| [01--introduction-to-adc.md](./01--introduction-to-adc.md)                                     | 深度介紹 ADC 的核心概念與運作原理。                  |
+| [02--setting-up-local-adc.md](./02--setting-up-local-adc.md)                                   | 實作教學：如何在本地開發環境配置與使用 ADC。         |
+| [03--advanced-concepts-and-troubleshooting.md](./03--advanced-concepts-and-troubleshooting.md) | 進階概念（服務帳戶 vs 個人帳戶）與常見問題排除。     |
+| [04--adc-authorization-and-integration.md](./04--adc-authorization-and-integration.md)         | 授權指南與實戰整合：Owner vs Member 流程及指令解析。 |
 
 ## 學習路徑建議
 
@@ -22,3 +23,7 @@
 
 - [官方實戰手冊：對應用程式進行驗證](https://cloud.google.com/docs/authentication/application-default-credentials)
 - [ElevenDops 遷移指南](../../development-guide/guide--migrate-to-real-gcp.md)
+
+---
+
+[⬅️ 返回學習教材總覽](../index.md)

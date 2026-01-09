@@ -35,8 +35,9 @@ class FirestoreService:
         try:
             # project argument is required, even for emulator
             project = settings.google_cloud_project or "elevenlabs-local"
-            self._db = firestore.Client(project=project)
-            logger.info(f"Firestore client initialized for project {project}")
+            database_id = settings.firestore_database_id
+            self._db = firestore.Client(project=project, database=database_id)
+            logger.info(f"Firestore client initialized for project {project}, database {database_id}")
         except Exception as e:
             logger.error(f"Failed to initialize Firestore client: {e}")
             raise

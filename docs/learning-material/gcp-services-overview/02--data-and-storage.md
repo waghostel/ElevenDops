@@ -144,3 +144,7 @@ storage = get_storage_service()
 | --------------------------------------- | ------------------------ |
 | `backend/services/firestore_service.py` | Firestore 客戶端封裝     |
 | `backend/services/storage_service.py`   | Cloud Storage 客戶端封裝 |
+
+---
+
+[⬅️ 返回 GCP 服務總覽 索引](./index.md)

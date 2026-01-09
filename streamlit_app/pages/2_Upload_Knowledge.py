@@ -223,15 +223,18 @@ def render_document_list():
                                 try:
                                     asyncio.run(client.delete_knowledge_document(doc.knowledge_id))
                                     get_cached_documents.clear()
-                                    st.success("Deleted!")
+                                    st.toast("Deleted!")
                                     st.session_state.delete_confirmation = None
+                                    st.rerun(scope="fragment")
                                 except APIError as e:
                                     add_error_to_log(f"Delete failed: {e.message}")
                             if st.button("Cancel", key=f"cancel_del_{doc.knowledge_id}"):
                                 st.session_state.delete_confirmation = None
+                                st.rerun(scope="fragment")
                         else:
                             if st.button("Delete", key=f"del_{doc.knowledge_id}"):
                                 st.session_state["delete_confirmation"] = doc.knowledge_id
+                                st.rerun(scope="fragment")
 
                     with col5:
                         # Retry button - only for failed documents

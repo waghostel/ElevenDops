@@ -88,6 +88,65 @@ USER appuser
 | Secret  | `Secret Manager` | 加密管理，集中金鑰控制     |
 | Scaling | `0 - 10`         | 成本優化與負載平衡         |
 
+---
+
+## 步驟 4：Streamlit 安全性考量（無 Nginx 情況）
+
+#### 我們在做什麼？
+
+當不使用 Nginx 反向代理時，需要額外注意 Streamlit 的內建安全設定。
+
+#### 為什麼需要這樣做？
+
+目前專案架構中，Streamlit 直接運行在 Cloud Run 公開的 `$PORT` 上，沒有 Nginx 作為第一層防護。這意味著我們需要依賴 Streamlit 自身的安全機制。
+
+#### 現有配置檢視
+
+```toml
+# .streamlit/config.toml
+[server]
+headless = true
+enableCORS = false
+enableXsrfProtection = false  # ⚠️ 安全風險
+```
+
+#### 安全風險分析
+
+| 風險類型         | 說明                                      | 嚴重程度 |
+| ---------------- | ----------------------------------------- | -------- |
+| XSRF 保護已關閉  | 容易受到跨站請求偽造攻擊                  | 中       |
+| 缺乏安全 Headers | 無法設定 X-Frame-Options 等，易受點擊劫持 | 低-中    |
+| 無速率限制       | 可能遭受暴力破解或 DoS 攻擊               | 低       |
+
+> [!WARNING] > **XSRF 保護已關閉**
+>
+> `.streamlit/config.toml` 中 `enableXsrfProtection = false`。這是因為在某些反向代理配置下會產生問題。如果您的應用處理敏感資料，請考慮改回 `true` 並進行測試。
+
+#### 建議措施
+
+1. **短期（不加 Nginx）**：
+
+   - 將 `enableXsrfProtection` 改為 `true`（需在 Cloud Run 上測試）
+   - 接受缺少進階 Security Headers 的限制
+   - 依賴 Cloud Run 的內建 DDoS 防護
+
+2. **長期（加入 Nginx）**：
+   - 參考 [多前端架構](./04--multi-frontend-architecture.md) 導入 Nginx
+   - 統一管理 Security Headers、速率限制
+   - 提供更完整的安全防護層
+
+#### 程式碼參考
+
+```toml
+# .streamlit/config.toml - 建議的安全設定
+[server]
+headless = true
+enableCORS = false
+enableXsrfProtection = true  # 建議開啟
+```
+
+---
+
 ## 延伸閱讀
 
 - [Secret Manager 管理指南](../../docs/cloud-run-deployment/guide--secret-management.md)
@@ -103,3 +162,7 @@ USER appuser
 | --------------------- | --------------------------- |
 | `Dockerfile.cloudrun` | 包含使用者權限配置          |
 | `cloudbuild.yaml`     | 包含 Secret 與 Scaling 設定 |
+
+---
+
+[⬅️ 返回 Cloud Run 部署策略索引](./index.md)

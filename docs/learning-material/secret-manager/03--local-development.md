@@ -195,3 +195,7 @@ graph TD
 | ------------------- | --------------------------- |
 | `backend/config.py` | Settings 類別與環境變數載入 |
 | `.env.example`      | 範本檔案（如有）            |
+
+---
+
+[⬅️ 返回 Secret Manager 索引](./index.md)

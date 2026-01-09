@@ -97,6 +97,20 @@ else:
 
 **答：** 最好重新執行一次。雖然 ADC 憑證本身不強綁定專案，但明確設定 `gcloud config set project` 並重新 login 可以確保 `default()` 獲取到的 Project ID 是正確的。
 
+### Q3：執行 `gcloud auth application-default login` 時，瀏覽器跳出的授權畫面要勾選哪些權限？
+
+**答：** 建議 **全部勾選 (Select all)**。常見會看到：
+
+- 「See, edit, configure, and delete your Google Cloud data...」（cloud-platform scope）
+- 「View and sign in to your Google Cloud SQL instances」
+
+這些範圍 (scopes) 定義的是「這組憑證最多能代理哪些動作」，但**實際能否存取資源，仍由 GCP IAM 角色控制**。換句話說：
+
+1. **授權畫面 = 定義上限**：讓本地程式碼「有資格」呼叫這些 API。
+2. **IAM 角色 = 實際權限**：即使 scope 允許，若您在專案中沒有對應角色（如 Firestore Admin），操作仍會被 GCP 拒絕。
+
+憑證只存於本地 `%APPDATA%\gcloud\application_default_credentials.json`，不會上傳任何地方，因此安全無虞。
+
 ## 重點整理
 
 | 命令                                    | 適用對象               | 本地儲存路徑                               |
@@ -108,6 +122,10 @@ else:
 
 ## 參考程式碼來源
 
-| 檔案路徑                                               | 說明                         |
-| ------------------------------------------------------ | ---------------------------- |
-| `docs/development-guide/guide--migrate-to-real-gcp.md` | 本地遷移指南 Step 3 本地驗證 |
+| 檔案路徑                                                  | 說明                         |
+| --------------------------------------------------------- | ---------------------------- |
+| `docs/development-guide/guide--03-migrate-to-real-gcp.md` | 本地遷移指南 Step 3 本地驗證 |
+
+---
+
+[⬅️ 返回 Google Cloud 身身分驗證 索引](./index.md)

@@ -23,3 +23,7 @@
 - [GitHub Actions 官方手冊](https://docs.github.com/en/actions)
 - [ElevenDops 部署策略教材](../cloud-run-deployment-strategy/index.md)
 - [專案技術規範 (System Prompt Reference)](../../.kiro/steering/tech.md)
+
+---
+
+[⬅️ 返回學習教材總覽](../index.md)

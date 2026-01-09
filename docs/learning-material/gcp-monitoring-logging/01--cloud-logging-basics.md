@@ -153,3 +153,7 @@ gcloud logging sinks create archive-sink \
 | ----------------------- | -------------------------- |
 | `backend/main.py`       | FastAPI 的日誌設定         |
 | `backend/services/*.py` | 各服務的 `logger` 使用方式 |
+
+---
+
+[⬅️ 返回 GCP Monitoring & Logging 索引](./index.md)

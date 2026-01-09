@@ -46,6 +46,50 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# Security Headers Middleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request as StarletteRequest
+from starlette.responses import Response
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Add security headers to all responses.
+    
+    This middleware adds standard security headers to protect against:
+    - Clickjacking (X-Frame-Options)
+    - MIME type sniffing (X-Content-Type-Options)
+    - Referrer leakage (Referrer-Policy)
+    """
+
+    async def dispatch(
+        self, request: StarletteRequest, call_next
+    ) -> Response:
+        """Process request and add security headers to response."""
+        response: Response = await call_next(request)
+        
+        # Prevent clickjacking by disallowing iframe embedding
+        response.headers["X-Frame-Options"] = "DENY"
+        
+        # Prevent MIME type sniffing
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        
+        # Control referrer information sent with requests
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        
+        return response
+
+
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Rate Limiting - protect against abuse and DoS attacks
+from backend.middleware.rate_limit import limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # Include API routers
 app.include_router(health_router)
 app.include_router(dashboard_router)

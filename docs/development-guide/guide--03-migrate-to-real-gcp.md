@@ -12,6 +12,28 @@ This guide provides a step-by-step plan to switch your local ElevenDops environm
 
 ## Step 1: GCP Project Setup
 
+### A. Automated Setup (Recommended)
+
+Run the following commands in your terminal to create a project, set it as active, and enable required APIs.
+
+> **Note**: You might need to link a billing account manually in the console if this is your first time.
+
+```bash
+# 1. Login (if not already)
+gcloud auth login
+
+# 2. Create a new project (Replace [YOUR_PROJECT_ID] with a unique name)
+gcloud projects create [YOUR_PROJECT_ID] --name="ElevenDops Dev"
+
+# 3. Set project as active
+gcloud config set project [YOUR_PROJECT_ID]
+
+# 4. Enable required APIs
+gcloud services enable firestore.googleapis.com storage.googleapis.com iam.googleapis.com
+```
+
+### B. Manual Setup (Console)
+
 1.  **Create a New Project** (or use an existing one):
 
     - Go to the [GCP Console](https://console.cloud.google.com/).
@@ -33,20 +55,62 @@ This guide provides a step-by-step plan to switch your local ElevenDops environm
 
 ## Step 2: Configure GCP Services
 
-### Firestore
+### 1. Cloud Firestore
 
-1.  Go to the [Firestore Console](https://console.cloud.google.com/firestore).
+#### A. Automated Creation (Recommended)
+
+Run this command to create the Firestore database:
+
+```bash
+# For default database (recommended for simple setups)
+gcloud firestore databases create --location=us-central1 --type=firestore-native
+
+# For custom-named database (e.g., elevendops-db)
+gcloud firestore databases create --location=us-central1 --type=firestore-native --database=elevendops-db
+```
+
+> [!NOTE]
+> If you use a custom database name (not `(default)`), you must set `FIRESTORE_DATABASE_ID` in your `.env` file to match.
+
+#### B. Manual Creation (Console)
+
+1.  **Open Firebase Console**: Go to [Firebase Console](https://console.firebase.google.com/).
 2.  Click **Create Database**.
 3.  Select **Native Mode** (Recommended for this project).
-4.  Choose a **Location** (e.g., `asia-east1` or `us-central1`) that is close to you.
-5.  **Security Rules**: For development, start with **Test mode** (open to internet for 30 days) to avoid immediate permission issues, but move to Production mode with proper rules later.
+4.  Choose **Location**: `us-central1` (Iowa) — recommended for consistency with GCS and cost optimization.
+5.  **Database ID**: Use `(default)` or a custom name like `elevendops-db`.
+6.  **Security Rules**: For development, start with **Test mode** (open to internet for 30 days) to avoid immediate permission issues, but move to Production mode with proper rules later.
 
-### Cloud Storage
+### 2. Cloud Storage (GCS)
 
-1.  Go to the [Cloud Storage Console](https://console.cloud.google.com/storage).
+#### A. Automated Creation (Recommended)
+
+Run the following command in your terminal:
+
+```bash
+# Create the bucket
+gcloud storage buckets create gs://YOUR_BUCKET_NAME --location=us-central1 --storage-class=standard --uniform-bucket-level-access
+
+# (Optional) Disable public access prevention if strictly needed,
+# but for this project we recommend keeping it ENABLED.
+```
+
+#### B. Manual Creation (Console)
+
+1.  **Open GCS Console**: Go to [Cloud Storage Browser](https://console.cloud.google.com/storage/browser).
 2.  **Create a Bucket**:
-    - Name: Must be globally unique (e.g., `elevendops-audio-dev-[your-name]`).
-    - defaults are usually fine for development.
+    - **Name**: Must be globally unique (e.g., `elevendops-audio-dev-[your-name]`).
+    - **Location Type**: Select **Region** → `us-central1` (Iowa).
+      > [!TIP]
+      > GCS [Free Tier](https://cloud.google.com/storage/pricing#free-tier) (5 GB/month) is **only** available in `us-central1`, `us-east1`, and `us-west1`. Use `us-central1` to match Firestore region and maximize free tier benefits.
+    - **Storage Class**: Select **Standard** (best for frequent access).
+    - **Access Control**: Select **Uniform** (modern, IAM-based security).
+    - **Public Access**: Ensure **"Enforce public access prevention on this bucket"** is **checked**. (The app uses Signed URLs for private access).
+    - **Data Protection**:
+      - **Soft delete policy**: **Uncheck** (to save costs on temporary files/testing).
+      - **Object versioning**: **Uncheck**.
+      - **Retention**: **Uncheck**.
+    - **Advanced Settings**: You can leave Hierarchical Namespace and Anywhere Cache **unchecked**.
     - Note down the **Bucket Name**.
 
 ---
@@ -92,6 +156,10 @@ USE_FIRESTORE_EMULATOR=false
 # Set your REAL Project ID
 GOOGLE_CLOUD_PROJECT=[YOUR_PROJECT_ID]
 
+# Set your Firestore Database ID
+# Use "(default)" for the default database, or your custom name (e.g., "elevendops-db")
+FIRESTORE_DATABASE_ID=elevendops-db
+
 # ===========================================
 # GCS Configuration
 # ===========================================
@@ -108,7 +176,18 @@ GCS_BUCKET_NAME=[YOUR_BUCKET_NAME]
 
 ## Step 5: Verification
 
-1.  **Restart the Backend**:
+### 1. Automated Verification (Recommended)
+
+We provide a PowerShell script to automatically check your environment settings and GCP connectivity.
+
+```powershell
+# Run the verification script (from project root)
+.\verify--gcp-migration.ps1
+```
+
+If the script returns **Verification SUCCESS**, you are ready to proceed.
+
+### 2. Manual Verification
 
     - If you are running via `docker-compose`, you might want to stop the emulators (`docker-compose down`) and run just the app, usually:
       ```bash
@@ -120,7 +199,7 @@ GCS_BUCKET_NAME=[YOUR_BUCKET_NAME]
     > **Recommendation**: For this hybrid "Local Code + Real Cloud" setup, it is often easiest to run the backend Python code **directly on your host machine** (using `uv run ...`) rather than inside Docker, so it automatically inherits your user's `gcloud` credentials.
 
 2.  **Test the App**:
-    - Start the frontend: `uv run streamlit run streamlit_app/Home.py`
+    - Start the frontend: `uv run streamlit run streamlit_app/app.py`
     - Go to **Agent Setup** or **Education Audio**.
     - Perform an action (create an agent, upload a file).
     - Check the [GCP Console](https://console.cloud.google.com/) (Firestore Data or Storage Browser) to verify the data was actually created in the cloud.

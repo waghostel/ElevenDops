@@ -95,6 +95,16 @@ def get_secret(project_id: str, secret_id: str, version: str = "latest") -> str:
 api_key = get_secret("elevendops-dev", "ELEVENLABS_API_KEY")
 ```
 
+> **💡 重要概念：ADC 與 Secret Manager 的關係**
+>
+> 上述程式碼中 `SecretManagerServiceClient()` 沒有傳入任何憑證，這是因為 SDK 內部會自動透過 **ADC (Application Default Credentials)** 機制來獲取身分。
+>
+> - **ADC** 解決：**你是誰？**（提供身分憑證）
+> - **IAM** 解決：**你能做什麼？**（`Secret Manager Secret Accessor` 角色）
+> - **Secret Manager** 解決：**你要拿什麼？**（儲存的敏感資訊）
+>
+> 詳見：[深入淺出 ADC](../google-cloud-authentication/01--introduction-to-adc.md)
+
 ### 步驟 4：版本管理
 
 #### 我們在做什麼？
@@ -223,3 +233,7 @@ Secret Manager 的計費包含兩部分：
 | 檔案路徑            | 說明                                      |
 | ------------------- | ----------------------------------------- |
 | `backend/config.py` | 環境變數設定，可擴展為讀取 Secret Manager |
+
+---
+
+[⬅️ 返回 Secret Manager 索引](./index.md)

@@ -1,6 +1,7 @@
 import logging
 import os
 import shutil
+from datetime import timedelta
 from pathlib import Path
 from google.cloud import storage
 from google.auth.credentials import AnonymousCredentials
@@ -116,8 +117,30 @@ class StorageService:
             return f"https://storage.googleapis.com/{self._bucket_name}/{filename}"
     
     def upload_audio(self, audio_data: bytes, filename: str) -> str:
-        """Upload audio file and return URL."""
-        return self.upload_file(audio_data, f"audio/{filename}", content_type="audio/mpeg")
+        """Upload audio file and return storage path or URL.
+        
+        For production GCS, returns the storage path (e.g., 'audio/uuid.mp3')
+        which should be signed on retrieval.
+        For emulator/mock, returns a direct URL for convenience.
+        
+        Args:
+            audio_data: Audio file bytes.
+            filename: Filename (without subdirectory prefix).
+            
+        Returns:
+            Storage path (production) or direct URL (emulator/mock).
+        """
+        settings = get_settings()
+        storage_path = f"audio/{filename}"
+        
+        # Upload the file
+        result_url = self.upload_file(audio_data, storage_path, content_type="audio/mpeg")
+        
+        # For production, return just the storage path (to be signed later)
+        # For emulator/mock, return the direct URL for immediate access
+        if not settings.use_gcs_emulator and not settings.use_mock_storage:
+            return storage_path
+        return result_url
     
     def delete_file(self, filename: str) -> bool:
         """Delete a file from storage."""
@@ -188,3 +211,57 @@ class StorageService:
 def get_storage_service() -> StorageService:
     """Get the Storage service instance."""
     return StorageService()
+
+
+# Default expiration for signed URLs (1 hour)
+DEFAULT_SIGNED_URL_EXPIRATION_SECONDS = 3600
+
+
+def get_signed_url(
+    storage_path: str, 
+    expiration_seconds: int = DEFAULT_SIGNED_URL_EXPIRATION_SECONDS
+) -> str:
+    """Generate a signed URL for temporary access to a GCS object.
+    
+    This function generates time-limited URLs that provide secure access
+    to private bucket objects without requiring public bucket access.
+    
+    Args:
+        storage_path: The storage path (e.g., 'audio/uuid.mp3').
+        expiration_seconds: URL validity duration in seconds (default: 1 hour).
+        
+    Returns:
+        A signed URL for production GCS, or direct URL for emulator/mock.
+        If the path is already a full URL (http/https), returns it unchanged.
+    """
+    settings = get_settings()
+    
+    # If it's already a full URL, return as-is (backward compatibility)
+    if storage_path.startswith("http://") or storage_path.startswith("https://"):
+        return storage_path
+    
+    service = get_storage_service()
+    
+    # Mock storage: return backend proxy URL
+    if settings.use_mock_storage:
+        return f"{service._blob_public_base_url}/{storage_path}"
+    
+    # Emulator: return direct emulator URL (no signing needed)
+    if settings.use_gcs_emulator:
+        encoded_path = storage_path.replace("/", "%2F")
+        return f"{settings.gcs_emulator_host}/storage/v1/b/{service._bucket_name}/o/{encoded_path}?alt=media"
+    
+    # Production: generate signed URL
+    try:
+        blob = service._bucket.blob(storage_path)
+        signed_url = blob.generate_signed_url(
+            version="v4",
+            expiration=timedelta(seconds=expiration_seconds),
+            method="GET",
+        )
+        logger.info(f"Generated signed URL for {storage_path} (expires in {expiration_seconds}s)")
+        return signed_url
+    except Exception as e:
+        logger.error(f"Failed to generate signed URL for {storage_path}: {e}")
+        # Fallback to public URL (will fail if bucket is private, but logs the error)
+        return f"https://storage.googleapis.com/{service._bucket_name}/{storage_path}"

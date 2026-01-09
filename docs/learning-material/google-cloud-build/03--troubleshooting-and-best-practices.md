@@ -85,3 +85,7 @@ gcloud builds submit --config cloudbuild.yaml .
 
 - [Cloud Build 的 IAM 權限設定](https://cloud.google.com/build/docs/securing-builds/configure-access-for-cloud-build-service-account)
 - [如何管理建置觸發條件](https://cloud.google.com/build/docs/automating-builds/create-manage-triggers)
+
+---
+
+[⬅️ 返回 Google Cloud Build 索引](./index.md)

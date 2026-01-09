@@ -3,7 +3,8 @@
 headless = true
 # Enable CORS for Cloud Run
 enableCORS = false
-enableXsrfProtection = false
+# XSRF protection - enabled for security (was disabled for reverse proxy compatibility)
+enableXsrfProtection = true
 
 [browser]
 # Disable automatic browser opening (Cloud Run doesn't have a browser)

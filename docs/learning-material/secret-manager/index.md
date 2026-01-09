@@ -22,3 +22,7 @@
 
 - [Secret Manager 官方文件](https://cloud.google.com/secret-manager/docs)
 - [本專案環境變數說明](../../backend/config.py)
+
+---
+
+[⬅️ 返回學習教材總覽](../index.md)

@@ -2,7 +2,7 @@
 
 from typing import List
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 
 from backend.models.schemas import (
     AgentCreateRequest,
@@ -10,13 +10,16 @@ from backend.models.schemas import (
     AgentListResponse,
 )
 from backend.services.agent_service import AgentService, get_agent_service, ElevenLabsAgentError
+from backend.middleware.rate_limit import limiter, RATE_LIMITS
 
 router = APIRouter(prefix="/api/agent", tags=["agent"])
 
 
 @router.post("", response_model=AgentResponse)
+@limiter.limit(RATE_LIMITS["agent"])
 async def create_agent(
     request: AgentCreateRequest,
+    http_request: Request,
     service: AgentService = Depends(get_agent_service),
 ):
     """Create a new agent."""

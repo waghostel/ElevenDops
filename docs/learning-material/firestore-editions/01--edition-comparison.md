@@ -123,3 +123,7 @@ Standard Edition 雖然強大，但在某些複雜查詢上有限制。Enterpris
 | 檔案路徑                                     | 說明                                           |
 | :------------------------------------------- | :--------------------------------------------- |
 | `backend/services/firestore_data_service.py` | 目前實作的資料操作邏輯完全符合 Standard 版規範 |
+
+---
+
+[⬅️ 返回 Firestore 版本 索引](./index.md)

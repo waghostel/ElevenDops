@@ -1,5 +1,6 @@
 """API routes for knowledge base management."""
 
+import logging
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, status
@@ -262,17 +263,27 @@ async def delete_knowledge_document(
         )
 
     # If synced to ElevenLabs, try to delete there first
+    elevenlabs_delete_success = False
     if doc.elevenlabs_document_id:
         try:
             elevenlabs_service.delete_document(doc.elevenlabs_document_id)
+            elevenlabs_delete_success = True
+            logging.info(f"Successfully deleted document {doc.elevenlabs_document_id} from ElevenLabs")
         except ElevenLabsDeleteError as e:
-            # Log error but verify if we should continue deleting from DB.
+            # Log error but continue deleting from DB.
             # Spec says "Firestore Deletion Priority: ...Firestore document SHALL still be deleted"
-            # So we proceed but maybe log/warn. 
-            pass
-        except Exception:
-            # Swallow other errors to ensure local deletion
-            pass
+            logging.warning(
+                f"Failed to delete document {doc.elevenlabs_document_id} from ElevenLabs: {e}. "
+                f"Proceeding with Firestore deletion. Document may remain orphaned in ElevenLabs."
+            )
+        except Exception as e:
+            # Log unexpected errors but ensure local deletion proceeds
+            logging.warning(
+                f"Unexpected error deleting document {doc.elevenlabs_document_id} from ElevenLabs: {e}. "
+                f"Proceeding with Firestore deletion. Document may remain orphaned in ElevenLabs."
+            )
+    else:
+        logging.info(f"Document {knowledge_id} has no ElevenLabs ID, skipping ElevenLabs deletion")
 
     # Delete from database
     success = await data_service.delete_knowledge_document(knowledge_id)

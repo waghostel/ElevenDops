@@ -146,3 +146,7 @@ result = external_component(selected, key=dynamic_key)
 | 檔案路徑                                   | 說明                                    |
 | ------------------------------------------ | --------------------------------------- |
 | `streamlit_app/pages/3_Education_Audio.py` | 修復 Content Modules 刷新問題的實際案例 |
+
+---
+
+[⬅️ 返回 Streamlit 動態 Key 模式 索引](./index.md)

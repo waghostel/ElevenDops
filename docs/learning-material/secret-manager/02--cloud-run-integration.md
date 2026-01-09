@@ -167,3 +167,7 @@ availableSecrets:
 | 檔案路徑            | 說明             |
 | ------------------- | ---------------- |
 | `backend/config.py` | 環境變數讀取邏輯 |
+
+---
+
+[⬅️ 返回 Secret Manager 索引](./index.md)

@@ -38,10 +38,24 @@ sequenceDiagram
 
     Client->>Backend: 請求上傳 URL
     Backend->>Backend: 使用 Service Account 簽名
-    Backend-->>Client: 返回 Signed URL
+    Backend-->>Client: 返回 Signed URL (純文字)
+    Note over Client, GCS: 流量直接傳輸 (Bypass Backend)
     Client->>GCS: 直接上傳檔案 (PUT)
     GCS->>GCS: 驗證簽名與時間
     GCS-->>Client: 200 OK
+```
+
+#### 流量管理 (Traffic Isolation)
+
+下面的流程圖展示了為何使用 Signed URL 可以顯著降低後端伺服器的壓力：
+
+```mermaid
+graph LR
+    A[瀏覽器] -- 1. 請求門票 --- B(Cloud Run 後端)
+    B -- 2. 簽名網址 --- A
+    A -- 3. 直接上傳/下載大量數據 --- C{GCS Bucket}
+    style B fill:#f9f,stroke:#333,stroke-width:2px
+    style C fill:#00ff00,stroke:#333,stroke-width:4px
 ```
 
 ### 步驟 2：產生 Download Signed URL
@@ -150,6 +164,14 @@ async function uploadToGCS(signedUrl: string, file: File) {
 1. 過期時間應設短（下載 1 小時、上傳 15 分鐘）
 2. 敏感操作可加入額外驗證（如要求特定 Headers）
 
+### Q3：使用 Signed URL 會增加 Cloud Run 的流量費用嗎？
+
+**答：** **不會。** 這是 Signed URL 的核心價值：
+
+- **後端 (Cloud Run)**：只負責簽發「門票（純文字網址）」，大小僅為幾百個 Bytes。
+- **數據傳輸**：實際的檔案數據（大流量）是直接在 **瀏覽器** 與 **GCS** 之間流動的。
+- **結論**：Cloud Run 的 Data Egress（數據流出）費率完全不會因為檔案傳輸而增加。
+
 ### Q2：在 Emulator 環境可以使用 Signed URL 嗎？
 
 **答：** `fake-gcs-server` 支援有限的 Signed URL。本專案在 Emulator 環境改用直接存取。
@@ -173,3 +195,7 @@ async function uploadToGCS(signedUrl: string, file: File) {
 | ---------------------------------------- | ------------------------------------- |
 | `backend/services/storage_service.py`    | 可擴展加入 `generate_signed_url` 方法 |
 | `backend/services/elevenlabs_service.py` | 若有音訊分享功能可參考                |
+
+---
+
+[⬅️ 返回 Cloud Storage (GCS) 深度解析索引](./index.md)

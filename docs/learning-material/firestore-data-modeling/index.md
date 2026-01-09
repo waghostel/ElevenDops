@@ -22,3 +22,7 @@
 
 - [Firestore 官方資料建模指南](https://firebase.google.com/docs/firestore/data-model)
 - [本專案 Firestore 服務實作](../../backend/services/firestore_data_service.py)
+
+---
+
+[⬅️ 返回學習教材總覽](../index.md)

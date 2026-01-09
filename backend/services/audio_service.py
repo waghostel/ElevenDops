@@ -7,7 +7,7 @@ from typing import List, Optional, AsyncGenerator
 
 from backend.models.schemas import AudioMetadata, VoiceOption
 from backend.services.elevenlabs_service import ElevenLabsService, get_elevenlabs_service
-from backend.services.storage_service import StorageService, get_storage_service
+from backend.services.storage_service import StorageService, get_storage_service, get_signed_url
 from backend.services.data_service import get_data_service, DataServiceInterface
 
 from backend.services.script_generation_service import ScriptGenerationService
@@ -190,7 +190,7 @@ class AudioService:
             doctor_id: ID of the doctor generating the audio.
             
         Returns:
-            AudioMetadata: Metadata of the generated audio.
+            AudioMetadata: Metadata of the generated audio with signed URL.
             
         Raises:
             Exception: If audio generation or upload fails.
@@ -201,18 +201,18 @@ class AudioService:
             # 1. Calls ElevenLabs to generate audio bytes
             audio_bytes = self.elevenlabs_service.text_to_speech(text=script, voice_id=voice_id)
             
-            # 2. Upload to Storage
+            # 2. Upload to Storage (returns storage path for production, URL for emulator)
             audio_id = str(uuid.uuid4())
             filename = f"{audio_id}.mp3"
-            audio_url = self.storage_service.upload_audio(audio_bytes, filename)
+            storage_path_or_url = self.storage_service.upload_audio(audio_bytes, filename)
             
-            # 3. Save Metadata
+            # 3. Save Metadata with storage path (not the signed URL)
             metadata = AudioMetadata(
                 audio_id=audio_id,
-                audio_url=audio_url,
+                audio_url=storage_path_or_url,  # Store path for production, URL for emulator
                 knowledge_id=knowledge_id,
                 voice_id=voice_id,
-                duration_seconds=None, # ElevenLabs simple API doesn't return duration
+                duration_seconds=None,  # ElevenLabs simple API doesn't return duration
                 script=script,
                 created_at=datetime.utcnow(),
                 doctor_id=doctor_id
@@ -220,7 +220,19 @@ class AudioService:
             
             await self.data_service.save_audio_metadata(metadata)
             
-            return metadata
+            # 4. Return metadata with signed URL for immediate playback
+            # Create a copy with signed URL for the response
+            signed_url = get_signed_url(storage_path_or_url)
+            return AudioMetadata(
+                audio_id=metadata.audio_id,
+                audio_url=signed_url,
+                knowledge_id=metadata.knowledge_id,
+                voice_id=metadata.voice_id,
+                duration_seconds=metadata.duration_seconds,
+                script=metadata.script,
+                created_at=metadata.created_at,
+                doctor_id=metadata.doctor_id
+            )
             
         except Exception as e:
             logging.error(f"Error in audio generation workflow: {e}")
@@ -233,14 +245,35 @@ class AudioService:
     ) -> List[AudioMetadata]:
         """Get audio files filtered by knowledge_id and/or doctor_id.
         
+        Audio URLs are signed on retrieval for secure, temporary access.
+        
         Args:
             knowledge_id: Optional filter by knowledge document ID.
             doctor_id: Optional filter by doctor ID.
             
         Returns:
-            List[AudioMetadata]: List of audio files.
+            List[AudioMetadata]: List of audio files with signed URLs.
         """
-        return await self.data_service.get_audio_files(knowledge_id=knowledge_id, doctor_id=doctor_id)
+        audio_files = await self.data_service.get_audio_files(
+            knowledge_id=knowledge_id, doctor_id=doctor_id
+        )
+        
+        # Sign URLs for each audio file
+        signed_audio_files = []
+        for audio in audio_files:
+            signed_url = get_signed_url(audio.audio_url)
+            signed_audio_files.append(AudioMetadata(
+                audio_id=audio.audio_id,
+                audio_url=signed_url,
+                knowledge_id=audio.knowledge_id,
+                voice_id=audio.voice_id,
+                duration_seconds=audio.duration_seconds,
+                script=audio.script,
+                created_at=audio.created_at,
+                doctor_id=audio.doctor_id
+            ))
+        
+        return signed_audio_files
 
     def get_available_voices(self) -> List[VoiceOption]:
         """Get available voices.

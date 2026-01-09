@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 import json
 
@@ -20,6 +20,7 @@ from backend.models.schemas import (
 )
 from backend.services.audio_service import AudioService, get_audio_service
 from backend.services.elevenlabs_service import ElevenLabsTTSError
+from backend.middleware.rate_limit import limiter, RATE_LIMITS
 
 router = APIRouter(prefix="/api/audio", tags=["audio"])
 
@@ -29,8 +30,11 @@ router = APIRouter(prefix="/api/audio", tags=["audio"])
     response_model=ScriptGenerateResponse,
     responses={404: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
 )
+@limiter.limit(RATE_LIMITS["audio"])
 async def generate_script(
-    request: ScriptGenerateRequest, service: AudioService = Depends(get_audio_service)
+    request: ScriptGenerateRequest,
+    http_request: Request,
+    service: AudioService = Depends(get_audio_service)
 ):
     """Generate script from knowledge document."""
     try:
@@ -106,8 +110,11 @@ async def generate_script_stream(
         500: {"model": ErrorResponse},
     },
 )
+@limiter.limit(RATE_LIMITS["audio"])
 async def generate_audio(
-    request: AudioGenerateRequest, service: AudioService = Depends(get_audio_service)
+    request: AudioGenerateRequest,
+    http_request: Request,
+    service: AudioService = Depends(get_audio_service)
 ):
     """Generate audio from script."""
     # Exceptions bubble up to global handler which maps ElevenLabs errors correctly

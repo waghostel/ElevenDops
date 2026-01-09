@@ -54,6 +54,10 @@ class Settings(BaseSettings):
         default="localhost:8080",
         description="Firestore Emulator host",
     )
+    firestore_database_id: str = Field(
+        default="(default)",
+        description="Firestore database ID (use '(default)' for the default database)",
+    )
 
     # GCS Configuration
     use_mock_storage: bool = Field(
