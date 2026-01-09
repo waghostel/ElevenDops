@@ -43,7 +43,7 @@ if "selected_voice_id" not in st.session_state:
 if "voices" not in st.session_state:
     st.session_state.voices = []
 if "selected_llm_model" not in st.session_state:
-    st.session_state.selected_llm_model = "gemini-2.5-flash-lite"
+    st.session_state.selected_llm_model = "gemini-3-flash-preview"
 if "custom_prompt" not in st.session_state:
     st.session_state.custom_prompt = None
 if "selected_templates" not in st.session_state:
