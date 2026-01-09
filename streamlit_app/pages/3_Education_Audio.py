@@ -43,7 +43,7 @@ if "selected_voice_id" not in st.session_state:
 if "voices" not in st.session_state:
     st.session_state.voices = []
 if "selected_llm_model" not in st.session_state:
-    st.session_state.selected_llm_model = "gemini-3-flash-preview"
+    st.session_state.selected_llm_model = "gemini-2.5-flash-lite"
 if "custom_prompt" not in st.session_state:
     st.session_state.custom_prompt = None
 if "selected_templates" not in st.session_state:
@@ -518,6 +518,22 @@ async def render_script_editor():
     if not st.session_state.selected_document:
         st.info("Please select a document specifically to proceed.")
         return
+    
+    # Multi-speaker toggle at top level for proper rerun behavior
+    def on_multi_speaker_toggle():
+        st.session_state.multi_speaker_enabled = st.session_state._multi_speaker_toggle
+        st.rerun()
+    
+    if "_multi_speaker_toggle" not in st.session_state:
+        st.session_state._multi_speaker_toggle = st.session_state.multi_speaker_enabled
+    
+    st.toggle(
+        "🎭 Multi-Speaker Dialogue",
+        value=st.session_state.multi_speaker_enabled,
+        help="Enable dialogue between Doctor/Educator and Patient/Learner",
+        key="_multi_speaker_toggle",
+        on_change=on_multi_speaker_toggle
+    )
 
     # Load available templates if not loaded
     if not st.session_state.available_templates:
@@ -618,13 +634,6 @@ async def render_script_editor():
                         help="💡 Speaker 1 is the Doctor/Educator/Guider voice. Select languages for this speaker.",
                         key="_speaker1_lang_widget",
                         on_change=on_speaker1_lang_change
-                    )
-                    
-                    # Multi-speaker toggle - placed above Speaker 2 Languages
-                    st.session_state.multi_speaker_enabled = st.toggle(
-                        "🎭 Multi-Speaker Dialogue",
-                        value=st.session_state.multi_speaker_enabled,
-                        help="Enable dialogue between Doctor/Educator and Patient/Learner"
                     )
                     
                     # Speaker 2 Languages (disabled when multi-speaker is off)
@@ -854,14 +863,11 @@ async def render_audio_generation():
     """Render voice selection with dynamic language filtering (isolated fragment)."""
     st.subheader("3. Voice & Generation")
     
-    # Second Multi-Speaker toggle (synchronized with the one in Script Editor)
-    # Using the same session state key ensures both toggles stay in sync
-    st.session_state.multi_speaker_enabled = st.toggle(
-        "🎭 Multi-Speaker Dialogue",
-        value=st.session_state.multi_speaker_enabled,
-        help="Enable dialogue between Doctor/Educator and Patient/Learner",
-        key="multi_speaker_toggle_voice_section"
-    )
+    # Display multi-speaker mode status (controlled from Script Editor section)
+    if st.session_state.multi_speaker_enabled:
+        st.success("🎭 Multi-Speaker Mode Active")
+    else:
+        st.info("🎙️ Single-Speaker Mode")
 
     if not st.session_state.generated_script:
         st.info("Generate or write a script to proceed.")
