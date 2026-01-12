@@ -43,7 +43,7 @@ if "selected_voice_id" not in st.session_state:
 if "voices" not in st.session_state:
     st.session_state.voices = []
 if "selected_llm_model" not in st.session_state:
-    st.session_state.selected_llm_model = "gemini-2.5-flash-lite"
+    st.session_state.selected_llm_model = "gemini-3-flash-preview"
 if "custom_prompt" not in st.session_state:
     st.session_state.custom_prompt = None
 if "selected_templates" not in st.session_state:
@@ -1064,16 +1064,61 @@ async def render_audio_history():
 
     for audio in audio_files:
         with st.container(border=True):
-            col1, col2 = st.columns([3, 1])
-            with col1:
+            # Header row with metadata, audio player, and delete button
+            col_meta, col_audio, col_del = st.columns([2, 2, 0.5])
+            
+            with col_meta:
                 # In doctor view mode, show associated document name
                 if st.session_state.audio_view_mode == "doctor":
                     st.markdown(f"**Document:** `{audio.knowledge_id[:12]}...`")
                 st.markdown(f"**Generated:** {audio.created_at.strftime('%Y-%m-%d %H:%M')}")
-                with st.expander("View Script"):
-                    st.text(audio.script[:100] + "..." if len(audio.script) > 100 else audio.script)
-            with col2:
+                
+            with col_audio:
                 st.audio(audio.audio_url, format="audio/mpeg")
+                
+            with col_del:
+                if st.button("🗑️", key=f"del_audio_{audio.audio_id}", help="Delete this audio"):
+                    # Store deletion request in session state for confirmation dialog
+                    st.session_state._pending_audio_deletion = audio.audio_id
+                    st.rerun()
+            
+            # Full-width View Script expander (outside columns)
+            with st.expander("View Script"):
+                st.text(audio.script)
+
+
+# Handle pending audio deletion (confirmation dialog)
+if st.session_state.get("_pending_audio_deletion"):
+    @st.dialog("Confirm Deletion")
+    def confirm_delete_audio():
+        st.warning("Are you sure you want to delete this audio file?")
+        st.caption("This action cannot be undone.")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("✅ Yes, Delete", type="primary", use_container_width=True):
+                audio_id_to_delete = st.session_state._pending_audio_deletion
+                st.session_state._pending_audio_deletion = None
+                
+                with st.spinner("Deleting audio file..."):
+                    try:
+                        run_async(client.delete_audio(audio_id_to_delete))
+                        # Invalidate cache
+                        st.session_state["_audio_history_cache_id"] = None
+                        st.toast("Audio deleted successfully!", icon="✅")
+                        st.rerun()
+                    except Exception as e:
+                        st.session_state._pending_audio_deletion = None
+                        add_error_to_log(f"Failed to delete audio: {e}")
+                        st.rerun()
+                    
+        with col2:
+            if st.button("❌ Cancel", use_container_width=True):
+                st.session_state._pending_audio_deletion = None
+                st.rerun()
+    
+    confirm_delete_audio()
+
 
 
 async def main():

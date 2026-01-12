@@ -4,8 +4,9 @@ from unittest.mock import MagicMock
 import pytest
 
 # Mock elevenlabs module before it's imported
-sys.modules["elevenlabs"] = MagicMock()
-sys.modules["elevenlabs.client"] = MagicMock()
+if os.environ.get("TEST_REAL_GCP") != "true":
+    sys.modules["elevenlabs"] = MagicMock()
+    sys.modules["elevenlabs.client"] = MagicMock()
 
 # Fixture to disable rate limiting for tests
 @pytest.fixture(autouse=True)
@@ -24,8 +25,8 @@ def disable_rate_limiter():
 
 # Mock google.cloud modules for testing without GCP dependencies
 # Mock google.cloud modules for testing without GCP dependencies
-# Only mock if NOT testing against emulator
-if os.environ.get("TEST_AGAINST_EMULATOR") != "true":
+# Only mock if NOT testing against emulator AND NOT testing against real GCP
+if os.environ.get("TEST_AGAINST_EMULATOR") != "true" and os.environ.get("TEST_REAL_GCP") != "true":
     mock_firestore = MagicMock()
     mock_firestore.Client = MagicMock()
     sys.modules["google.cloud.firestore"] = mock_firestore

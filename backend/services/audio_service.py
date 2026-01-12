@@ -299,6 +299,55 @@ class AudioService:
             
         return proxy_audio_files
 
+    async def delete_audio(self, audio_id: str) -> bool:
+        """Delete an audio file.
+        
+        Removes both the audio file from storage and its metadata from the database.
+        
+        Args:
+            audio_id: ID of the audio file to delete.
+            
+        Returns:
+            bool: True if deletion successful, False if audio not found.
+        """
+        logging.info(f"Deleting audio: {audio_id}")
+        
+        try:
+            # 1. Get audio metadata to find storage path
+            audio_files = await self.data_service.get_audio_files()
+            audio_to_delete = None
+            for audio in audio_files:
+                if audio.audio_id == audio_id:
+                    audio_to_delete = audio
+                    break
+            
+            if not audio_to_delete:
+                logging.warning(f"Audio {audio_id} not found in database")
+                return False
+            
+            # 2. Delete from storage
+            filename = f"{audio_id}.mp3"
+            
+            try:
+                self.storage_service.delete_audio(filename)
+                logging.info(f"Deleted audio file from storage: {filename}")
+            except Exception as e:
+                logging.warning(f"Failed to delete audio file from storage: {e}")
+                # Continue with database deletion even if storage deletion fails
+            
+            # 3. Delete metadata from database
+            success = await self.data_service.delete_audio_file(audio_id)
+            if success:
+                logging.info(f"Deleted audio metadata from database: {audio_id}")
+            else:
+                logging.warning(f"Failed to delete audio metadata: {audio_id}")
+            
+            return success
+            
+        except Exception as e:
+            logging.error(f"Error deleting audio {audio_id}: {e}")
+            return False
+
     def get_available_voices(self) -> List[VoiceOption]:
         """Get available voices.
         

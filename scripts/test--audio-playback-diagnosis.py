@@ -58,8 +58,8 @@ async def diagnose_audio_playback():
         print(f"  [OK] Found {len(audio_files)} audio file(s) in Firestore")
         
         if not audio_files:
-            print("  [WARN] No audio files found. Generate some audio first.")
-            return
+            print("  [WARN] No audio files found in Firestore query. Procedding with other checks.")
+            # return  # Continue to check health and strategy even if empty
             
         # Display first 5 audio files
         for i, audio in enumerate(audio_files[:5]):
@@ -186,7 +186,36 @@ async def diagnose_audio_playback():
         print(f"  [ERROR] Direct test error: {e}")
         import traceback
         traceback.print_exc()
-    
+
+    # 7. Verify URL Strategy
+    print("\n[STRATEGY] VERIFYING URL STRATEGY:")
+    try:
+        from backend.services.audio_service import get_audio_service
+        audio_service = get_audio_service()
+        
+        # This calls the logic we just refactored
+        processed_audio_files = await audio_service.get_audio_files(doctor_id=test_audio.doctor_id)
+        
+        if processed_audio_files:
+            # Find our test audio in the processed list
+            sample_audio = next((a for a in processed_audio_files if a.audio_id == test_audio.audio_id), processed_audio_files[0])
+            print(f"  - Final Processed URL: {sample_audio.audio_url}")
+            
+            if "Signature=" in sample_audio.audio_url or "X-Goog-Signature=" in sample_audio.audio_url:
+                print("  - Strategy: [OK] [SIGNED URL] (Service Account detected!)")
+            elif "/api/audio/stream/" in sample_audio.audio_url:
+                 print(f"  - Strategy: [PROXY URL] (Fallback mode)")
+                 print(f"  - Proxy Base: {settings.backend_api_url}")
+            else:
+                 print("  - Strategy: [UNKNOWN/OTHER]")
+        else:
+            print("  [WARN] No audio files returned from AudioService")
+                 
+    except Exception as e:
+         print(f"  [ERROR] Strategy check error: {e}")
+         import traceback
+         traceback.print_exc()
+
     print("\n" + "=" * 60)
     print("DIAGNOSIS COMPLETE")
     print("=" * 60)

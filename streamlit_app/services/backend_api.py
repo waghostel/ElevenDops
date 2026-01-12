@@ -616,6 +616,35 @@ class BackendAPIClient:
                 status_code=e.response.status_code,
             ) from e
 
+    async def delete_audio(self, audio_id: str) -> bool:
+        """Delete an audio file.
+
+        Args:
+            audio_id: ID of the audio file to delete.
+
+        Returns:
+            bool: True if deletion successful.
+            
+        Raises:
+            APIConnectionError: If connection to backend fails.
+            APITimeoutError: If request times out.
+            APIError: For other API errors.
+        """
+        try:
+            async with self._get_client() as client:
+                response = await client.delete(f"/api/audio/{audio_id}")
+                response.raise_for_status()
+                return True
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.TimeoutException as e:
+            raise APITimeoutError(f"Delete audio timed out: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Failed to delete audio: {self._parse_error_message(e.response)}",
+                status_code=e.response.status_code,
+            ) from e
+
     async def get_templates(self) -> List[TemplateInfo]:
         """Get available prompt templates.
 

@@ -1,4 +1,3 @@
-Failed to generate signed URL for audio/1b04bbbb-43eb-45ae-98b2-e99c02134c83.mp3: you need a private key to sign credentials.the credentials you are currently using <class 'google.oauth2.credentials.Credentials'> just contains a token. see https://googleapis.dev/python/google-api-core/latest/auth.html#setting-up-a-service-account for more details.
 ============================================================
 AUDIO PLAYBACK DIAGNOSIS
 ============================================================
@@ -69,8 +68,10 @@ AUDIO PLAYBACK DIAGNOSIS
 
 [SIGN] TESTING SIGNED URL GENERATION:
   - Original URL: audio/1b04bbbb-43eb-45ae-98b2-e99c02134c83.mp3
-  - Signed URL: https://storage.googleapis.com/elevendops-bucket/audio/1b04bbbb-43eb-45ae-98b2-e99c02134c83.mp3
-  - Signed URL accessible: [FAIL] NO (HTTP 403)
+  - Signed URL: https://storage.googleapis.com/elevendops-bucket/audio/1b04bbbb-43eb-45ae-98b2-e99c02134c83.mp3?X-Go...
+  - Signed URL accessible: [OK] YES
+  - Content-Type: audio/mpeg
+  - Content-Length: 10911 bytes
 
 [STREAM] TESTING STREAMING ENDPOINT:
   - Stream URL: http://localhost:8000/api/audio/stream/1b04bbbb-43eb-45ae-98b2-e99c02134c83
@@ -84,6 +85,10 @@ AUDIO PLAYBACK DIAGNOSIS
   - stream_audio returned: <class 'generator'>
   - Result is iterable: [OK]
   - First 2 chunks: 10911 bytes
+
+[STRATEGY] VERIFYING URL STRATEGY:
+  - Final Processed URL: https://storage.googleapis.com/elevendops-bucket/audio/1b04bbbb-43eb-45ae-98b2-e99c02134c83.mp3?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=elevendops-sa%40elevendops-dev.iam.gserviceaccount.com%2F20260112%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20260112T061816Z&X-Goog-Expires=3600&X-Goog-SignedHeaders=host&X-Goog-Signature=09b03063004d6f3f656e2dda609e3c51c67a674cabb5c19e2969c99357bd4b43db97d9022c62ca82a06684a39a7e215b714c145e30ba728171bd47ffd0f5f38a1e1950b4f715727b73538f1da381c1205f671fca9d7b43ec049fa893695b45fa0ab5b430c17cdd2a18744e7453c3a5445326b793868b2d14a7fee5ea26bf3a71fea4b0945f32f6c0210352648f21baca3c35e285ed5e9182b6396cec83d7606083262581ac4be23c80c63cc9d659e8af39e053535393ce7c8a7b0892175b26a9c5596ee9f2006bf0f828a80e455fd5752984a005a8598eed96f762542b3f66e932dca42a22ecb57b923afe2321547fdd23887d41d47d94569f8d11b529b76827
+  - Strategy: [OK] [SIGNED URL] (Service Account detected!)
 
 ============================================================
 DIAGNOSIS COMPLETE

@@ -69,22 +69,27 @@ class StorageService:
             raise
     
     def _ensure_bucket_exists(self):
-        """Create bucket if it doesn't exist (for emulator)."""
+        """Create bucket if it doesn't exist (for emulator) or use lazy reference (for real GCS)."""
         settings = get_settings()
         
         # Skip for mock storage
         if settings.use_mock_storage:
             return
 
+        # For Real GCS: Use a lazy reference to avoid 'storage.buckets.get' permission requirement
+        # This is the standard best practice when using 'Storage Object Admin' roles
+        if not settings.use_gcs_emulator:
+            self._bucket = self._client.bucket(self._bucket_name)
+            logger.info(f"Using GCS bucket reference: '{self._bucket_name}'")
+            return
+
+        # For Emulator: Perform existence check and creation
         try:
             self._bucket = self._client.get_bucket(self._bucket_name)
-            logger.info(f"Bucket '{self._bucket_name}' exists")
+            logger.info(f"Bucket '{self._bucket_name}' exists in emulator")
         except Exception:
-            if settings.use_gcs_emulator:
-                logger.info(f"Creating bucket '{self._bucket_name}' in emulator")
-                self._bucket = self._client.create_bucket(self._bucket_name)
-            else:
-                raise
+            logger.info(f"Creating bucket '{self._bucket_name}' in emulator")
+            self._bucket = self._client.create_bucket(self._bucket_name)
     
     def upload_file(self, data: bytes, filename: str, content_type: str = "application/octet-stream") -> str:
         """Upload file and return public URL."""
