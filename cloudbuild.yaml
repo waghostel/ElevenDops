@@ -9,83 +9,85 @@
 steps:
   # Step 1: Build the container image (Requirement 5.1)
   # Uses Dockerfile.cloudrun for production build
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'build'
+  - name: "gcr.io/cloud-builders/docker"
+    id: "build"
     args:
-      - 'build'
-      - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/elevendops/app:${SHORT_SHA}'
-      - '-t'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/elevendops/app:latest'
-      - '-f'
-      - 'Dockerfile.cloudrun'
-      - '.'
+      - "build"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/elevendops/app:${SHORT_SHA}"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/elevendops/app:latest"
+      - "-f"
+      - "Dockerfile.cloudrun"
+      - "."
 
   # Step 2: Push image to Artifact Registry (Requirement 5.2)
   # Pushes both SHA-tagged and latest-tagged images
-  - name: 'gcr.io/cloud-builders/docker'
-    id: 'push'
+  - name: "gcr.io/cloud-builders/docker"
+    id: "push"
     args:
-      - 'push'
-      - '--all-tags'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/elevendops/app'
+      - "push"
+      - "--all-tags"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/elevendops/app"
     waitFor:
-      - 'build'
+      - "build"
 
   # Step 3: Deploy to Cloud Run (Requirement 5.3)
   # Uses the SHA-tagged image for traceability
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    id: 'deploy'
-    entrypoint: 'gcloud'
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "deploy"
+    entrypoint: "gcloud"
     args:
-      - 'run'
-      - 'deploy'
-      - 'elevendops'
-      - '--image'
-      - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/elevendops/app:${SHORT_SHA}'
-      - '--region'
-      - '${_REGION}'
-      - '--platform'
-      - 'managed'
-      - '--allow-unauthenticated'
-      - '--service-account'
-      - 'elevendops-sa@${PROJECT_ID}.iam.gserviceaccount.com'
-      - '--set-secrets'
-      - 'ELEVENLABS_API_KEY=elevenlabs-api-key:latest,GOOGLE_API_KEY=google-api-key:latest,LANGSMITH_API_KEY=langsmith-api-key:latest'
-      - '--set-env-vars'
-      - 'APP_ENV=production,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GCS_BUCKET_NAME=elevendops-audio,LANGSMITH_PROJECT=elevendops-production,LANGSMITH_TRACING_ENABLED=true,USE_FIRESTORE_EMULATOR=false,USE_GCS_EMULATOR=false,BACKEND_API_URL=http://localhost:8000'
-      - '--cpu'
-      - '2'
-      - '--memory'
-      - '1Gi'
-      - '--min-instances'
-      - '0'
-      - '--max-instances'
-      - '10'
-      - '--concurrency'
-      - '80'
-      - '--timeout'
-      - '300'
+      - "run"
+      - "deploy"
+      - "elevendops"
+      - "--image"
+      - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/elevendops/app:${SHORT_SHA}"
+      - "--region"
+      - "${_REGION}"
+      - "--platform"
+      - "managed"
+      - "--allow-unauthenticated"
+      - "--service-account"
+      - "elevendops-sa@${PROJECT_ID}.iam.gserviceaccount.com"
+      - "--set-secrets"
+      - "ELEVENLABS_API_KEY=elevenlabs-api-key:latest,GOOGLE_API_KEY=google-api-key:latest,LANGSMITH_API_KEY=langsmith-api-key:latest"
+      - "--set-env-vars"
+      - "APP_ENV=production,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GCS_BUCKET_NAME=${_GCS_BUCKET_NAME},FIRESTORE_DATABASE_ID=${_FIRESTORE_DATABASE_ID},LANGSMITH_PROJECT=elevendops-production,LANGSMITH_TRACING_ENABLED=true,USE_FIRESTORE_EMULATOR=false,USE_GCS_EMULATOR=false,BACKEND_API_URL=http://localhost:8000,DEBUG=false"
+      - "--cpu"
+      - "2"
+      - "--memory"
+      - "1Gi"
+      - "--min-instances"
+      - "0"
+      - "--max-instances"
+      - "10"
+      - "--concurrency"
+      - "80"
+      - "--timeout"
+      - "300"
     waitFor:
-      - 'push'
+      - "push"
 
 # Substitution variables (Requirement 5.4)
 # These can be overridden at build time or via trigger configuration
 substitutions:
-  _REGION: 'asia-east1'
+  _REGION: "asia-east1"
+  _GCS_BUCKET_NAME: "elevendops-bucket"
+  _FIRESTORE_DATABASE_ID: "elevendops-db"
 
 # Build options
 options:
   # Use Cloud Logging for build logs
   logging: CLOUD_LOGGING_ONLY
   # Machine type for faster builds
-  machineType: 'E2_HIGHCPU_8'
+  machineType: "E2_HIGHCPU_8"
 
 # Images to be stored in Artifact Registry
 # These are automatically pushed after successful build
 images:
-  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/elevendops/app:${SHORT_SHA}'
-  - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/elevendops/app:latest'
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/elevendops/app:${SHORT_SHA}"
+  - "${_REGION}-docker.pkg.dev/${PROJECT_ID}/elevendops/app:latest"
 
 # Timeout for the entire build (15 minutes)
-timeout: '900s'
+timeout: "900s"

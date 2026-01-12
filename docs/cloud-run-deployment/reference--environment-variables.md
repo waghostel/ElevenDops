@@ -12,6 +12,7 @@ Complete reference for all environment variables used in ElevenDops Cloud Run de
 | ---------------------- | ----------------------- | ------------ | -------- |
 | `APP_ENV`              | Application environment | `production` | ✅       |
 | `GOOGLE_CLOUD_PROJECT` | GCP project ID          | -            | ✅       |
+| `DEBUG`                | Enable debug mode       | `false`      | ⚠️       |
 | `PORT`                 | Cloud Run assigned port | `8080`       | Auto     |
 
 ### Backend Configuration
@@ -23,18 +24,19 @@ Complete reference for all environment variables used in ElevenDops Cloud Run de
 
 ### Emulator Settings (Production)
 
-| Variable                 | Description            | Default | Required |
-| ------------------------ | ---------------------- | ------- | -------- |
-| `USE_FIRESTORE_EMULATOR` | Use Firestore emulator | `false` | ✅       |
-| `USE_GCS_EMULATOR`       | Use GCS emulator       | `false` | ✅       |
-| `USE_MOCK_DATA`          | Use mock data          | `false` | ✅       |
-| `USE_MOCK_STORAGE`       | Use mock storage       | `false` | ✅       |
+| Variable                 | Description            | Default              | Required |
+| ------------------------ | ---------------------- | -------------------- | -------- |
+| `USE_FIRESTORE_EMULATOR` | Use Firestore emulator | `false`              | ✅       |
+| `FIRESTORE_DATABASE_ID`  | Named Firestore DB ID  | `elevendops-db-test` | ⚠️       |
+| `USE_GCS_EMULATOR`       | Use GCS emulator       | `false`              | ✅       |
+| `USE_MOCK_DATA`          | Use mock data          | `false`              | ✅       |
+| `USE_MOCK_STORAGE`       | Use mock storage       | `false`              | ✅       |
 
 ### Cloud Storage
 
-| Variable          | Description               | Default            | Required |
-| ----------------- | ------------------------- | ------------------ | -------- |
-| `GCS_BUCKET_NAME` | Cloud Storage bucket name | `elevendops-audio` | ✅       |
+| Variable          | Description               | Default                  | Required |
+| ----------------- | ------------------------- | ------------------------ | -------- |
+| `GCS_BUCKET_NAME` | Cloud Storage bucket name | `elevendops-bucket-test` | ✅       |
 
 ### LangSmith Tracing
 
@@ -101,7 +103,9 @@ env:
   - name: GOOGLE_CLOUD_PROJECT
     value: "PROJECT_ID"
   - name: GCS_BUCKET_NAME
-    value: "elevendops-audio"
+    value: "elevendops-bucket"
+  - name: FIRESTORE_DATABASE_ID
+    value: "elevendops-db"
   - name: CORS_ORIGINS
     value: "https://elevendops-HASH-REGION.a.run.app,http://localhost:8000"
   - name: LANGSMITH_PROJECT
@@ -114,14 +118,27 @@ env:
     value: "false"
   - name: BACKEND_API_URL
     value: "http://localhost:8000"
+  - name: DEBUG
+    value: "false"
 ```
 
 ---
 
-## Configuration in cloudbuild.yaml
+### Substitution Variables
+
+Used for centralizing configuration values:
 
 ```yaml
---set-env-vars=APP_ENV=production,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GCS_BUCKET_NAME=elevendops-audio,LANGSMITH_PROJECT=elevendops-production,LANGSMITH_TRACING_ENABLED=true,USE_FIRESTORE_EMULATOR=false,USE_GCS_EMULATOR=false,BACKEND_API_URL=http://localhost:8000
+substitutions:
+  _REGION: "asia-east1"
+  _GCS_BUCKET_NAME: "elevendops-bucket"
+  _FIRESTORE_DATABASE_ID: "elevendops-db"
+```
+
+### Deploy Step
+
+```yaml
+--set-env-vars=APP_ENV=production,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GCS_BUCKET_NAME=${_GCS_BUCKET_NAME},FIRESTORE_DATABASE_ID=${_FIRESTORE_DATABASE_ID},LANGSMITH_PROJECT=elevendops-production,LANGSMITH_TRACING_ENABLED=true,USE_FIRESTORE_EMULATOR=false,USE_GCS_EMULATOR=false,BACKEND_API_URL=http://localhost:8000,DEBUG=false
 ```
 
 ---

@@ -186,7 +186,16 @@ def test_health_check_accuracy_with_services_up():
     
     # Mock both services at the API level where they're called
     with patch('backend.api.health.get_firestore_service') as mock_firestore, \
-         patch('backend.api.health.get_storage_service') as mock_storage:
+         patch('backend.api.health.get_storage_service') as mock_storage, \
+         patch('backend.api.health.get_settings') as mock_settings:
+        
+        # Configure settings to disable mock mode
+        settings_instance = MagicMock()
+        settings_instance.use_mock_data = False
+        settings_instance.use_mock_storage = False
+        settings_instance.use_firestore_emulator = True
+        settings_instance.use_gcs_emulator = True
+        mock_settings.return_value = settings_instance
         
         mock_firestore_instance = MagicMock()
         mock_firestore_instance.health_check.return_value = True
@@ -217,7 +226,16 @@ def test_health_check_accuracy_with_services_down():
     
     # Mock both services to return unhealthy
     with patch('backend.api.health.get_firestore_service') as mock_firestore, \
-         patch('backend.api.health.get_storage_service') as mock_storage:
+         patch('backend.api.health.get_storage_service') as mock_storage, \
+         patch('backend.api.health.get_settings') as mock_settings:
+
+        # Configure settings to disable mock mode
+        settings_instance = MagicMock()
+        settings_instance.use_mock_data = False
+        settings_instance.use_mock_storage = False
+        settings_instance.use_firestore_emulator = True
+        settings_instance.use_gcs_emulator = True
+        mock_settings.return_value = settings_instance
         
         mock_firestore_instance = MagicMock()
         mock_firestore_instance.health_check.return_value = False
@@ -248,7 +266,16 @@ def test_health_check_accuracy_mixed_services():
     
     # Mock firestore healthy, storage unhealthy
     with patch('backend.api.health.get_firestore_service') as mock_firestore, \
-         patch('backend.api.health.get_storage_service') as mock_storage:
+         patch('backend.api.health.get_storage_service') as mock_storage, \
+         patch('backend.api.health.get_settings') as mock_settings:
+
+        # Configure settings to disable mock mode
+        settings_instance = MagicMock()
+        settings_instance.use_mock_data = False
+        settings_instance.use_mock_storage = False
+        settings_instance.use_firestore_emulator = True
+        settings_instance.use_gcs_emulator = True
+        mock_settings.return_value = settings_instance
         
         mock_firestore_instance = MagicMock()
         mock_firestore_instance.health_check.return_value = True

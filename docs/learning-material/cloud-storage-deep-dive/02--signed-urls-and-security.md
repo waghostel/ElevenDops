@@ -155,6 +155,33 @@ async function uploadToGCS(signedUrl: string, file: File) {
 }
 ```
 
+### 步驟 5：本地開發環境測試 Signed URL
+
+#### 我們在做什麼？
+
+在本地環境 (Localhost) 模擬生產環境的簽章行為，以確保 Signed URL 產生邏輯正確。
+
+#### 為什麼需要這樣做？
+
+預設的 `gcloud auth application-default login` 僅提供使用者憑證 (User Credentials)，**不包含私鑰 (Private Key)**，因此無法在本地產生 Signed URL。我們需要手動掛載 Service Account Key。
+
+#### 操作步驟
+
+1.  **下載 Key**：前往 [GCP 控制台 > IAM > 服務帳號](https://console.cloud.google.com/iam-admin/serviceaccounts)，點擊進入您的服務帳號並建立一把 JSON 金鑰。
+2.  **設定環境變數**：
+
+    ```bash
+    # .env
+    # 指向您的 JSON Key 路徑
+    GOOGLE_APPLICATION_CREDENTIALS="C:\path\to\your\service-account-key.json"
+    ```
+
+3.  **驗證**：重啟後端，程式碼中的 `blob.generate_signed_url()` 將會自動抓取該 Key 並成功簽章。
+
+詳細的服務帳號建立流程，請參考：[服務帳號設定指南](../../development-guide/guide--service-account-setup.md)。
+
+> [!WARNING] > **安全提醒**：請務必將 JSON Key 檔案加入 `.gitignore`，**絕對不要**提交到 Git Repo 中！
+
 ## 常見問題 Q&A
 
 ### Q1：Signed URL 洩漏怎麼辦？
@@ -176,6 +203,58 @@ async function uploadToGCS(signedUrl: string, file: File) {
 
 **答：** `fake-gcs-server` 支援有限的 Signed URL。本專案在 Emulator 環境改用直接存取。
 
+### Q4：其他雲端平台也有 Signed URL 嗎？
+
+**答：有**，Signed URL 是雲端存儲的通用模式，只是名稱略有不同：
+
+| 平台              | 名稱          | API 相容性               | 特色                           |
+| :---------------- | :------------ | :----------------------- | :----------------------------- |
+| **GCP**           | Signed URL    | Google Cloud Storage API | 整合 IAM，支援 V4 簽章         |
+| **AWS**           | Presigned URL | S3 API                   | 行業標準，生態系最豐富         |
+| **Cloudflare R2** | Presigned URL | **S3 API 相容**          | 無流量費，使用 AWS SDK 即可    |
+| **Azure**         | SAS Token     | Azure Storage API        | 權限控制粒度最細 (IP/Protocol) |
+
+因此，您在這裡學到的架構模式是可以跨平台遷移的。
+
+### Q5：如果後端在 GCP 但檔案在 Cloudflare R2，Signed URL 怎麼運作？
+
+**答：這就是強大的「多雲架構 (Multi-cloud)」應用。**
+
+當您在 GCP (Cloud Run) 簽署 R2 的網址後：
+
+1. **流量繞過 GCP (Bypass)**：音訊大流量直接從 **Cloudflare R2 → 使用者瀏覽器**。
+2. **節省成本**：利用 Cloudflare R2 的 **0 流量費 (Zero Egress)** 特性，徹底免除 GCP 昂貴的出站流量費用。
+3. **分工明確**：GCP 負責運算與邏輯，Cloudflare 負責廉價且高效的儲存分發。
+
+```mermaid
+    User->>GCP: 1. 請求音訊
+    GCP->>GCP: 2. 簽署 R2 URL
+    GCP-->>User: 3. 回傳 Signed URL
+    User->>R2: 4. 直接請求檔案 (GET)
+    R2-->>User: 5. 傳送數據 (0 流量費)
+```
+
+### Q6：Cloud Run 上也需要上傳 JSON Key 嗎？
+
+**答：不需要，且不應該這樣做。**
+
+在 Cloud Run 等 GCP 環境，應使用 **Managed Identity (託管識別)**，也就是直接指派服務帳號給 Cloud Run 服務。
+
+#### 設定步驟：
+
+1.  前往 **[Google Cloud Console > Cloud Run](https://console.cloud.google.com/run)**。
+2.  點擊您的服務名稱（例如 `elevendops-backend`）進入詳情頁。
+3.  點擊上方的 **「EDIT & DEPLOY NEW REVISION (編輯並部署新版本)」**。
+4.  捲動到頁面底部，找到並展開 **「Security (安全性)」** 區塊。
+5.  在 **「Service account (服務帳號)」** 下拉選單中：
+    - 預設可能是 `Compute Engine default service account`。
+    - **請改選您剛剛建立的那個服務帳號** (例如 `elevendops-dev@...`)。
+6.  點擊底部的 **「DEPLOY (部署)」**。
+
+部署完成後，您的 Cloud Run 就會自動擁有該服務帳號的所有權限（讀寫 Firestore 與 GCS），完全不需另外設定 Key！
+
+本地開發使用 JSON Key 是為了「模擬」雲端環境的權限；真正上雲後，請讓雲端環境接手管理。
+
 ## 重點整理
 
 | 類型               | 用途         | 建議過期時間 |
@@ -186,6 +265,9 @@ async function uploadToGCS(signedUrl: string, file: File) {
 ## 延伸閱讀
 
 - [Signed URLs 官方文件](https://cloud.google.com/storage/docs/access-control/signed-urls)
+- [服務帳號設定指南](../../development-guide/guide--service-account-setup.md)
+- [GCS 儲存瀏覽器 (Console)](https://console.cloud.google.com/storage/browser)
+- [Firestore 資料庫 (Console)](https://console.cloud.google.com/firestore)
 
 ---
 

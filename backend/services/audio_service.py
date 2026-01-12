@@ -122,61 +122,23 @@ class AudioService:
                 "generation_error": generation_error
             }
 
-    async def generate_script_stream(
-        self,
-        knowledge_id: str,
-        model_name: str = "gemini-2.5-flash",
-        custom_prompt: Optional[str] = None,
-        template_config: Optional[TemplateConfig] = None
-    ) -> AsyncGenerator[dict, None]:
-        """Stream script generation from a knowledge document.
+    def stream_audio(self, audio_id: str):
+        """Stream audio file content.
         
-        This method streams tokens as they are generated, keeping the
-        connection alive and providing real-time feedback to avoid
-        timeout issues with large documents.
+        This is a sync function because it returns a sync generator from
+        storage_service.get_file_stream(). FastAPI's StreamingResponse
+        handles sync generators efficiently via thread pool.
         
         Args:
-            knowledge_id: ID of the knowledge document.
-            model_name: Gemini model to use.
-            custom_prompt: Optional custom prompt (legacy support).
-            template_config: Optional template configuration for building prompt.
+            audio_id: ID of the audio file to stream.
             
         Yields:
-            dict events with type: 'token', 'complete', or 'error'
+             Bytes chunks of the audio file.
         """
-        logging.info(f"Starting streaming script generation for knowledge_id: {knowledge_id}")
+        filename = f"{audio_id}.mp3"
+        storage_path = f"audio/{filename}"
         
-        doc = await self.data_service.get_knowledge_document(knowledge_id)
-        if not doc:
-            logging.warning(f"Knowledge document not found: {knowledge_id}")
-            yield {"type": "error", "message": f"Knowledge document {knowledge_id} not found"}
-            return
-        
-        # Build prompt: prefer template_config > custom_prompt > default
-        if template_config:
-            template_service = get_prompt_template_service()
-            prompt = await template_service.build_prompt(
-                template_ids=template_config.template_ids,
-                quick_instructions=template_config.quick_instructions,
-                system_prompt_override=template_config.system_prompt_override,
-                preferred_languages=template_config.preferred_languages,
-                speaker1_languages=template_config.speaker1_languages,
-                speaker2_languages=template_config.speaker2_languages,
-                target_duration_minutes=template_config.target_duration_minutes,
-                is_multi_speaker=template_config.is_multi_speaker,
-            )
-            logging.info(f"Using template config with {len(template_config.template_ids)} templates, multi_speaker={template_config.is_multi_speaker}")
-        else:
-            prompt = custom_prompt or get_default_script_prompt()
-        
-        api_model_name = GEMINI_MODELS.get(model_name, model_name)
-        
-        async for event in self.script_service.generate_script_stream(
-            knowledge_content=doc.raw_content,
-            model_name=api_model_name,
-            prompt=prompt
-        ):
-            yield event
+        return self.storage_service.get_file_stream(storage_path)
 
     async def generate_audio(
         self, script: str, voice_id: str, knowledge_id: str, doctor_id: str = "default_doctor"
@@ -220,12 +182,31 @@ class AudioService:
             
             await self.data_service.save_audio_metadata(metadata)
             
-            # 4. Return metadata with signed URL for immediate playback
-            # Create a copy with signed URL for the response
-            signed_url = get_signed_url(storage_path_or_url)
+            # 4. Return metadata with PROXY URL
+            # Instead of signing, we return a URL causing the frontend to call our stream endpoint
+            # We need the current host. Relative URL is safest for same-origin, 
+            # but Streamlit runs on different port.
+            # Ideally config should provide backend public URL.
+            # For now, we'll return a relative path and let frontend handle it? 
+            # Or absolute localhost URL.
+            
+            # Use Backend config for base URL if available, or assume localhost:8001
+            # Actually, let's return a special URL format the frontend client understands
+            # OR just return the full backend URL.
+            from backend.config import get_settings
+            settings = get_settings()
+            # If storage path is already a full URL (mock/emulator), use it.
+            # If it's a relative path (production), construct proxy URL.
+            
+            proxy_url = storage_path_or_url
+            if not storage_path_or_url.startswith("http"):
+                 # It's a path like "audio/uuid.mp3". 
+                 # We want the audio ID.
+                 proxy_url = f"http://localhost:{settings.fastapi_port}/api/audio/stream/{audio_id}"
+
             return AudioMetadata(
                 audio_id=metadata.audio_id,
-                audio_url=signed_url,
+                audio_url=proxy_url,
                 knowledge_id=metadata.knowledge_id,
                 voice_id=metadata.voice_id,
                 duration_seconds=metadata.duration_seconds,
@@ -273,7 +254,50 @@ class AudioService:
                 doctor_id=audio.doctor_id
             ))
         
-        return signed_audio_files
+        # return signed_audio_files (Removed for Proxy implementation)
+        
+        # PROXY Update:
+        # Instead of signing, convert to proxy URLs
+        from backend.config import get_settings
+        settings = get_settings()
+        
+        proxy_audio_files = []
+        for audio in audio_files:
+            # Check if it needs proxying
+            final_url = audio.audio_url
+            
+            # If it's a full GCS URL (legacy data), we need to extract ID and use proxy
+            if audio.audio_url.startswith("https://storage.googleapis.com/"):
+                # URL is https://storage.googleapis.com/BUCKET/audio/UUID.mp3
+                try:
+                    # Extract UUID.mp3
+                    parts = audio.audio_url.split("/")
+                    filename = parts[-1]
+                    audio_id_extracted = filename.replace(".mp3", "")
+                    final_url = f"http://localhost:{settings.fastapi_port}/api/audio/stream/{audio_id_extracted}"
+                except Exception:
+                    # Fallback to as-is if parsing fails
+                    pass
+            elif not audio.audio_url.startswith("http"):
+                 # It's a path "audio/uuid.mp3"
+                 filename = audio.audio_url.split("/")[-1]
+                 audio_id_extracted = filename.replace(".mp3", "")
+                 final_url = f"http://localhost:{settings.fastapi_port}/api/audio/stream/{audio_id_extracted}"
+            
+            # If it's already http (mock/emulator), leave it
+            
+            proxy_audio_files.append(AudioMetadata(
+                audio_id=audio.audio_id,
+                audio_url=final_url,
+                knowledge_id=audio.knowledge_id,
+                voice_id=audio.voice_id,
+                duration_seconds=audio.duration_seconds,
+                script=audio.script,
+                created_at=audio.created_at,
+                doctor_id=audio.doctor_id
+            ))
+            
+        return proxy_audio_files
 
     def get_available_voices(self) -> List[VoiceOption]:
         """Get available voices.

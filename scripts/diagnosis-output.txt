@@ -1,0 +1,90 @@
+Failed to generate signed URL for audio/1b04bbbb-43eb-45ae-98b2-e99c02134c83.mp3: you need a private key to sign credentials.the credentials you are currently using <class 'google.oauth2.credentials.Credentials'> just contains a token. see https://googleapis.dev/python/google-api-core/latest/auth.html#setting-up-a-service-account for more details.
+============================================================
+AUDIO PLAYBACK DIAGNOSIS
+============================================================
+
+[CONFIG] CONFIGURATION:
+  - USE_GCS_EMULATOR: False
+  - USE_MOCK_STORAGE: False
+  - GCS_BUCKET_NAME: elevendops-bucket
+  - GOOGLE_CLOUD_PROJECT: elevendops-dev
+  - USE_FIRESTORE_EMULATOR: False
+  - FIRESTORE_DATABASE_ID: elevendops-db
+  - FASTAPI_PORT: 8000
+
+[FIRESTORE] FETCHING AUDIO METADATA FROM FIRESTORE:
+  [OK] Found 8 audio file(s) in Firestore
+
+  Audio #1:
+    - audio_id: 1b04bbbb-43eb-45ae-98b2-e99c02134c83
+    - audio_url (stored): audio/1b04bbbb-43eb-45ae-98b2-e99c02134c83.mp3
+    - knowledge_id: test_doc
+    - doctor_id: dr_demo_001
+    - created_at: 2026-01-09 15:05:33.020148+00:00
+
+  Audio #2:
+    - audio_id: 4b141115-a326-4ae4-92a0-daa4ebc24e67
+    - audio_url (stored): audio/4b141115-a326-4ae4-92a0-daa4ebc24e67.mp3
+    - knowledge_id: test_doc
+    - doctor_id: dr_demo_001
+    - created_at: 2026-01-09 15:05:38.676602+00:00
+
+  Audio #3:
+    - audio_id: 59c2d274-7030-45cb-a8bd-ce90cf9f5ce2
+    - audio_url (stored): audio/59c2d274-7030-45cb-a8bd-ce90cf9f5ce2.mp3
+    - knowledge_id: test_doc
+    - doctor_id: dr_demo_001
+    - created_at: 2026-01-09 15:05:37.033504+00:00
+
+  Audio #4:
+    - audio_id: 8b69d3f1-a0f1-47bb-b46c-15fcd369dd71
+    - audio_url (stored): audio/8b69d3f1-a0f1-47bb-b46c-15fcd369dd71.mp3
+    - knowledge_id: test_doc
+    - doctor_id: dr_demo_001
+    - created_at: 2026-01-09 15:04:57.687472+00:00
+
+  Audio #5:
+    - audio_id: 9118c3bf-6a5d-4414-af27-6ac1b610a15e
+    - audio_url (stored): audio/9118c3bf-6a5d-4414-af27-6ac1b610a15e.mp3
+    - knowledge_id: test_doc
+    - doctor_id: dr_demo_001
+    - created_at: 2026-01-09 15:05:40.575994+00:00
+
+[GCS] VERIFYING GCS FILE EXISTENCE:
+
+  Audio #1 (1b04bbbb-43eb-45ae-98b2-e99c02134c83):
+    - Stored URL: audio/1b04bbbb-43eb-45ae-98b2-e99c02134c83.mp3
+    - Resolved path: audio/1b04bbbb-43eb-45ae-98b2-e99c02134c83.mp3
+    - File exists in GCS: [OK] YES
+
+  Audio #2 (4b141115-a326-4ae4-92a0-daa4ebc24e67):
+    - Stored URL: audio/4b141115-a326-4ae4-92a0-daa4ebc24e67.mp3
+    - Resolved path: audio/4b141115-a326-4ae4-92a0-daa4ebc24e67.mp3
+    - File exists in GCS: [OK] YES
+
+  Audio #3 (59c2d274-7030-45cb-a8bd-ce90cf9f5ce2):
+    - Stored URL: audio/59c2d274-7030-45cb-a8bd-ce90cf9f5ce2.mp3
+    - Resolved path: audio/59c2d274-7030-45cb-a8bd-ce90cf9f5ce2.mp3
+    - File exists in GCS: [OK] YES
+
+[SIGN] TESTING SIGNED URL GENERATION:
+  - Original URL: audio/1b04bbbb-43eb-45ae-98b2-e99c02134c83.mp3
+  - Signed URL: https://storage.googleapis.com/elevendops-bucket/audio/1b04bbbb-43eb-45ae-98b2-e99c02134c83.mp3
+  - Signed URL accessible: [FAIL] NO (HTTP 403)
+
+[STREAM] TESTING STREAMING ENDPOINT:
+  - Stream URL: http://localhost:8000/api/audio/stream/1b04bbbb-43eb-45ae-98b2-e99c02134c83
+  - Backend health: [OK] Running
+  - Stream response status: 200
+  - Content-Type: audio/mpeg
+  - Content-Length: 10911 bytes
+  [OK] Stream endpoint working correctly!
+
+[TEST] TESTING STREAM_AUDIO METHOD DIRECTLY:
+  - stream_audio returned: <class 'generator'>
+  - Result is iterable: [OK]
+  - First 2 chunks: 10911 bytes
+
+============================================================
+DIAGNOSIS COMPLETE
+============================================================

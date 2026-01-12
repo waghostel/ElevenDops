@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 from fastapi import APIRouter
 from backend.services.firestore_service import get_firestore_service
@@ -67,6 +68,8 @@ async def health_check():
         },
         "config": {
             "project": settings.google_cloud_project,
+            "firestore_db_id": settings.firestore_database_id,
+            "env_firestore_db_id": os.environ.get("FIRESTORE_DATABASE_ID", "NOT_SET"),
             "debug": settings.debug,
             "use_mock_data": settings.use_mock_data,
             "use_mock_storage": settings.use_mock_storage

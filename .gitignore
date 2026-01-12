@@ -2,6 +2,8 @@
 .env
 .env.local
 .env.*.local
+.env.env.bak
+
 
 # Python
 __pycache__/
@@ -70,6 +72,12 @@ integration_*.txt
 full_test_output.txt
 frontend_props_errors.txt
 TEST_ERROR_REPORT.md
+failed_tests_summary.txt
+scripts/*.out
+
+scripts/*.out
+scripts/*_errors.txt
+
 
 # Logs
 *.log
@@ -110,3 +118,6 @@ docker-compose.override.yml
 
 # Emulator data persistence (local development)
 emulator-data/
+z-backup/
+
+elevendops-dev-service-account-key-9c0f74fe81d2.json

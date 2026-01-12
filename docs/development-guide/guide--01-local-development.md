@@ -22,7 +22,7 @@ This guide describes how to set up and run the ElevenDops development environmen
    cp .env.example .env
    ```
 
-   _Note: Default settings are pre-configured for local emulators._
+   _Note: Default settings are pre-configured for local emulators. For detailed parameter management, see [Configuration Management Guide](./guide--configuration-management.md)._
 
 4. **Start Emulators**:
 

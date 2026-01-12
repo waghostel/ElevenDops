@@ -32,21 +32,21 @@ router = APIRouter(prefix="/api/audio", tags=["audio"])
 )
 @limiter.limit(RATE_LIMITS["audio"])
 async def generate_script(
-    request: ScriptGenerateRequest,
-    http_request: Request,
+    payload: ScriptGenerateRequest,
+    request: Request,
     service: AudioService = Depends(get_audio_service)
 ):
     """Generate script from knowledge document."""
     try:
         result = await service.generate_script(
-            knowledge_id=request.knowledge_id,
-            model_name=request.model_name,
-            custom_prompt=request.custom_prompt,
-            template_config=request.template_config
+            knowledge_id=payload.knowledge_id,
+            model_name=payload.model_name,
+            custom_prompt=payload.custom_prompt,
+            template_config=payload.template_config
         )
         return ScriptGenerateResponse(
             script=result["script"],
-            knowledge_id=request.knowledge_id,
+            knowledge_id=payload.knowledge_id,
             model_used=result["model_used"],
             generated_at=datetime.utcnow(),
             generation_error=result.get("generation_error"),
@@ -63,7 +63,7 @@ async def generate_script(
     responses={404: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
 )
 async def generate_script_stream(
-    request: ScriptGenerateRequest, service: AudioService = Depends(get_audio_service)
+    payload: ScriptGenerateRequest, service: AudioService = Depends(get_audio_service)
 ):
     """Stream script generation with Server-Sent Events.
     
@@ -79,10 +79,10 @@ async def generate_script_stream(
     async def event_generator():
         try:
             async for event in service.generate_script_stream(
-                knowledge_id=request.knowledge_id,
-                model_name=request.model_name,
-                custom_prompt=request.custom_prompt,
-                template_config=request.template_config
+                knowledge_id=payload.knowledge_id,
+                model_name=payload.model_name,
+                custom_prompt=payload.custom_prompt,
+                template_config=payload.template_config
             ):
                 # Format as Server-Sent Event
                 yield f"data: {json.dumps(event)}\n\n"
@@ -112,17 +112,17 @@ async def generate_script_stream(
 )
 @limiter.limit(RATE_LIMITS["audio"])
 async def generate_audio(
-    request: AudioGenerateRequest,
-    http_request: Request,
+    payload: AudioGenerateRequest,
+    request: Request,
     service: AudioService = Depends(get_audio_service)
 ):
     """Generate audio from script."""
     # Exceptions bubble up to global handler which maps ElevenLabs errors correctly
     metadata = await service.generate_audio(
-        script=request.script,
-        voice_id=request.voice_id,
-        knowledge_id=request.knowledge_id,
-        doctor_id=request.doctor_id,
+        script=payload.script,
+        voice_id=payload.voice_id,
+        knowledge_id=payload.knowledge_id,
+        doctor_id=payload.doctor_id,
     )
     return AudioGenerateResponse(
         audio_id=metadata.audio_id,
@@ -134,6 +134,29 @@ async def generate_audio(
         created_at=metadata.created_at,
         doctor_id=metadata.doctor_id,
     )
+
+
+@router.get(
+    "/stream/{audio_id}",
+    response_class=StreamingResponse,
+    responses={404: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+)
+async def stream_audio(
+    audio_id: str, service: AudioService = Depends(get_audio_service)
+):
+    """Stream audio content."""
+    try:
+        return StreamingResponse(
+            service.stream_audio(audio_id),
+            media_type="audio/mpeg",
+             headers={
+                "Cache-Control": "public, max-age=3600",
+                "Content-Disposition": f"inline; filename={audio_id}.mp3"
+            }
+        )
+    except Exception as e:
+        # If file not found or other storage error
+        raise HTTPException(status_code=404, detail=f"Audio not found: {str(e)}")
 
 
 @router.get(
@@ -172,6 +195,28 @@ async def get_audio_files(
         audio_files=audio_files,
         total_count=len(audio_files)
     )
+
+
+@router.delete(
+    "/{audio_id}",
+    responses={404: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+)
+async def delete_audio(
+    audio_id: str, service: AudioService = Depends(get_audio_service)
+):
+    """Delete an audio file.
+    
+    Removes both the audio file from storage and its metadata from the database.
+    """
+    try:
+        success = await service.delete_audio(audio_id)
+        if not success:
+            raise HTTPException(status_code=404, detail=f"Audio file {audio_id} not found")
+        return {"success": True, "audio_id": audio_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete audio: {str(e)}")
 
 
 @router.get(

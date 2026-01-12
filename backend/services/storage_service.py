@@ -207,6 +207,47 @@ class StorageService:
             logger.error(f"Storage health check failed: {e}")
             return False
 
+    def get_file_stream(self, storage_path: str):
+        """Get a stream of the file content.
+        
+        Args:
+            storage_path: Path to the file in storage.
+            
+        Yields:
+            Bytes chunks of the file content.
+        """
+        settings = get_settings()
+        
+        # Handle full URL input by extracting path
+        if storage_path.startswith("https://storage.googleapis.com/"):
+            parts = storage_path.split("/")
+            if len(parts) > 4:
+                storage_path = "/".join(parts[4:])
+        
+        if settings.use_mock_storage:
+            file_path = self._mock_storage_dir / storage_path
+            with open(file_path, "rb") as f:
+                while chunk := f.read(8192):
+                    yield chunk
+                    
+        elif settings.use_gcs_emulator:
+            # For emulator, we can just download as bytes (it's local anyway)
+            # or try to stream if client supports it. 
+            # Simple approach: download to memory (emulator is for dev/test)
+            blob = self._bucket.blob(storage_path)
+            yield blob.download_as_bytes()
+            
+        else:
+            # Production GCS: Stream download
+            blob = self._bucket.blob(storage_path)
+            try:
+                with blob.open("rb") as f:
+                    while chunk := f.read(8192):
+                        yield chunk
+            except Exception as e:
+                logger.error(f"Error streaming file {storage_path}: {e}")
+                raise
+
 
 def get_storage_service() -> StorageService:
     """Get the Storage service instance."""
@@ -236,8 +277,19 @@ def get_signed_url(
     """
     settings = get_settings()
     
-    # If it's already a full URL, return as-is (backward compatibility)
-    if storage_path.startswith("http://") or storage_path.startswith("https://"):
+    # If it's a full GCS public URL, extract the path and sign it
+    # This handles legacy data where audio_url was stored as a public URL
+    if storage_path.startswith("https://storage.googleapis.com/"):
+        # Format: https://storage.googleapis.com/BUCKET_NAME/PATH/TO/FILE
+        # Splitting by / gives: ["https:", "", "storage.googleapis.com", "BUCKET_NAME", "PATH", "TO", "FILE"]
+        parts = storage_path.split("/")
+        if len(parts) > 4:
+             # Reconstruct the path after the bucket name
+            storage_path = "/".join(parts[4:])
+            logger.info(f"Extracted path from full URL: {storage_path}")
+
+    # If it's some other external URL, return as-is
+    elif storage_path.startswith("http://") or storage_path.startswith("https://"):
         return storage_path
     
     service = get_storage_service()

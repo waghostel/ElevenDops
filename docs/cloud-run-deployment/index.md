@@ -18,13 +18,14 @@ If you're deploying for the first time, follow these guides in order:
 
 ### Guides
 
-| Document                                               | Description                                        |
-| ------------------------------------------------------ | -------------------------------------------------- |
-| [Prerequisites](./guide--prerequisites.md)             | GCP project setup, APIs, and initial configuration |
-| [Upload to Cloud Run](./guide--upload-to-cloud-run.md) | **Complete guide on how to upload to Cloud Run**   |
-| [Secret Management](./guide--secret-management.md)     | Setting up Secret Manager for API keys             |
-| [CI/CD Pipeline](./guide--cicd-pipeline.md)            | Automated deployment with Cloud Build              |
-| [Troubleshooting](./guide--troubleshooting.md)         | Common issues and debugging                        |
+| Document                                                                            | Description                                        |
+| ----------------------------------------------------------------------------------- | -------------------------------------------------- |
+| [Prerequisites](./guide--prerequisites.md)                                          | GCP project setup, APIs, and initial configuration |
+| [Upload to Cloud Run](./guide--upload-to-cloud-run.md)                              | **Complete guide on how to upload to Cloud Run**   |
+| [Secret Management](./guide--secret-management.md)                                  | Setting up Secret Manager for API keys             |
+| [CI/CD Pipeline](./guide--cicd-pipeline.md)                                         | Automated deployment with Cloud Build              |
+| [Configuration Management](../development-guide/guide--configuration-management.md) | **Cross-stage parameter setup and strategy**       |
+| [Troubleshooting](./guide--troubleshooting.md)                                      | Common issues and debugging                        |
 
 ### Reference
 

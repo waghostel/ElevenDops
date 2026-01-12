@@ -1,10 +1,26 @@
 import sys
 import os
 from unittest.mock import MagicMock
+import pytest
 
 # Mock elevenlabs module before it's imported
 sys.modules["elevenlabs"] = MagicMock()
 sys.modules["elevenlabs.client"] = MagicMock()
+
+# Fixture to disable rate limiting for tests
+@pytest.fixture(autouse=True)
+def disable_rate_limiter():
+    # Ensure the environment variable is set for any code that checks it
+    os.environ["LIMITER_ENABLED"] = "False"
+    # Import limiter here to ensure it's available and can be modified
+    from backend.middleware.rate_limit import limiter
+    original_limiter_state = limiter.enabled
+    limiter.enabled = False
+    yield
+    # Restore original state after tests
+    limiter.enabled = original_limiter_state
+    del os.environ["LIMITER_ENABLED"]
+
 
 # Mock google.cloud modules for testing without GCP dependencies
 # Mock google.cloud modules for testing without GCP dependencies

@@ -9,8 +9,9 @@ import os
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator, ValidatorFunctionWrapHandler
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,17 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def strip_whitespace(cls, v: Any) -> Any:
+        """Strip whitespace from all string environment variables before parsing."""
+        if isinstance(v, str):
+            stripped = v.strip()
+            if stripped != v:
+                logger.debug(f"Stripped whitespace from environment variable")
+            return stripped
+        return v
 
     # Application environment
     app_env: Literal["development", "staging", "production"] = Field(
@@ -55,7 +67,7 @@ class Settings(BaseSettings):
         description="Firestore Emulator host",
     )
     firestore_database_id: str = Field(
-        default="(default)",
+        default="elevendops-db-test",
         description="Firestore database ID (use '(default)' for the default database)",
     )
 
@@ -73,7 +85,7 @@ class Settings(BaseSettings):
         description="GCS Emulator host",
     )
     gcs_bucket_name: str = Field(
-        default="elevenlabs-audio",
+        default="elevendops-bucket-test",
         description="GCS bucket name",
     )
 

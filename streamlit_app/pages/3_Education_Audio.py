@@ -43,7 +43,7 @@ if "selected_voice_id" not in st.session_state:
 if "voices" not in st.session_state:
     st.session_state.voices = []
 if "selected_llm_model" not in st.session_state:
-    st.session_state.selected_llm_model = "gemini-3-flash-preview"
+    st.session_state.selected_llm_model = "gemini-2.5-flash-lite"
 if "custom_prompt" not in st.session_state:
     st.session_state.custom_prompt = None
 if "selected_templates" not in st.session_state:
@@ -77,7 +77,7 @@ if "doctor_id" not in st.session_state:
     st.session_state.doctor_id = "dr_demo_001"
 # Audio history view mode: "document" = document-specific, "doctor" = all doctor's audio
 if "audio_view_mode" not in st.session_state:
-    st.session_state.audio_view_mode = "document"
+    st.session_state.audio_view_mode = "doctor"
 # Pending template operations (for async handling outside dialogs)
 if "_pending_template_op" not in st.session_state:
     st.session_state._pending_template_op = None
@@ -829,22 +829,29 @@ async def render_script_editor():
 
 
     with col2:
-        # Streaming placeholder (only visible during generation)
-        streaming_area = st.empty()
-        
+        # Streaming placeholder wrapper to manage fixed-height container
+        streaming_wrapper = st.empty()
+
         if st.session_state.get("_trigger_generation"):
-            st.session_state._trigger_generation = False
-            await generate_script(
-                st.session_state.selected_document.knowledge_id,
-                script_placeholder=streaming_area
-            )
+            # Inside the wrapper, create the fixed height container
+            with streaming_wrapper.container():
+                with st.container(height=600):
+                    streaming_area = st.empty()
+                    st.session_state._trigger_generation = False
+                    await generate_script(
+                        st.session_state.selected_document.knowledge_id,
+                        script_placeholder=streaming_area
+                    )
+            # Clear wrapper after generation ensures the fixed container is gone
+            streaming_wrapper.empty()
         
         # Edit area (only visible when not generating)
         if st.session_state.is_generating:
-            # Streaming is handled by generate_script via streaming_area
+            # Streaming is handled by generate_script above
             pass
         else:
-            streaming_area.empty()  # Clear any leftover streaming content
+            # Ensure wrapper is empty (for non-triggered reruns)
+            streaming_wrapper.empty()
             st.markdown("**Review and Edit Script:**")
             # Use dynamic key based on generation_id to force widget refresh
             editor_key = f"script_editor_area_{st.session_state.generation_id}"
@@ -969,8 +976,7 @@ async def render_audio_generation():
         else:
             st.warning("No voices found for Speaker 2 languages")
     
-    if is_multi_speaker:
-        st.info("💡 Multi-speaker audio will be generated. ElevenLabs V3 uses voice assignments from your script formatting.")
+
 
     st.divider()
     
@@ -989,11 +995,11 @@ async def render_audio_history():
     st.subheader("Audio History")
     
     # View mode toggle
-    col_toggle, col_refresh = st.columns([3, 1])
+    col_toggle, col_refresh = st.columns([3, 1], vertical_alignment="bottom")
     
     with col_toggle:
-        view_options = ["📄 Document Audio", "👨‍⚕️ All My Audio"]
-        view_mode_idx = 0 if st.session_state.audio_view_mode == "document" else 1
+        view_options = ["👨‍⚕️ All My Audio", "📄 Document Audio"]
+        view_mode_idx = 0 if st.session_state.audio_view_mode == "doctor" else 1
         selected_view = st.radio(
             "View Mode",
             options=view_options,
@@ -1003,7 +1009,7 @@ async def render_audio_history():
             help="Toggle between viewing audio for the current document or all your generated audio"
         )
         # Update session state based on selection
-        new_mode = "document" if selected_view == view_options[0] else "doctor"
+        new_mode = "doctor" if selected_view == view_options[0] else "document"
         if new_mode != st.session_state.audio_view_mode:
             st.session_state.audio_view_mode = new_mode
             # Invalidate cache when mode changes

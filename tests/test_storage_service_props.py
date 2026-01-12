@@ -150,6 +150,12 @@ def storage_service():
     try:
         from backend.services.storage_service import get_storage_service
         service = get_storage_service()
+        
+        # Check if we are running against a valid client or a Mock
+        # If it's a Mock (from conftest.py), skip integration tests
+        if isinstance(service._client, MagicMock) or getattr(service._client, "__name__", "") == "MagicMock":
+             pytest.skip("Skipping integration tests - GCS client is mocked")
+
         # Quick health check
         if not service.health_check():
             pytest.skip("Storage emulator not accessible")
@@ -158,6 +164,7 @@ def storage_service():
         pytest.skip(f"Storage service not available: {e}")
 
 
+@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 @pytest.mark.integration
 class TestStorageServiceIntegration:
     """Integration tests requiring GCS emulator."""
