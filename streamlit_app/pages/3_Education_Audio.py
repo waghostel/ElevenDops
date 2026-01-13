@@ -1034,8 +1034,90 @@ async def render_audio_generation():
         )
 
 
+@st.dialog("Confirm Deletion")
+def confirm_delete_audio():
+    st.warning("Are you sure you want to delete this audio file?")
+    st.caption("This action cannot be undone.")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("✅ Yes, Delete", type="primary", use_container_width=True):
+            audio_id_to_delete = st.session_state._pending_audio_deletion
+            st.session_state._pending_audio_deletion = None
+            
+            with st.spinner("Deleting audio file..."):
+                try:
+                    run_async(client.delete_audio(audio_id_to_delete))
+                    # Invalidate cache
+                    st.session_state["_audio_history_cache_id"] = None
+                    st.toast("Audio deleted successfully!", icon="✅")
+                    st.rerun()
+                except Exception as e:
+                    st.session_state._pending_audio_deletion = None
+                    add_error_to_log(f"Failed to delete audio: {e}")
+                    st.rerun()
+                
+    with col2:
+        if st.button("❌ Cancel", use_container_width=True):
+            st.session_state._pending_audio_deletion = None
+            st.rerun()
+
+
+@st.dialog("Edit Audio Details")
+def edit_audio_details():
+    audio_to_edit = st.session_state._pending_audio_edit
+    title_key = f"edit_title_{audio_to_edit.audio_id}"
+    desc_key = f"edit_desc_{audio_to_edit.audio_id}"
+    
+    st.text_input(
+        "Title", 
+        value=audio_to_edit.name or "",
+        placeholder="e.g., Heart Surgery Overview",
+        key=title_key
+    )
+    st.text_area(
+        "Description", 
+        value=audio_to_edit.description or "",
+        height=100,
+        placeholder="e.g., Pre-operative education for patients",
+        key=desc_key
+    )
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("💾 Save", type="primary", use_container_width=True):
+            # Read values from session_state using the widget keys
+            new_name = st.session_state.get(title_key, "")
+            new_description = st.session_state.get(desc_key, "")
+            
+            # Debug: Log the values being sent
+            logging.info(f"[Edit Audio] Saving audio_id={audio_to_edit.audio_id}, new_name='{new_name}', new_description='{new_description}'")
+            
+            with st.spinner("Updating audio details..."):
+                try:
+                    result = run_async(client.update_audio_metadata(
+                        audio_to_edit.audio_id,
+                        name=new_name,
+                        description=new_description
+                    ))
+                    logging.info(f"[Edit Audio] API response: {result}")
+                    st.session_state._pending_audio_edit = None
+                    st.session_state["_audio_history_cache_id"] = None
+                    st.toast("Audio updated successfully!", icon="✅")
+                    st.rerun()
+                except Exception as e:
+                    logging.error(f"[Edit Audio] Failed to update: {e}")
+                    add_error_to_log(f"Failed to update audio: {e}")
+                    st.rerun()
+    
+    with col2:
+        if st.button("❌ Cancel", use_container_width=True):
+            st.session_state._pending_audio_edit = None
+            st.rerun()
+
+
 @st.fragment
-async def render_audio_history():
+def render_audio_history():
     """Render audio history with toggle for document-specific vs all-doctor audio."""
     st.subheader("Audio History")
     
@@ -1053,7 +1135,7 @@ async def render_audio_history():
     )
     if st.button("🔄 Refresh", key="refresh_audio_history"):
         st.session_state["_audio_history_cache_id"] = None
-        st.rerun()
+        st.rerun(scope="fragment")
     
     # Update session state based on selection
     new_mode = "doctor" if selected_view == view_options[0] else "document"
@@ -1061,7 +1143,7 @@ async def render_audio_history():
         st.session_state.audio_view_mode = new_mode
         # Invalidate cache when mode changes
         st.session_state["_audio_history_cache_id"] = None
-        st.rerun()
+        st.rerun(scope="fragment")
     
     cache_key = "_audio_history_cache"
     cache_id_key = "_audio_history_cache_id"
@@ -1081,13 +1163,13 @@ async def render_audio_history():
         # Cache miss or stale, fetch fresh data
         try:
             if st.session_state.audio_view_mode == "document":
-                audio_files = await client.get_audio_files(
+                audio_files = run_async(client.get_audio_files(
                     knowledge_id=st.session_state.selected_document.knowledge_id
-                )
+                ))
             else:
-                audio_files = await client.get_audio_files(
+                audio_files = run_async(client.get_audio_files(
                     doctor_id=st.session_state.doctor_id
-                )
+                ))
             
             # Debug: Log fetched files to check metadata
             if audio_files:
@@ -1135,106 +1217,25 @@ async def render_audio_history():
                 with btn_edit:
                     if st.button("✏️", key=f"edit_audio_{audio.audio_id}", help="Edit details"):
                         st.session_state._pending_audio_edit = audio
-                        st.rerun()
+                        st.rerun(scope="fragment")
                 with btn_del:
                     if st.button("🗑️", key=f"del_audio_{audio.audio_id}", help="Delete this audio"):
                         st.session_state._pending_audio_deletion = audio.audio_id
-                        st.rerun()
+                        st.rerun(scope="fragment")
             
             # Full-width View Script expander (outside columns)
             with st.expander("View Script"):
                 st.text(audio.script)
 
-
-# Handle pending audio deletion (confirmation dialog)
-if st.session_state.get("_pending_audio_deletion"):
-    @st.dialog("Confirm Deletion")
-    def confirm_delete_audio():
-        st.warning("Are you sure you want to delete this audio file?")
-        st.caption("This action cannot be undone.")
+    # Handle pending dialogs within the fragment scope
+    if st.session_state.get("_pending_audio_deletion"):
+        confirm_delete_audio()
         
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("✅ Yes, Delete", type="primary", use_container_width=True):
-                audio_id_to_delete = st.session_state._pending_audio_deletion
-                st.session_state._pending_audio_deletion = None
-                
-                with st.spinner("Deleting audio file..."):
-                    try:
-                        run_async(client.delete_audio(audio_id_to_delete))
-                        # Invalidate cache
-                        st.session_state["_audio_history_cache_id"] = None
-                        st.toast("Audio deleted successfully!", icon="✅")
-                        st.rerun()
-                    except Exception as e:
-                        st.session_state._pending_audio_deletion = None
-                        add_error_to_log(f"Failed to delete audio: {e}")
-                        st.rerun()
-                    
-        with col2:
-            if st.button("❌ Cancel", use_container_width=True):
-                st.session_state._pending_audio_deletion = None
-                st.rerun()
-    
-    confirm_delete_audio()
+    if st.session_state.get("_pending_audio_edit"):
+        edit_audio_details()
 
 
-# Handle pending audio edit (dialog)
-if st.session_state.get("_pending_audio_edit"):
-    @st.dialog("Edit Audio Details")
-    def edit_audio_details():
-        audio_to_edit = st.session_state._pending_audio_edit
-        title_key = f"edit_title_{audio_to_edit.audio_id}"
-        desc_key = f"edit_desc_{audio_to_edit.audio_id}"
-        
-        st.text_input(
-            "Title", 
-            value=audio_to_edit.name or "",
-            placeholder="e.g., Heart Surgery Overview",
-            key=title_key
-        )
-        st.text_area(
-            "Description", 
-            value=audio_to_edit.description or "",
-            height=100,
-            placeholder="e.g., Pre-operative education for patients",
-            key=desc_key
-        )
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("💾 Save", type="primary", use_container_width=True):
-                # Read values from session_state using the widget keys
-                new_name = st.session_state.get(title_key, "")
-                new_description = st.session_state.get(desc_key, "")
-                
-                # Debug: Log the values being sent
-                logging.info(f"[Edit Audio] Saving audio_id={audio_to_edit.audio_id}, new_name='{new_name}', new_description='{new_description}'")
-                add_error_to_log(f"🐞 DEBUG: Saving audio_id={audio_to_edit.audio_id}, name='{new_name}', desc='{new_description}'")
-                
-                with st.spinner("Updating audio details..."):
-                    try:
-                        result = run_async(client.update_audio_metadata(
-                            audio_to_edit.audio_id,
-                            name=new_name,
-                            description=new_description
-                        ))
-                        logging.info(f"[Edit Audio] API response: {result}")
-                        st.session_state._pending_audio_edit = None
-                        st.session_state["_audio_history_cache_id"] = None
-                        st.toast("Audio updated successfully!", icon="✅")
-                        st.rerun()
-                    except Exception as e:
-                        logging.error(f"[Edit Audio] Failed to update: {e}")
-                        add_error_to_log(f"Failed to update audio: {e}")
-                        st.rerun()
-        
-        with col2:
-            if st.button("❌ Cancel", use_container_width=True):
-                st.session_state._pending_audio_edit = None
-                st.rerun()
-    
-    edit_audio_details()
+
 
 
 async def main():
@@ -1247,7 +1248,7 @@ async def main():
     await render_script_editor()
     await render_audio_generation()
     st.divider()
-    await render_audio_history()
+    render_audio_history()
     render_error_console()
     render_footer()
 

@@ -25,9 +25,9 @@ function Get-ProcessIdsOnPort {
     $netstatOutput = netstat -ano | Select-String "LISTENING" | Select-String ":$Port "
     foreach ($line in $netstatOutput) {
         if ($line -match "\s+(\d+)$") {
-            $pid = $matches[1]
-            if ($pid -ne "0" -and $pids -notcontains $pid) {
-                $pids += $pid
+            $procId = $matches[1]
+            if ($procId -ne "0" -and $pids -notcontains $procId) {
+                $pids += $procId
             }
         }
     }
@@ -59,21 +59,21 @@ function Kill-ProcessOnPort {
         $retryCount++
         Write-Host "  Found $($processIds.Count) process(es) on port $Port. Attempt $retryCount of $maxRetries..." -ForegroundColor Yellow
         
-        foreach ($pid in $processIds) {
+        foreach ($procId in $processIds) {
             try {
                 # First try PowerShell's Stop-Process
-                $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+                $proc = Get-Process -Id $procId -ErrorAction SilentlyContinue
                 if ($proc) {
-                    Write-Host "    Killing PID $pid ($($proc.ProcessName))..." -ForegroundColor DarkYellow
+                    Write-Host "    Killing PID $procId ($($proc.ProcessName))..." -ForegroundColor DarkYellow
                 }
-                Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
+                Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
                 
                 # If still running, use taskkill /F for forceful termination
                 Start-Sleep -Milliseconds 500
-                $stillRunning = Get-Process -Id $pid -ErrorAction SilentlyContinue
+                $stillRunning = Get-Process -Id $procId -ErrorAction SilentlyContinue
                 if ($stillRunning) {
-                    Write-Host "    Using taskkill /F for stubborn PID $pid..." -ForegroundColor DarkYellow
-                    $null = taskkill /F /PID $pid 2>&1
+                    Write-Host "    Using taskkill /F for stubborn PID $procId..." -ForegroundColor DarkYellow
+                    $null = taskkill /F /PID $procId 2>&1
                 }
             }
             catch {

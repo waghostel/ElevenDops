@@ -107,6 +107,7 @@ class FirestoreDataService(DataServiceInterface):
             elevenlabs_agent_id=doc_dict["elevenlabs_agent_id"],
             doctor_id=doc_dict["doctor_id"],
             created_at=doc_dict["created_at"],
+            languages=doc_dict.get("languages", ["zh"]),
         )
     
     def _doc_to_patient_session_response(self, doc_dict: dict) -> PatientSessionResponse:

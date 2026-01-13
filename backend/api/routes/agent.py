@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 
 from backend.models.schemas import (
     AgentCreateRequest,
+    AgentUpdateRequest,
     AgentResponse,
     AgentListResponse,
 )
@@ -18,13 +19,13 @@ router = APIRouter(prefix="/api/agent", tags=["agent"])
 @router.post("", response_model=AgentResponse)
 @limiter.limit(RATE_LIMITS["agent"])
 async def create_agent(
-    request: AgentCreateRequest,
-    http_request: Request,
+    agent_data: AgentCreateRequest,
+    request: Request,
     service: AgentService = Depends(get_agent_service),
 ):
     """Create a new agent."""
     try:
-        agent = await service.create_agent(request)
+        agent = await service.create_agent(agent_data)
         return agent
     except ElevenLabsAgentError as e:
         raise HTTPException(status_code=502, detail=f"ElevenLabs error: {str(e)}")
@@ -38,6 +39,26 @@ async def list_agents(
 ):
     """List all agents."""
     return await service.get_agents()
+
+
+@router.put("/{agent_id}", response_model=AgentResponse)
+@limiter.limit(RATE_LIMITS["agent"])
+async def update_agent(
+    agent_id: str,
+    update_data: AgentUpdateRequest,
+    request: Request,
+    service: AgentService = Depends(get_agent_service),
+):
+    """Update an existing agent."""
+    try:
+        updated_agent = await service.update_agent(agent_id, update_data)
+        return updated_agent
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    except ElevenLabsAgentError as e:
+        raise HTTPException(status_code=502, detail=f"ElevenLabs error: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 @router.delete("/{agent_id}")

@@ -969,6 +969,56 @@ class BackendAPIClient:
                 status_code=e.response.status_code,
             ) from e
 
+    async def update_agent(
+        self,
+        agent_id: str,
+        name: Optional[str] = None,
+        knowledge_ids: Optional[List[str]] = None,
+        languages: Optional[List[str]] = None,
+    ) -> AgentConfig:
+        """Update an existing agent.
+
+        Args:
+            agent_id: The ID of the agent to update.
+            name: New agent name.
+            knowledge_ids: New list of linked knowledge document IDs.
+            languages: New list of language codes.
+
+        Returns:
+            AgentConfig object.
+        """
+        try:
+            payload = {}
+            if name is not None:
+                payload["name"] = name
+            if knowledge_ids is not None:
+                payload["knowledge_ids"] = knowledge_ids
+            if languages is not None:
+                payload["languages"] = languages
+
+            async with self._get_client() as client:
+                response = await client.put(f"/api/agent/{agent_id}", json=payload)
+                response.raise_for_status()
+                data = response.json()
+                return AgentConfig(
+                    agent_id=data["agent_id"],
+                    name=data["name"],
+                    knowledge_ids=data["knowledge_ids"],
+                    voice_id=data["voice_id"],
+                    answer_style=data["answer_style"],
+                    languages=data.get("languages", ["en"]),
+                    elevenlabs_agent_id=data["elevenlabs_agent_id"],
+                    doctor_id=data["doctor_id"],
+                    created_at=datetime.fromisoformat(data["created_at"]),
+                )
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Failed to update agent: {self._parse_error_message(e.response)}",
+                status_code=e.response.status_code,
+            ) from e
+
     async def get_agents(self) -> List[AgentConfig]:
         """Get all agents.
 

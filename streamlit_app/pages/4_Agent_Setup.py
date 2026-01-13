@@ -250,6 +250,79 @@ def render_prompt_tab(client, STYLE_OPTIONS):
             st.rerun()
 
 
+@st.dialog("✏️ Edit Agent")
+def render_edit_agent_dialog(agent, docs, client, LANGUAGE_OPTIONS):
+    """Render dialog to edit an existing agent."""
+    st.caption(f"Editing Agent: {agent.name}")
+    
+    # helper for doc names
+    doc_options = {
+        d.knowledge_id: f"{d.disease_name} ({', '.join(d.tags)})"
+        for d in docs
+    } if docs else {}
+
+    # Initialize state with current values if not set
+    # Using form-specific keys to avoid conflicts
+    name_key = f"edit_name_{agent.agent_id}"
+    langs_key = f"edit_langs_{agent.agent_id}" 
+    docs_key = f"edit_docs_{agent.agent_id}"
+
+    # 1. Edit Name
+    new_name = st.text_input("Agent Name", value=agent.name, key=name_key)
+    
+    # 2. Edit Languages
+    # Ensure current languages are valid options
+    current_langs = agent.languages if hasattr(agent, "languages") else ["en"]
+    # Filter out any languages not in our options to prevent errors
+    valid_current_langs = [l for l in current_langs if l in LANGUAGE_OPTIONS]
+    
+    new_languages = st.multiselect(
+        "Conversation Languages",
+        options=list(LANGUAGE_OPTIONS.keys()),
+        default=valid_current_langs,
+        format_func=lambda x: LANGUAGE_OPTIONS[x],
+        help="First language is primary.",
+        key=langs_key
+    )
+
+    # 3. Edit Knowledge
+    current_docs = [d for d in agent.knowledge_ids if d in doc_options]
+    
+    new_doc_ids = st.multiselect(
+        "Linked Knowledge Documents",
+        options=list(doc_options.keys()),
+        default=current_docs,
+        format_func=lambda x: doc_options[x],
+        key=docs_key
+    )
+
+    st.warning("Note: Changing settings will update the agent in ElevenLabs, affecting any active sessions.")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Save Changes", type="primary", use_container_width=True, key=f"save_{agent.agent_id}"):
+            if not new_name.strip():
+                st.error("Name cannot be empty.")
+            elif not new_languages:
+                st.error("At least one language is required.")
+            else:
+                try:
+                    with st.spinner("Updating agent..."):
+                        run_async(client.update_agent(
+                            agent_id=agent.agent_id,
+                            name=new_name,
+                            knowledge_ids=new_doc_ids,
+                            languages=new_languages
+                        ))
+                    st.success("Agent updated successfully!")
+                    get_cached_agents.clear()
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Update failed: {str(e)}")
+    
+    with col2:
+        if st.button("Cancel", use_container_width=True, key=f"cancel_{agent.agent_id}"):
+            st.rerun()
 @st.fragment
 def render_existing_agents(agents, docs, client):
     """Render existing agents section with fragment isolation."""
@@ -262,6 +335,11 @@ def render_existing_agents(agents, docs, client):
         "ja": "日本語 (Japanese)",
         "ko": "한국어 (Korean)",
     }
+    
+    # We need access to LANGUAGE_OPTIONS for the dialog
+    # It's defined globally in the script but passed to other functions
+    # Let's recreate it here or pass it in. For simplicity, reusing the display map which matches keys.
+
 
     with st.container(border=True):
         if not agents:
@@ -290,15 +368,23 @@ def render_existing_agents(agents, docs, client):
                     else:
                         st.text("No linked knowledge.")
 
-                    if st.button("Delete", key=f"del_{agent.agent_id}"):
-                        try:
-                            with st.spinner("Deleting agent..."):
-                                run_async(client.delete_agent(agent.agent_id))
-                            st.success("Agent deleted.")
-                            get_cached_agents.clear()
-                            st.rerun()
-                        except Exception as e:
-                            add_error_to_log(f"Delete failed: {str(e)}")
+
+
+                    c1, c2 = st.columns([1, 4])
+                    with c1:
+                        if st.button("✏️ Edit", key=f"edit_btn_{agent.agent_id}"):
+                            render_edit_agent_dialog(agent, docs, client, LANGUAGE_DISPLAY)
+                    
+                    with c2:
+                        if st.button("🗑️ Delete", key=f"del_{agent.agent_id}"):
+                            try:
+                                with st.spinner("Deleting agent..."):
+                                    run_async(client.delete_agent(agent.agent_id))
+                                st.success("Agent deleted.")
+                                get_cached_agents.clear()
+                                st.rerun()
+                            except Exception as e:
+                                add_error_to_log(f"Delete failed: {str(e)}")
 
 
 @st.dialog("Edit System Prompt")

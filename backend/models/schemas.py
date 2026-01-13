@@ -375,6 +375,40 @@ class AgentCreateRequest(BaseModel):
         return v
 
 
+class AgentUpdateRequest(BaseModel):
+    """Request model for updating an agent."""
+
+    name: Optional[str] = Field(None, min_length=1, max_length=100, description="New agent name")
+    knowledge_ids: Optional[List[str]] = Field(None, description="New list of linked knowledge document IDs")
+    languages: Optional[List[str]] = Field(None, description="New language codes for agent")
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: Optional[str]) -> Optional[str]:
+        """Validate that agent name is not empty or whitespace only."""
+        if v is not None and not v.strip():
+            raise ValueError("Agent name cannot be empty or whitespace only")
+        return v
+
+    @field_validator("languages")
+    @classmethod
+    def validate_languages(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        """Validate that language codes are supported if provided."""
+        if v is None:
+            return v
+        if not v:
+            raise ValueError("Languages list cannot be empty if provided")
+        supported_languages = {
+            "zh", "en", "es", "fr", "de", "hi", "it", "ja", "ko", "nl", "pl", "pt", "ru", "tr",
+            "ar", "cs", "da", "fi", "el", "he", "hu", "id", "ms", "no", "ro", "sk", "sv", "th", "uk", "vi", "zh-TW"
+        }
+        for lang in v:
+            if lang not in supported_languages:
+                raise ValueError(
+                    f"Unsupported language code '{lang}'. Must be a valid ISO 639-1 code supported by ElevenLabs."
+                )
+        return v
+
 class AgentResponse(BaseModel):
     """Response model for agent details."""
 

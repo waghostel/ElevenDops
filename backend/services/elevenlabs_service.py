@@ -441,13 +441,37 @@ class ElevenLabsService:
             if knowledge_base:
                  agent_config["prompt"]["knowledge_base"] = knowledge_base
                  
-            # Determine TTS model based on language configuration
-            # - English-only agents (language="en") MUST use turbo_v2 or flash_v2
-            # - Multilingual/Non-English agents use turbo_v2_5
+            # Determine TTS model and Primary Language based on configuration
+            # - English-only agents (language="en") MUST use turbo_v2
+            # - Multilingual agents use turbo_v2_5, BUT cannot have "en" as primary language due to API validation
+            
+            model_id = "eleven_turbo_v2_5" # Default to multilingual
+            
             if len(languages) == 1 and languages[0] == "en":
+                # Case 1: Pure English -> Use v2, keep 'en' as primary
                 model_id = "eleven_turbo_v2"
+                logging.info(f"Creating English-only agent with {model_id}")
             else:
-                model_id = "eleven_turbo_v2_5"
+                # Case 2: Multilingual or Non-English -> Use v2.5
+                # CRITICAL FIX: If primary is 'en' but we are using v2.5 (multilingual),
+                # we must SWAP primary to a non-English language to pass API validation.
+                if primary_language == "en":
+                    # Find first non-English language to be primary
+                    non_en_langs = [l for l in languages if l != "en"]
+                    if non_en_langs:
+                        new_primary = non_en_langs[0]
+                        logging.warning(
+                            f"Swapping primary language from 'en' to '{new_primary}' to satisfy "
+                            f"{model_id} validation. English remains supported via presets."
+                        )
+                        primary_language = new_primary
+                        agent_config["language"] = primary_language # Update config
+                
+                logging.info(f"Creating Multilingual agent with {model_id} (Primary: {primary_language})")
+
+            # DEBUG LOGGING
+            import json
+            logging.info(f"[DEBUG] Final Agent Config: {json.dumps(agent_config, default=str)}")
 
             response = self.client.conversational_ai.agents.create(
                 name=name,
@@ -500,6 +524,107 @@ class ElevenLabsService:
         except Exception as e:
             logging.error(f"Failed to update ElevenLabs agent {agent_id} knowledge base: {e}")
             raise ElevenLabsAgentError(f"Failed to update agent knowledge base: {str(e)}")
+
+    def update_agent(
+        self,
+        agent_id: str,
+        name: Optional[str] = None,
+        knowledge_base: Optional[List[Dict[str, Any]]] = None,
+        languages: Optional[List[str]] = None,
+    ) -> bool:
+        """Update an existing agent's settings.
+
+        Args:
+            agent_id: The ElevenLabs agent ID.
+            name: New agent name (optional).
+            knowledge_base: New knowledge base list (optional).
+            languages: New language codes (optional).
+
+        Returns:
+            bool: True if updated successfully.
+
+        Raises:
+            ElevenLabsAgentError: If update fails.
+        """
+        if self.use_mock:
+            logging.info(f"[MOCK] update_agent called for agent {agent_id}")
+            return True
+
+        try:
+            # Build update payload - only include fields that are being updated
+            update_kwargs = {"agent_id": agent_id}
+            
+            # Update name if provided
+            if name is not None:
+                update_kwargs["name"] = name
+            
+            # Build conversation_config for agent settings
+            conversation_config = {}
+            agent_config = {}
+            prompt_config = {}
+            
+            # Update knowledge base if provided
+            if knowledge_base is not None:
+                prompt_config["knowledge_base"] = knowledge_base
+            
+            # Update languages if provided
+            if languages is not None:
+                primary_language = languages[0]
+                
+                # Determine TTS model based on languages
+                if len(languages) == 1 and languages[0] == "en":
+                    # English-only: use v2
+                    model_id = "eleven_turbo_v2"
+                else:
+                    # Multilingual: use v2.5
+                    model_id = "eleven_turbo_v2_5"
+                    # If primary is English but we're multilingual, swap to first non-English
+                    if primary_language == "en":
+                        non_en_langs = [l for l in languages if l != "en"]
+                        if non_en_langs:
+                            primary_language = non_en_langs[0]
+                            logging.warning(
+                                f"Swapping primary language from 'en' to '{primary_language}' "
+                                f"for {model_id} validation."
+                            )
+                
+                agent_config["language"] = primary_language
+                
+                # Add language_presets for multi-language support
+                if len(languages) > 1:
+                    # Note: We don't have voice_id here, so we can't set language_presets.voice_id
+                    # The API will preserve existing voice_id in presets
+                    language_presets = {lang: {} for lang in languages}
+                    agent_config["language_presets"] = language_presets
+                
+                # Update TTS model
+                conversation_config["tts"] = {"model_id": model_id}
+            
+            # Assemble conversation_config
+            if prompt_config:
+                agent_config["prompt"] = prompt_config
+            if agent_config:
+                conversation_config["agent"] = agent_config
+            if conversation_config:
+                update_kwargs["conversation_config"] = conversation_config
+            
+            # Perform the update
+            logging.info(f"Updating agent {agent_id} with: {update_kwargs}")
+            self.client.conversational_ai.agents.update(**update_kwargs)
+            logging.info(f"Successfully updated agent {agent_id}")
+            return True
+            
+        except Exception as e:
+            error_type, is_retryable = self._classify_error(e)
+            logging.error(f"Failed to update ElevenLabs agent {agent_id}: {e}")
+            raise ElevenLabsAgentError(
+                f"Failed to update agent: {str(e)}",
+                error_type=error_type,
+                original_error=e,
+                is_retryable=is_retryable
+            )
+
+
 
     def delete_agent(self, agent_id: str) -> bool:
         """Delete an agent from ElevenLabs.

@@ -7,6 +7,7 @@ import uuid
 
 from backend.models.schemas import (
     AgentCreateRequest,
+    AgentUpdateRequest,
     AgentResponse,
     AgentListResponse,
     AnswerStyle,
@@ -227,6 +228,64 @@ class AgentService:
             AgentResponse or None.
         """
         return await self.data_service.get_agent(agent_id)
+
+    async def update_agent(self, agent_id: str, request: AgentUpdateRequest) -> AgentResponse:
+        """Update an existing agent.
+
+        Args:
+            agent_id: ID of the agent to update.
+            request: Update request with new values.
+
+        Returns:
+            AgentResponse: Updated agent details.
+        
+        Raises:
+            KeyError: If agent not found.
+            Exception: If update fails.
+        """
+        # 1. Fetch existing agent
+        agent = await self.data_service.get_agent(agent_id)
+        if not agent:
+            raise KeyError(f"Agent {agent_id} not found")
+
+        try:
+            # 2. Prepare ElevenLabs update payload
+            update_kwargs = {}
+            local_updates = {}
+            
+            if request.name is not None:
+                update_kwargs["name"] = request.name
+                local_updates["name"] = request.name
+            
+            if request.languages is not None:
+                update_kwargs["languages"] = request.languages
+                local_updates["languages"] = request.languages
+                
+            if request.knowledge_ids is not None:
+                # Need to sync full KB metadata for ElevenLabs
+                synced_kb = await self._get_synced_knowledge_base(request.knowledge_ids)
+                update_kwargs["knowledge_base"] = synced_kb
+                local_updates["knowledge_ids"] = request.knowledge_ids
+
+            # 3. Call ElevenLabs service if there are remote updates
+            if update_kwargs:
+                self.elevenlabs.update_agent(
+                    agent_id=agent.elevenlabs_agent_id,
+                    **update_kwargs
+                )
+            
+            # 4. Update local database record
+            if local_updates:
+                # Merge updates into existing agent object
+                updated_agent = agent.model_copy(update=local_updates)
+                await self.data_service.save_agent(updated_agent)
+                return updated_agent
+            
+            return agent
+
+        except Exception as e:
+            logging.error(f"Failed to update agent {agent_id}: {e}")
+            raise e
 
     async def delete_agent(self, agent_id: str) -> bool:
         """Delete an agent.
