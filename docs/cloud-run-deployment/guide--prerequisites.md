@@ -102,7 +102,7 @@ Create a Docker repository to store container images.
 
 ```bash
 # Set region
-export REGION="asia-east1"
+export REGION="us-central1"
 
 # Create Artifact Registry repository
 gcloud artifacts repositories create elevendops \

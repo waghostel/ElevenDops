@@ -86,7 +86,7 @@
 
 - **Secrets 管理**：使用 `--set-secrets` 將 Secret Manager 中的金鑰掛載為環境變數（例如 `ELEVENLABS_API_KEY`）。
 - **資源限制**：設定 `2 CPU` 與 `1Gi Memory` 以應付處理語音生成的需求。
-- **地區設定**：使用 `asia-east1` 以降低亞太地區使用者的延遲。
+- **地區設定**：使用 `us-central1` 以符合專案預設區域並享有較低成本。
 
 ```yaml
 - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"

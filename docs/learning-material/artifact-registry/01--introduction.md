@@ -83,14 +83,14 @@ REGION-docker.pkg.dev/PROJECT_ID/REPOSITORY/IMAGE_NAME:TAG
 本專案使用以下格式存放映像檔：
 
 ```
-asia-east1-docker.pkg.dev/PROJECT_ID/elevendops/app:TAG
+us-central1-docker.pkg.dev/PROJECT_ID/elevendops/app:TAG
 ```
 
 ### 各部分說明
 
 | 組成部分     | 說明                         | 範例             |
 | ------------ | ---------------------------- | ---------------- |
-| `REGION`     | 儲存庫所在區域               | `asia-east1`     |
+| `REGION`     | 儲存庫所在區域               | `us-central1`    |
 | `-docker`    | 表示這是 Docker 格式的儲存庫 | `-docker`        |
 | `.pkg.dev`   | Artifact Registry 的網域     | `.pkg.dev`       |
 | `PROJECT_ID` | GCP 專案 ID                  | `your-project`   |
@@ -134,11 +134,11 @@ images:
 ```bash
 # 列出儲存庫中的映像檔
 gcloud artifacts docker images list \
-    asia-east1-docker.pkg.dev/PROJECT_ID/elevendops
+    us-central1-docker.pkg.dev/PROJECT_ID/elevendops
 
 # 列出特定映像檔的所有標籤
 gcloud artifacts docker tags list \
-    asia-east1-docker.pkg.dev/PROJECT_ID/elevendops/app
+    us-central1-docker.pkg.dev/PROJECT_ID/elevendops/app
 ```
 
 ## 重點整理

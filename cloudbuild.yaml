@@ -53,15 +53,15 @@ steps:
       - "--set-secrets"
       - "ELEVENLABS_API_KEY=elevenlabs-api-key:latest,GOOGLE_API_KEY=google-api-key:latest,LANGSMITH_API_KEY=langsmith-api-key:latest"
       - "--set-env-vars"
-      - "APP_ENV=production,GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GCS_BUCKET_NAME=${_GCS_BUCKET_NAME},FIRESTORE_DATABASE_ID=${_FIRESTORE_DATABASE_ID},LANGSMITH_PROJECT=elevendops-production,LANGSMITH_TRACING_ENABLED=true,USE_FIRESTORE_EMULATOR=false,USE_GCS_EMULATOR=false,BACKEND_API_URL=http://localhost:8000,DEBUG=false"
+      - "APP_ENV=${_APP_ENV},GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GCS_BUCKET_NAME=${_GCS_BUCKET_NAME},FIRESTORE_DATABASE_ID=${_FIRESTORE_DATABASE_ID},LANGSMITH_PROJECT=${_LANGSMITH_PROJECT},LANGSMITH_TRACING_ENABLED=true,USE_FIRESTORE_EMULATOR=false,USE_GCS_EMULATOR=false,BACKEND_API_URL=http://localhost:8000,DEBUG=${_DEBUG}"
       - "--cpu"
       - "2"
       - "--memory"
       - "1Gi"
       - "--min-instances"
-      - "0"
+      - "${_MIN_INSTANCES}"
       - "--max-instances"
-      - "10"
+      - "${_MAX_INSTANCES}"
       - "--concurrency"
       - "80"
       - "--timeout"
@@ -75,6 +75,13 @@ substitutions:
   _REGION: "asia-east1"
   _GCS_BUCKET_NAME: "elevendops-bucket"
   _FIRESTORE_DATABASE_ID: "elevendops-db"
+  # Environment defaults
+  _APP_ENV: "production"
+  _LANGSMITH_PROJECT: "elevendops-production"
+  _DEBUG: "false"
+  # Scaling defaults
+  _MIN_INSTANCES: "0"
+  _MAX_INSTANCES: "10"
 
 # Build options
 options:

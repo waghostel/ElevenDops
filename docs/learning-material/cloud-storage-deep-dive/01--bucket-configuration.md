@@ -29,8 +29,8 @@ Bucket 是所有物件的容器，名稱必須**全球唯一**。
 #### 命令列範例
 
 ```bash
-# 建立 Bucket (區域為 asia-east1)
-gsutil mb -l asia-east1 gs://elevendops-audio-dev-yourname
+# 建立 Bucket (區域為 us-central1)
+gsutil mb -l us-central1 gs://elevendops-audio-dev-yourname
 
 # 查看 Bucket 列表
 gsutil ls
@@ -147,7 +147,7 @@ sequenceDiagram
 
 Bucket 的**地區 (Location) 一旦建立就無法修改**。
 
-- **如果選錯了怎麼辦？**：你必須建立一個新區域的 Bucket，將資料搬移過去，然後刪除舊的。因此在建立時務必確認區域（如台灣選 `asia-east1`）。
+- **如果選錯了怎麼辦？**：你必須建立一個新區域的 Bucket，將資料搬移過去，然後刪除舊的。因此在建立時務必確認區域（如美國選 `us-central1`）。
 
 ## 重點整理
 

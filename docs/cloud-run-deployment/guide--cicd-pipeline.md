@@ -106,7 +106,7 @@ gcloud builds triggers create github \
     --repo-owner="YOUR_GITHUB_USERNAME" \
     --branch-pattern="^main$" \
     --build-config="cloudbuild.yaml" \
-    --substitutions="_REGION=asia-east1"
+    --substitutions="_REGION=us-central1"
 ```
 
 **For Cloud Source Repositories:**
@@ -117,7 +117,7 @@ gcloud builds triggers create cloud-source-repositories \
     --repo="elevendops" \
     --branch-pattern="^main$" \
     --build-config="cloudbuild.yaml" \
-    --substitutions="_REGION=asia-east1"
+    --substitutions="_REGION=us-central1"
 ```
 
 ### Step 3: Verify Trigger
@@ -154,7 +154,7 @@ Trigger a build without pushing code:
 ```bash
 # Using gcloud
 gcloud builds submit --config=cloudbuild.yaml \
-    --substitutions=_REGION=asia-east1
+    --substitutions=_REGION=us-central1
 
 # Or trigger the existing trigger
 gcloud builds triggers run elevendops-deploy \
@@ -231,7 +231,7 @@ Deploy to different environments based on branch:
 ```yaml
 # cloudbuild-staging.yaml
 substitutions:
-  _REGION: "asia-east1"
+  _REGION: "us-central1"
   _SERVICE_NAME: "elevendops-staging"
   _MIN_INSTANCES: "0"
   _MAX_INSTANCES: "2"
@@ -265,7 +265,7 @@ gcloud builds triggers create github \
 
 | Variable      | Description               | Default        |
 | ------------- | ------------------------- | -------------- |
-| `_REGION`     | GCP region for deployment | `asia-east1`   |
+| `_REGION`     | GCP region for deployment | `us-central1`  |
 | `PROJECT_ID`  | GCP project ID            | Auto-detected  |
 | `SHORT_SHA`   | Git commit short SHA      | Auto-generated |
 | `BRANCH_NAME` | Git branch name           | Auto-detected  |
@@ -337,7 +337,7 @@ gcloud logging read "resource.type=cloud_run_revision AND resource.labels.servic
     --limit=50
 
 # Verify service account permissions
-gcloud run services get-iam-policy elevendops --region=asia-east1
+gcloud run services get-iam-policy elevendops --region=us-central1
 ```
 
 ### Trigger Not Firing

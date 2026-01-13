@@ -72,7 +72,7 @@ gcloud run deploy elevendops \
 
 ```bash
 gcloud run services update elevendops \
-    --region=asia-east1 \
+    --region=us-central1 \
     --set-env-vars=NEW_VAR=value
 ```
 
@@ -80,7 +80,7 @@ gcloud run services update elevendops \
 
 ```bash
 gcloud run services update elevendops \
-    --region=asia-east1 \
+    --region=us-central1 \
     --update-env-vars=LANGSMITH_TRACING_ENABLED=false
 ```
 
@@ -88,7 +88,7 @@ gcloud run services update elevendops \
 
 ```bash
 gcloud run services update elevendops \
-    --region=asia-east1 \
+    --region=us-central1 \
     --remove-env-vars=UNUSED_VAR
 ```
 
@@ -130,7 +130,7 @@ Used for centralizing configuration values:
 
 ```yaml
 substitutions:
-  _REGION: "asia-east1"
+  _REGION: "us-central1"
   _GCS_BUCKET_NAME: "elevendops-bucket"
   _FIRESTORE_DATABASE_ID: "elevendops-db"
 ```
@@ -202,12 +202,12 @@ These can be overridden at deployment time.
 ```bash
 # View all environment variables
 gcloud run services describe elevendops \
-    --region=asia-east1 \
+    --region=us-central1 \
     --format="yaml(spec.template.spec.containers[0].env)"
 
 # View specific variable
 gcloud run services describe elevendops \
-    --region=asia-east1 \
+    --region=us-central1 \
     --format="value(spec.template.spec.containers[0].env.value)" \
     --filter="spec.template.spec.containers[0].env.name=APP_ENV"
 ```

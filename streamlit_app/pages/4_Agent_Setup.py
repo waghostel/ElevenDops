@@ -80,7 +80,7 @@ def run_async(coroutine):
 @st.fragment
 def render_identity_tab(docs, STYLE_OPTIONS):
     """Render the Identity tab content with fragment isolation."""
-    with st.container(height=400):
+    with st.container(height=500):
         st.markdown("**👤 Agent Information**")
 
         # Agent Name with callback
@@ -131,7 +131,7 @@ def render_identity_tab(docs, STYLE_OPTIONS):
 @st.fragment
 def render_voice_tab(voice_map, LANGUAGE_OPTIONS):
     """Render the Voice tab content with fragment isolation."""
-    with st.container(height=400):
+    with st.container(height=500):
         st.markdown("**🎙️ Voice and Language**")
 
         if voice_map:
@@ -186,7 +186,7 @@ def render_voice_tab(voice_map, LANGUAGE_OPTIONS):
 @st.fragment
 def render_prompt_tab(client, STYLE_OPTIONS):
     """Render the Prompt tab content with fragment isolation."""
-    with st.container(height=400):
+    with st.container(height=500):
         st.markdown("**🧠 Prompt Configuration**")
 
         # Answer Style selector - updates session state, dynamic key handles text area refresh

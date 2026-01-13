@@ -62,7 +62,7 @@ graph LR
 #### 優化策略
 
 1. **使用 CDN**：透過 Cloud CDN 快取靜態資源，減少 GCS 出口
-2. **選擇近使用者的區域**：如台灣使用者優先選 `asia-east1`
+2. **選擇成本較低的區域**：如 `us-central1` 通常比 `asia-east1` 便宜。
 3. **壓縮資料**：上傳前壓縮音訊/圖片
 
 ### 步驟 3：設定生命週期降級
@@ -118,7 +118,7 @@ graph LR
 
 - **額度**：每月 5 GB 的標準儲存量 (Standard Storage)。
 - **限制區域**：僅限 `us-central1`、`us-east1`、`us-west1`。
-- **注意**：如果您選擇 `asia-east1` (台灣)，則**不適用**免費額度，但費用非常低（約每 GB $0.02 USD/月）。
+- **注意**：如果您選擇 `us-central1` (愛荷華)，則**適用**免費額度 (Cloud Storage Always Free)。亞洲區域如 `asia-east1` 則不適用。
 
 ### Q4：Versioning (版本控制) 什麼時候會啟動？
 

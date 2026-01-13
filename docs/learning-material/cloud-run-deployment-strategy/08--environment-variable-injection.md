@@ -187,7 +187,7 @@ steps:
       - "--set-secrets=ELEVENLABS_API_KEY=ELEVENLABS_API_KEY:latest"
 
 substitutions:
-  _REGION: asia-east1
+  _REGION: us-central1
   _APP_ENV: production
 ```
 
@@ -198,7 +198,7 @@ gcloud builds triggers create github \
   --repo-name="my-repo" \
   --branch-pattern="^main$" \
   --build-config="cloudbuild.yaml" \
-  --substitutions="_APP_ENV=production,_REGION=asia-east1"
+  --substitutions="_APP_ENV=production,_REGION=us-central1"
 ```
 
 ---

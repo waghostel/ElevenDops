@@ -141,7 +141,13 @@ class AudioService:
         return self.storage_service.get_file_stream(storage_path)
 
     async def generate_audio(
-        self, script: str, voice_id: str, knowledge_id: str, doctor_id: str = "default_doctor"
+        self, 
+        script: str, 
+        voice_id: str, 
+        knowledge_id: str, 
+        doctor_id: str = "default_doctor",
+        name: Optional[str] = None,
+        description: Optional[str] = None
     ) -> AudioMetadata:
         """Generate audio from a script.
         
@@ -150,6 +156,8 @@ class AudioService:
             voice_id: The ElevenLabs voice ID.
             knowledge_id: The source knowledge document ID.
             doctor_id: ID of the doctor generating the audio.
+            name: Optional user-friendly name. If None, auto-generate from document.
+            description: Optional description of the audio content.
             
         Returns:
             AudioMetadata: Metadata of the generated audio with signed URL.
@@ -168,7 +176,13 @@ class AudioService:
             filename = f"{audio_id}.mp3"
             storage_path_or_url = self.storage_service.upload_audio(audio_bytes, filename)
             
-            # 3. Save Metadata with storage path (not the signed URL)
+            # 3. Auto-generate name if not provided
+            if not name:
+                doc = await self.data_service.get_knowledge_document(knowledge_id)
+                timestamp = datetime.utcnow().strftime("%Y-%m-%d %H:%M")
+                name = f"{doc.disease_name if doc else 'Audio'} - {timestamp}"
+            
+            # 4. Save Metadata with storage path (not the signed URL)
             metadata = AudioMetadata(
                 audio_id=audio_id,
                 audio_url=storage_path_or_url,  # Store path for production, URL for emulator
@@ -177,7 +191,9 @@ class AudioService:
                 duration_seconds=None,  # ElevenLabs simple API doesn't return duration
                 script=script,
                 created_at=datetime.utcnow(),
-                doctor_id=doctor_id
+                doctor_id=doctor_id,
+                name=name,
+                description=description or ""
             )
             
             await self.data_service.save_audio_metadata(metadata)
@@ -212,7 +228,9 @@ class AudioService:
                 duration_seconds=metadata.duration_seconds,
                 script=metadata.script,
                 created_at=metadata.created_at,
-                doctor_id=metadata.doctor_id
+                doctor_id=metadata.doctor_id,
+                name=metadata.name,
+                description=metadata.description
             )
             
         except Exception as e:
@@ -294,7 +312,9 @@ class AudioService:
                 duration_seconds=audio.duration_seconds,
                 script=audio.script,
                 created_at=audio.created_at,
-                doctor_id=audio.doctor_id
+                doctor_id=audio.doctor_id,
+                name=audio.name,
+                description=audio.description
             ))
             
         return proxy_audio_files
@@ -347,6 +367,53 @@ class AudioService:
         except Exception as e:
             logging.error(f"Error deleting audio {audio_id}: {e}")
             return False
+
+    async def update_audio_metadata(
+        self,
+        audio_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None
+    ) -> AudioMetadata:
+        """Update audio metadata (name and/or description).
+        
+        Args:
+            audio_id: ID of the audio to update.
+            name: New name (optional).
+            description: New description (optional).
+            
+        Returns:
+            Updated AudioMetadata.
+            
+        Raises:
+            ValueError: If audio not found.
+        """
+        logging.info(f"Updating audio metadata: {audio_id}")
+        
+        # Get existing audio
+        audio_files = await self.data_service.get_audio_files()
+        audio_to_update = next((a for a in audio_files if a.audio_id == audio_id), None)
+        
+        if not audio_to_update:
+            raise ValueError(f"Audio {audio_id} not found")
+        
+        # Create updated metadata object
+        updated_metadata = AudioMetadata(
+            audio_id=audio_to_update.audio_id,
+            audio_url=audio_to_update.audio_url,
+            knowledge_id=audio_to_update.knowledge_id,
+            voice_id=audio_to_update.voice_id,
+            duration_seconds=audio_to_update.duration_seconds,
+            script=audio_to_update.script,
+            created_at=audio_to_update.created_at,
+            doctor_id=audio_to_update.doctor_id,
+            name=name if name is not None else audio_to_update.name,
+            description=description if description is not None else audio_to_update.description
+        )
+        
+        # Save to database
+        saved_metadata = await self.data_service.save_audio_metadata(updated_metadata)
+        logging.info(f"Updated audio metadata: {audio_id}")
+        return saved_metadata
 
     def get_available_voices(self) -> List[VoiceOption]:
         """Get available voices.

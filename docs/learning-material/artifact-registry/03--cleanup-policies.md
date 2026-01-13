@@ -155,7 +155,7 @@ Artifact Registry 使用秒數表示時間：
 ```bash
 # 設定環境變數
 export PROJECT_ID="your-project-id"
-export REGION="asia-east1"
+export REGION="us-central1"
 export REPOSITORY="elevendops"
 
 # 套用清理策略

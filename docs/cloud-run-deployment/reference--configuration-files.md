@@ -169,7 +169,7 @@ steps:
     waitFor: ["push"]
 
 substitutions:
-  _REGION: "asia-east1"
+  _REGION: "us-central1"
 
 options:
   logging: CLOUD_LOGGING_ONLY
@@ -186,7 +186,7 @@ timeout: "900s"
 
 | Variable     | Description          | Default        |
 | ------------ | -------------------- | -------------- |
-| `_REGION`    | Deployment region    | `asia-east1`   |
+| `_REGION`    | Deployment region    | `us-central1`  |
 | `PROJECT_ID` | GCP project ID       | Auto-detected  |
 | `SHORT_SHA`  | Git commit short SHA | Auto-generated |
 
@@ -216,7 +216,7 @@ kind: Service
 metadata:
   name: elevendops
   labels:
-    cloud.googleapis.com/location: asia-east1
+    cloud.googleapis.com/location: us-central1
 spec:
   template:
     metadata:

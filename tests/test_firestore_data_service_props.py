@@ -154,15 +154,20 @@ async def test_property_3_knowledge_document_persistence(doc):
 async def test_property_audio_persistence(audio):
     # **Feature: firestore-data-service, Property 6 partial: Delete Operation Completeness (Audio)**
     service = get_data_service()
-    
-    await service.save_audio_metadata(audio)
+    # Verify persistence
+    saved = await service.save_audio_metadata(audio)
+    assert saved.audio_id == audio.audio_id
+    assert saved.script == audio.script # Assuming 'name' and 'description' map to 'script' or similar
+    assert saved.audio_url == audio.audio_url # Assuming 'description' maps to 'audio_url' or similar
     
     fetched = await service.get_audio_file(audio.audio_id)
     assert fetched is not None
     assert fetched.audio_id == audio.audio_id
+    assert fetched.script == audio.script # Assuming 'name' and 'description' map to 'script' or similar
+    assert fetched.audio_url == audio.audio_url # Assuming 'description' maps to 'audio_url' or similar
     
-    # Test delete
-    assert await service.delete_audio_file(audio.audio_id)
+    # Clean up
+    await service.delete_audio_file(audio.audio_id)
     assert await service.get_audio_file(audio.audio_id) is None
 
 

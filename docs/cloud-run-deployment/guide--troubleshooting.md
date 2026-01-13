@@ -7,7 +7,7 @@ This guide covers common issues and solutions when deploying ElevenDops to Cloud
 ### Check Service Status
 
 ```bash
-export REGION="asia-east1"
+export REGION="us-central1"
 
 # Get service status
 gcloud run services describe elevendops --region=$REGION

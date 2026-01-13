@@ -76,7 +76,7 @@ steps:
       - "--image"
       - "my-image:${SHORT_SHA}"
       - "--region"
-      - "asia-east1"
+      - "us-central1"
 ```
 
 ## 常見問題 Q&A

@@ -80,6 +80,8 @@ class AudioResponse:
     script: str
     created_at: datetime
     doctor_id: str = "default_doctor"
+    name: str = ""
+    description: str = ""
 
 
 @dataclass

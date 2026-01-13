@@ -26,13 +26,13 @@ Artifact Registry is where your Docker images will be stored.
     ```bash
     gcloud artifacts repositories create elevendops-repo \
         --repository-format=docker \
-        --location=asia-east1 \
+        --location=us-central1 \
         --description="Docker repository for ElevenDops"
     ```
 
 3.  **Configure Docker to authenticate** (Optional, for local builds):
     ```bash
-    gcloud auth configure-docker asia-east1-docker.pkg.dev
+    gcloud auth configure-docker us-central1-docker.pkg.dev
     ```
 
 ---
@@ -54,7 +54,7 @@ We will use **Cloud Build** to build the image remotely and push it to Artifact 
 2.  **Submit Build**:
 
     ```bash
-    gcloud builds submit --tag asia-east1-docker.pkg.dev/$PROJECT_ID/elevendops-repo/elevendops-app:latest --file Dockerfile.cloudrun .
+    gcloud builds submit --tag us-central1-docker.pkg.dev/$PROJECT_ID/elevendops-repo/elevendops-app:latest --file Dockerfile.cloudrun .
     ```
 
     > **Note**: This may take 2-3 minutes. It uploads your source code, builds the `Dockerfile.cloudrun` using `uv`, and stores the image.
@@ -97,8 +97,8 @@ Now deploy the image. We map ports and link secrets here.
 
 ```bash
 gcloud run deploy elevendops-service `
-    --image asia-east1-docker.pkg.dev/$PROJECT_ID/elevendops-repo/elevendops-app:latest `
-    --region asia-east1 `
+    --image us-central1-docker.pkg.dev/$PROJECT_ID/elevendops-repo/elevendops-app:latest `
+    --region us-central1 `
     --platform managed `
     --allow-unauthenticated `
     --port 8080 `

@@ -36,7 +36,7 @@
 ```bash
 # 設定環境變數
 export PROJECT_ID="your-project-id"
-export REGION="asia-east1"
+export REGION="us-central1"
 export REPOSITORY="elevendops"
 
 # 建立 Docker 格式的儲存庫
@@ -85,7 +85,7 @@ gcloud auth configure-docker ${REGION}-docker.pkg.dev
 # 上述指令會修改 ~/.docker/config.json，新增以下設定：
 # {
 #   "credHelpers": {
-#     "asia-east1-docker.pkg.dev": "gcloud"
+#     "us-central1-docker.pkg.dev": "gcloud"
 #   }
 # }
 ```

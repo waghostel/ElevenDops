@@ -92,6 +92,8 @@ class FirestoreDataService(DataServiceInterface):
             duration_seconds=doc_dict.get("duration_seconds"),
             created_at=doc_dict["created_at"],
             doctor_id=doc_dict.get("doctor_id", "default_doctor"),
+            name=doc_dict.get("name", ""),
+            description=doc_dict.get("description", ""),
         )
 
     def _doc_to_agent_response(self, doc_dict: dict) -> AgentResponse:

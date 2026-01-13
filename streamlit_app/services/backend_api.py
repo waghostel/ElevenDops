@@ -502,7 +502,13 @@ class BackendAPIClient:
             yield {"type": "error", "message": f"Request timed out: {e}"}
 
     async def generate_audio(
-        self, knowledge_id: str, script: str, voice_id: str, doctor_id: str = "default_doctor"
+        self, 
+        knowledge_id: str, 
+        script: str, 
+        voice_id: str, 
+        doctor_id: str = "default_doctor",
+        name: Optional[str] = None,
+        description: Optional[str] = None
     ) -> AudioResponse:
         """Generate audio from a script.
 
@@ -511,6 +517,8 @@ class BackendAPIClient:
             script: The script content.
             voice_id: The ElevenLabs voice ID.
             doctor_id: ID of the doctor generating audio.
+            name: Optional user-friendly name for the audio.
+            description: Optional description of the audio content.
 
         Returns:
             AudioResponse object.
@@ -521,6 +529,8 @@ class BackendAPIClient:
                 "script": script,
                 "voice_id": voice_id,
                 "doctor_id": doctor_id,
+                "name": name,
+                "description": description,
             }
             async with self._get_client() as client:
                 response = await client.post("/api/audio/generate", json=payload)
@@ -535,6 +545,8 @@ class BackendAPIClient:
                     script=data["script"],
                     created_at=datetime.fromisoformat(data["created_at"]),
                     doctor_id=data.get("doctor_id", "default_doctor"),
+                    name=data.get("name", ""),
+                    description=data.get("description", ""),
                 )
         except httpx.ConnectError as e:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
@@ -577,6 +589,8 @@ class BackendAPIClient:
                         script=d["script"],
                         created_at=datetime.fromisoformat(d["created_at"]),
                         doctor_id=d.get("doctor_id", "default_doctor"),
+                        name=d.get("name", ""),
+                        description=d.get("description", ""),
                     )
                     for d in data["audio_files"]
                 ]
@@ -642,6 +656,55 @@ class BackendAPIClient:
         except httpx.HTTPStatusError as e:
             raise APIError(
                 message=f"Failed to delete audio: {self._parse_error_message(e.response)}",
+                status_code=e.response.status_code,
+            ) from e
+
+    async def update_audio_metadata(
+        self,
+        audio_id: str,
+        name: Optional[str] = None,
+        description: Optional[str] = None
+    ) -> AudioResponse:
+        """Update audio metadata (name and description).
+
+        Args:
+            audio_id: ID of the audio to update.
+            name: New name (optional).
+            description: New description (optional).
+
+        Returns:
+            Updated AudioResponse object.
+        """
+        try:
+            payload = {}
+            if name is not None:
+                payload["name"] = name
+            if description is not None:
+                payload["description"] = description
+            
+            async with self._get_client() as client:
+                response = await client.put(f"/api/audio/{audio_id}", json=payload)
+                response.raise_for_status()
+                data = response.json()
+                return AudioResponse(
+                    audio_id=data["audio_id"],
+                    audio_url=data["audio_url"],
+                    knowledge_id=data["knowledge_id"],
+                    voice_id=data["voice_id"],
+                    duration_seconds=data.get("duration_seconds"),
+                    script=data["script"],
+                    created_at=datetime.fromisoformat(data["created_at"]),
+                    doctor_id=data.get("doctor_id", "default_doctor"),
+                    name=data.get("name", ""),
+                    description=data.get("description", ""),
+                )
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.TimeoutException as e:
+            raise APITimeoutError(f"Update audio timed out: {e}") from e
+        except httpx.HTTPStatusError as e:
+            raise APIError(
+                message=f"Failed to update audio: {self._parse_error_message(e.response)}",
                 status_code=e.response.status_code,
             ) from e
 

@@ -272,6 +272,8 @@ class AudioGenerateRequest(BaseModel):
     script: str = Field(..., min_length=1, max_length=50000, description="Script to convert")
     voice_id: str = Field(..., description="ElevenLabs voice ID")
     doctor_id: str = Field(default="default_doctor", description="ID of the doctor generating audio")
+    name: Optional[str] = Field(None, max_length=200, description="User-friendly name for the audio")
+    description: Optional[str] = Field(None, max_length=1000, description="Optional description of the audio content")
 
 
 class AudioGenerateResponse(BaseModel):
@@ -285,6 +287,8 @@ class AudioGenerateResponse(BaseModel):
     script: str = Field(..., description="Script used for generation")
     created_at: datetime = Field(..., description="Creation timestamp")
     doctor_id: str = Field(default="default_doctor", description="ID of the doctor who generated audio")
+    name: str = Field(default="", description="User-friendly name for the audio")
+    description: str = Field(default="", description="Optional description of the audio content")
 
 
 class AudioMetadata(BaseModel):
@@ -298,6 +302,8 @@ class AudioMetadata(BaseModel):
     script: str
     created_at: datetime
     doctor_id: str = Field(default="default_doctor", description="ID of the doctor who generated audio")
+    name: str = Field(default="", description="User-friendly name for the audio")
+    description: str = Field(default="", description="Optional description of the audio content")
 
 
 class AudioListResponse(BaseModel):
@@ -305,6 +311,13 @@ class AudioListResponse(BaseModel):
 
     audio_files: List[AudioMetadata]
     total_count: int
+
+
+class AudioUpdateRequest(BaseModel):
+    """Request model for updating audio metadata."""
+
+    name: Optional[str] = Field(None, max_length=200, description="User-friendly name for the audio")
+    description: Optional[str] = Field(None, max_length=1000, description="Optional description of the audio content")
 
 
 class VoiceOption(BaseModel):

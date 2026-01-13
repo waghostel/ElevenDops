@@ -372,17 +372,17 @@ flowchart TD
 
 根據 ElevenDops 專案需求，建議配置如下：
 
-| 選項                       | 建議值              | 理由                      |
-| -------------------------- | ------------------- | ------------------------- |
-| **Location**               | `asia-east1` (台灣) | 減少延遲                  |
-| **Storage Class**          | Standard            | 頻繁存取音訊檔案          |
-| **Hierarchical Namespace** | 停用                | 非 AI/ML 密集型工作負載   |
-| **Anywhere Cache**         | 停用                | 初期不需要                |
-| **Public Access**          | 啟用防護            | 使用 Signed URLs 安全存取 |
-| **Access Control**         | Uniform             | 簡化權限管理              |
-| **Soft Delete**            | 啟用 (7 天)         | 允許誤刪恢復              |
-| **Object Versioning**      | 停用                | 音訊檔案不需版本控制      |
-| **Retention**              | 停用                | 無法規遵循需求            |
+| 選項                       | 建議值                 | 理由                      |
+| -------------------------- | ---------------------- | ------------------------- |
+| **Location**               | `us-central1` (愛荷華) | 成本最低、適用免費額度    |
+| **Storage Class**          | Standard               | 頻繁存取音訊檔案          |
+| **Hierarchical Namespace** | 停用                   | 非 AI/ML 密集型工作負載   |
+| **Anywhere Cache**         | 停用                   | 初期不需要                |
+| **Public Access**          | 啟用防護               | 使用 Signed URLs 安全存取 |
+| **Access Control**         | Uniform                | 簡化權限管理              |
+| **Soft Delete**            | 啟用 (7 天)            | 允許誤刪恢復              |
+| **Object Versioning**      | 停用                   | 音訊檔案不需版本控制      |
+| **Retention**              | 停用                   | 無法規遵循需求            |
 
 ---
 

@@ -13,6 +13,7 @@ from backend.models.schemas import (
     AudioGenerateResponse,
     AudioListResponse,
     AudioMetadata,
+    AudioUpdateRequest,
     ScriptGenerateRequest,
     ScriptGenerateResponse,
     VoiceOption,
@@ -123,6 +124,8 @@ async def generate_audio(
         voice_id=payload.voice_id,
         knowledge_id=payload.knowledge_id,
         doctor_id=payload.doctor_id,
+        name=payload.name,
+        description=payload.description,
     )
     return AudioGenerateResponse(
         audio_id=metadata.audio_id,
@@ -133,6 +136,8 @@ async def generate_audio(
         script=metadata.script,
         created_at=metadata.created_at,
         doctor_id=metadata.doctor_id,
+        name=metadata.name,
+        description=metadata.description,
     )
 
 
@@ -227,3 +232,26 @@ async def delete_audio(
 async def get_available_voices(service: AudioService = Depends(get_audio_service)):
     """Get available voices."""
     return service.get_available_voices()
+
+
+@router.put(
+    "/{audio_id}",
+    response_model=AudioMetadata,
+    responses={404: {"model": ErrorResponse}, 500: {"model": ErrorResponse}},
+)
+async def update_audio_metadata(
+    audio_id: str,
+    payload: AudioUpdateRequest,
+    service: AudioService = Depends(get_audio_service)
+):
+    """Update audio metadata (name and description)."""
+    try:
+        return await service.update_audio_metadata(
+            audio_id=audio_id,
+            name=payload.name,
+            description=payload.description
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update audio: {str(e)}")

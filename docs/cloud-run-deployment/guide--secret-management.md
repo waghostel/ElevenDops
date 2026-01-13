@@ -98,7 +98,7 @@ After updating a secret, redeploy the Cloud Run service to use the new version:
 
 ```bash
 gcloud run services update elevendops \
-    --region=asia-east1 \
+    --region=us-central1 \
     --set-secrets=ELEVENLABS_API_KEY=elevenlabs-api-key:latest
 ```
 
@@ -130,7 +130,7 @@ gcloud secrets versions disable 1 --secret="elevenlabs-api-key"
 echo -n "new-api-key" | gcloud secrets versions add elevenlabs-api-key --data-file=-
 
 # Step 3: Redeploy application
-gcloud run services update elevendops --region=asia-east1
+gcloud run services update elevendops --region=us-central1
 
 # Step 4: Verify application works with new key
 

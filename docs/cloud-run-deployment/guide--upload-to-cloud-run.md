@@ -33,7 +33,7 @@ Use this method for first-time deployments or when you need direct control.
 ```bash
 # Set your project configuration
 export PROJECT_ID="your-project-id"
-export REGION="asia-east1"
+export REGION="us-central1"
 
 # Verify configuration
 echo "Project: $PROJECT_ID"
@@ -163,7 +163,7 @@ gcloud builds triggers create github \
     --repo-owner="YOUR_GITHUB_USERNAME" \
     --branch-pattern="^main$" \
     --build-config="cloudbuild.yaml" \
-    --substitutions="_REGION=asia-east1"
+    --substitutions="_REGION=us-central1"
 ```
 
 **Option B: Cloud Source Repositories**
@@ -174,7 +174,7 @@ gcloud builds triggers create cloud-source-repositories \
     --repo="elevendops" \
     --branch-pattern="^main$" \
     --build-config="cloudbuild.yaml" \
-    --substitutions="_REGION=asia-east1"
+    --substitutions="_REGION=us-central1"
 ```
 
 ### Deploying with CI/CD
@@ -206,7 +206,7 @@ You can also manually trigger a build:
 
 ```bash
 gcloud builds submit --config=cloudbuild.yaml \
-    --substitutions=_REGION=asia-east1
+    --substitutions=_REGION=us-central1
 ```
 
 ---

@@ -43,7 +43,7 @@ Cloud Run 服務使用 Service Account 身分執行。該 Service Account 必須
 
 ```bash
 # 查看 Cloud Run 使用的 Service Account
-gcloud run services describe my-service --region=asia-east1 \
+gcloud run services describe my-service --region=us-central1 \
     --format="value(spec.template.spec.serviceAccountName)"
 
 # 預設為 {PROJECT_NUMBER}-compute@developer.gserviceaccount.com
@@ -65,7 +65,7 @@ gcloud secrets add-iam-policy-binding ELEVENLABS_API_KEY \
 ```bash
 gcloud run deploy my-service \
     --image=gcr.io/my-project/my-app \
-    --region=asia-east1 \
+    --region=us-central1 \
     --set-secrets="ELEVENLABS_API_KEY=ELEVENLABS_API_KEY:latest"
     # 格式: ENV_VAR_NAME=SECRET_NAME:VERSION
 ```
@@ -90,7 +90,7 @@ api_key = os.environ.get("ELEVENLABS_API_KEY")
 ```bash
 gcloud run deploy my-service \
     --image=gcr.io/my-project/my-app \
-    --region=asia-east1 \
+    --region=us-central1 \
     --set-secrets="/secrets/api-key=ELEVENLABS_API_KEY:latest"
     # 格式: MOUNT_PATH=SECRET_NAME:VERSION
 ```
