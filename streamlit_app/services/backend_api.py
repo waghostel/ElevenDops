@@ -28,7 +28,7 @@ from streamlit_app.services.models import (
     CustomTemplateCreate,
     AgentConfig,
     PatientSession,
-    PatientSession,
+    PatientMessageResponse,
     ConversationResponse,
     ConversationSummary,
     ConversationDetail,

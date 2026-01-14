@@ -187,10 +187,10 @@ def render_conversation_interface():
             col1, col2 = st.columns([3, 1])
             with col1:
                 st.success(f"🟢 Connected - Session ID: {st.session_state.current_session.session_id}")
+                st.info("ℹ️ **Note**: A full audio conversation mode will be implemented in the future React web interface.")
             with col2:
                 # Chat Mode Toggle
                 chat_mode = st.toggle("💬 Chat Mode (Text Only)", value=True, help="Disable audio synthesis for faster response and cost saving")
-                st.info("ℹ️ **Note**: A full audio conversation mode will be implemented in the future React web interface.")
             
             # Display History
             for msg in st.session_state.conversation_history:
@@ -201,8 +201,8 @@ def render_conversation_interface():
                     
                     st.write(msg.content)
                     
-                    # Audio Playback - only if audio exists and we are not strictly suppressing it (though history should play if it exists)
-                    if msg.audio_data:
+                    # Audio Playback - only show when Chat Mode is OFF (audio was generated)
+                    if msg.audio_data and not chat_mode:
                         try:
                             audio_bytes = base64.b64decode(msg.audio_data)
                             st.audio(audio_bytes, format="audio/mp3")

@@ -181,6 +181,15 @@ class PatientSession:
 
 
 @dataclass
+class PatientMessageResponse:
+    """Response from sending a message in a patient session."""
+    
+    response_text: str
+    audio_data: Optional[str]
+    timestamp: datetime
+
+
+@dataclass
 class ConversationMessage:
     """Conversation message data class."""
 
