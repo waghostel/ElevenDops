@@ -8,7 +8,7 @@ import uuid
 
 from backend.services.patient_service import PatientService
 from backend.services.data_service import MockDataService
-from backend.models.schemas import PatientSessionCreate
+from backend.models.schemas import PatientSessionCreate, AgentResponse, AnswerStyle
 
 # **Feature: patient-conversation-text, Property 1: Session creation returns unique session_id**
 @settings(deadline=None)
@@ -24,8 +24,21 @@ def test_session_creation_unique_id(patient_id, agent_id):
     # send_text_message not called here so no need to mock specific async property
 
 
+    data_store = MockDataService()
+    data_store.get_agent = AsyncMock(return_value=AgentResponse(
+        agent_id=str(agent_id), 
+        name="Test Agent", 
+        elevenlabs_agent_id="elevenlabs_id",
+        knowledge_ids=[],
+        voice_id="voice_id",
+        answer_style=AnswerStyle.PROFESSIONAL,
+        doctor_id="doctor_id",
+        created_at=datetime.now(),
+        updated_at=datetime.now()
+    ))
+    
     service = PatientService(
-        data_service=MockDataService(),
+        data_service=data_store,
         elevenlabs_service=mock_elevenlabs
     )
 
@@ -61,6 +74,18 @@ def test_session_data_round_trip(patient_id, agent_id):
     mock_elevenlabs.get_signed_url.return_value = "wss://mock-url"
     
     data_store = MockDataService()
+    data_store.get_agent = AsyncMock(return_value=AgentResponse(
+        agent_id=str(agent_id), 
+        name="Test Agent", 
+        elevenlabs_agent_id="elevenlabs_id",
+        knowledge_ids=[],
+        voice_id="voice_id",
+        answer_style=AnswerStyle.PROFESSIONAL,
+        doctor_id="doctor_id",
+        created_at=datetime.now(),
+        updated_at=datetime.now()
+    ))
+    
     service = PatientService(
         data_service=data_store,
         elevenlabs_service=mock_elevenlabs
@@ -99,6 +124,18 @@ def test_message_exchange_round_trip(patient_id, agent_id, message_text, agent_r
     mock_elevenlabs.send_text_message = AsyncMock(return_value=(agent_response_text, b"mock_audio"))
     
     data_store = MockDataService()
+    data_store.get_agent = AsyncMock(return_value=AgentResponse(
+        agent_id=str(agent_id), 
+        name="Test Agent", 
+        elevenlabs_agent_id="elevenlabs_id",
+        knowledge_ids=[],
+        voice_id="voice_id",
+        answer_style=AnswerStyle.PROFESSIONAL,
+        doctor_id="doctor_id",
+        created_at=datetime.now(),
+        updated_at=datetime.now()
+    ))
+
     service = PatientService(
         data_service=data_store,
         elevenlabs_service=mock_elevenlabs
@@ -145,8 +182,21 @@ def test_response_includes_timestamp(patient_id, message_text):
     mock_elevenlabs.get_signed_url.return_value = "wss://mock-url"
     mock_elevenlabs.send_text_message = AsyncMock(return_value=("response", b"audio"))
     
+    data_store = MockDataService()
+    data_store.get_agent = AsyncMock(return_value=AgentResponse(
+        agent_id="agent", 
+        name="Test Agent", 
+        elevenlabs_agent_id="elevenlabs_id",
+        knowledge_ids=[],
+        voice_id="voice_id",
+        answer_style=AnswerStyle.PROFESSIONAL,
+        doctor_id="doctor_id",
+        created_at=datetime.now(),
+        updated_at=datetime.now()
+    ))
+
     service = PatientService(
-        data_service=MockDataService(),
+        data_service=data_store,
         elevenlabs_service=mock_elevenlabs
     )
 

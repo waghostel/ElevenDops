@@ -79,13 +79,14 @@ class PatientService:
         return session
 
     async def send_message(
-        self, session_id: str, message: str
+        self, session_id: str, message: str, chat_mode: bool = False
     ) -> PatientMessageResponse:
         """Send a message to the agent in the active session.
 
         Args:
             session_id: The session ID.
             message: The patient's message.
+            chat_mode: Whether to use text-only mode.
 
         Returns:
             PatientMessageResponse: The agent's response.
@@ -115,7 +116,7 @@ class PatientService:
         
         try:
             response_text, audio_bytes = await self.elevenlabs_service.send_text_message(
-                agent.elevenlabs_agent_id, message
+                agent.elevenlabs_agent_id, message, text_only=chat_mode
             )
         except Exception as e:
             logging.error(f"Failed to get response from ElevenLabs for session {session_id}: {e}")

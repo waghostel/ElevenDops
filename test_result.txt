@@ -1,0 +1,43 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.0, pytest-9.0.2, pluggy-1.6.0 -- C:\Users\Cheney\Documents\Github\ElevenDops\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+hypothesis profile 'default' -> deadline=None, max_examples=50
+rootdir: C:\Users\Cheney\Documents\Github\ElevenDops
+configfile: pyproject.toml
+plugins: anyio-4.12.0, hypothesis-6.148.8, langsmith-0.5.1, asyncio-1.3.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 2 items
+
+tests/test_elevenlabs_chat_mode.py::test_send_text_message_chat_mode FAILED [ 50%]
+tests/test_elevenlabs_chat_mode.py::test_send_text_message_voice_mode FAILED [100%]
+
+================================== FAILURES ===================================
+______________________ test_send_text_message_chat_mode _______________________
+
+mock_db_service = <AsyncMock id='2085183316816'>
+
+    @pytest.mark.asyncio
+    async def test_send_text_message_chat_mode(mock_db_service):
+        """Test send_text_message with text_only=True."""
+        # Setup service with mock websockets
+>       service = ElevenLabsService(db_service=mock_db_service)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: ElevenLabsService.__init__() got an unexpected keyword argument 'db_service'
+
+tests\test_elevenlabs_chat_mode.py:17: TypeError
+______________________ test_send_text_message_voice_mode ______________________
+
+mock_db_service = <AsyncMock id='2085184928208'>
+
+    @pytest.mark.asyncio
+    async def test_send_text_message_voice_mode(mock_db_service):
+        """Test send_text_message with text_only=False (default)."""
+>       service = ElevenLabsService(db_service=mock_db_service)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       TypeError: ElevenLabsService.__init__() got an unexpected keyword argument 'db_service'
+
+tests\test_elevenlabs_chat_mode.py:78: TypeError
+=========================== short test summary info ===========================
+FAILED tests/test_elevenlabs_chat_mode.py::test_send_text_message_chat_mode - TypeError: ElevenLabsService.__init__() got an unexpected keyword argument 'db_service'
+FAILED tests/test_elevenlabs_chat_mode.py::test_send_text_message_voice_mode - TypeError: ElevenLabsService.__init__() got an unexpected keyword argument 'db_service'
+============================== 2 failed in 0.87s ==============================

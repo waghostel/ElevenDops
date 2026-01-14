@@ -702,12 +702,13 @@ class ElevenLabsService:
             logging.error(f"Failed to get signed URL: {e}")
             raise ElevenLabsAgentError(f"Failed to get signed URL: {str(e)}")
 
-    async def send_text_message(self, agent_id: str, text: str) -> tuple[str, bytes]:
-        """Send a text message to the agent and get audio response.
+    async def send_text_message(self, agent_id: str, text: str, text_only: bool = False) -> tuple[str, bytes]:
+        """Send a text message to the agent and get response.
 
         Args:
             agent_id: The agent ID.
             text: The user's message.
+            text_only: If True, request text-only response (no audio synthesis).
 
         Returns:
             tuple[str, bytes]: (Response text, Audio data)
@@ -716,7 +717,9 @@ class ElevenLabsService:
             ElevenLabsAgentError: If communication fails.
         """
         if self.use_mock:
-            logging.info(f"[MOCK] send_text_message called: agent={agent_id}, text={text[:50]}...")
+            logging.info(f"[MOCK] send_text_message called: agent={agent_id}, text={text[:50]}..., text_only={text_only}")
+            if text_only:
+                return ("This is a mock text-only response.", b"")
             # Return a minimal valid MP3 frame (silence) to prevent frontend audio errors
             mock_audio = b'\xff\xfb\x90\x00' + b'\x00' * 417
             return ("This is a mock response from the AI assistant.", mock_audio)
@@ -726,32 +729,39 @@ class ElevenLabsService:
             signed_url = self.get_signed_url(agent_id)
             
             async with websockets.connect(signed_url) as websocket:
-                # Send initial message to trigger response
-                # Format based on ElevenLabs ConvAI WebSocket protocol
-                # Usually we just send a text event if the session is open, 
-                # but for a strict single-turn "REST-like" behavior:
-                
                 # 1. Send text
-                # The protocol expects a JSON with "text" event
                 payload = {
                     "text": text,
-                    "try_trigger_generation": True
+                    "try_trigger_generation": not text_only
                 }
+                
+                if text_only:
+                     logging.info(f"Sending text-only message to agent {agent_id}")
+                
                 await websocket.send(json.dumps(payload))
                 
                 audio_chunks = []
                 response_text_parts = []
+                drain_deadline = None  # Timestamp when we must stop waiting
                 
-                # Listen for response
-                # We need to determine when the turn is over. 
-                # ElevenLabs sends `audio_event` and `agent_response_event`.
-                # We'll collect until we get a logical break or timeout.
-                # A simple heuristic for this stateless method: wait for audio and text.
-                
+                # Listen for response with drain timeout strategy
                 while True:
                     try:
-                        # concise timeout for response
-                        message = await asyncio.wait_for(websocket.recv(), timeout=10.0)
+                        # Calculate dynamic timeout
+                        if drain_deadline:
+                            # In drain mode: calculate time remaining until hard deadline
+                            import time
+                            time_left = drain_deadline - time.time()
+                            if time_left <= 0:
+                                # Deadline reached, stop collecting
+                                logging.info("Drain timeout reached, ending message collection")
+                                break
+                            timeout = time_left
+                        else:
+                            # Normal mode: standard activity timeout
+                            timeout = 10.0
+                        
+                        message = await asyncio.wait_for(websocket.recv(), timeout=timeout)
                         data = json.loads(message)
                         
                         if data.get("audio_event"):
@@ -765,29 +775,26 @@ class ElevenLabsService:
                             part = data["agent_response_event"].get("agent_response")
                             if part:
                                 response_text_parts.append(part)
-
-                        # Check for turn completion signals if available, or break after some conditions
-                        # For now, we might need a timeout or specific "turn_end" event if ElevenLabs sends one.
-                        # Looking at API docs, 'interruption' or 'ping' might be relevant, 
-                        # but standard conversation usually flows. 
-                        # To keep it simple and synchronous-like for this API: 
-                        # We wait for a reasonable timeout or a specific "end of turn" marker.
-                        # ElevenLabs ConvAI WebSocket docs don't strictly define "end of turn" message 
-                        # that guarantees "I'm done talking" without logic.
-                        # However, for a single text interaction, we might assume the first response sequence is it.
+                            
+                            # Text response received
+                            # If text_only, we can stop immediately after full text (single turn assumption)
+                            # or wait for a very short drain if needed.
+                            # For now, we reuse drain logic but strict it for text-only.
+                            
+                            if not drain_deadline:
+                                import time
+                                if text_only:
+                                    # In text-only mode, we don't expect audio, so we can stop faster
+                                    # But sometimes multiple text events might come?
+                                    # Usually it's one event or stream. 
+                                    # We give a short drain just in case of multiple text parts.
+                                    drain_deadline = time.time() + 0.5 
+                                    logging.info("Text-only response received, entering short drain (0.5s)")
+                                else:
+                                    drain_deadline = time.time() + 2.0
+                                    logging.info("Agent response received, entering drain mode (2s deadline)")
                         
-                        # HACK: For Phase 1 single-turn text mode, let's wait for a short bit of silence or 
-                        # just gather until timeout if no specific end event.
-                        # Force break after collecting substantial response? No.
-                        # Let's assume the client (backend) closes when it thinks it's done?
-                        # No, we want the full answer.
-                        
-                        # Let's rely on `agent_response_event` indicating finality? 
-                        # It's a stream.
-                        
-                        # Hack: Wait for a short timeout after receiving ANY data?
-                        # Improved: Use a specialized "end of turn" check if available.
-                        # If not, satisfy Requirement with basic accumulation.
+                        # Ignore ping_event - it doesn't affect our drain deadline
                         
                     except asyncio.TimeoutError:
                         break

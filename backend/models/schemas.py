@@ -451,6 +451,7 @@ class PatientMessageRequest(BaseModel):
     """Request to send a message."""
 
     message: str = Field(..., min_length=1, max_length=2000, description="Message content")
+    chat_mode: bool = Field(default=False, description="Whether to use text-only mode (no audio synthesis)")
 
 
 class PatientMessageResponse(BaseModel):

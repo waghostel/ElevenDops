@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="8" time="28.857" timestamp="2026-01-14T08:38:29.082378+08:00" hostname="DESKTOP-K3JOAO0"><properties><property name="hypothesis-statistics-tests/properties/test_patient_service_props.py::test_session_creation_unique_id" value="dGVzdHMvcHJvcGVydGllcy90ZXN0X3BhdGllbnRfc2VydmljZV9wcm9wcy5weTo6dGVzdF9zZXNzaW9uX2NyZWF0aW9uX3VuaXF1ZV9pZDoKCiAgLSBkdXJpbmcgZ2VuZXJhdGUgcGhhc2UgKDAuNjEgc2Vjb25kcyk6CiAgICAtIFR5cGljYWwgcnVudGltZXM6IH4gMTEtNDYzIG1zLCBvZiB3aGljaCB+IDAtNiBtcyBpbiBkYXRhIGdlbmVyYXRpb24KICAgIC0gMCBwYXNzaW5nIGV4YW1wbGVzLCAxMCBmYWlsaW5nIGV4YW1wbGVzLCAwIGludmFsaWQgZXhhbXBsZXMKICAgIC0gRm91bmQgMSBkaXN0aW5jdCBlcnJvciBpbiB0aGlzIHBoYXNlCgogIC0gZHVyaW5nIHNocmluayBwaGFzZSAoNC40MyBzZWNvbmRzKToKICAgIC0gVHlwaWNhbCBydW50aW1lczogfiA5LTE1IG1zLCBvZiB3aGljaCB+IDAtMSBtcyBpbiBkYXRhIGdlbmVyYXRpb24KICAgIC0gMCBwYXNzaW5nIGV4YW1wbGVzLCAyOTUgZmFpbGluZyBleGFtcGxlcywgMCBpbnZhbGlkIGV4YW1wbGVzCiAgICAtIFRyaWVkIDI5NSBzaHJpbmtzIG9mIHdoaWNoIDAgd2VyZSBzdWNjZXNzZnVsCgogIC0gU3RvcHBlZCBiZWNhdXNlIG5vdGhpbmcgbGVmdCB0byBkbw==" /><property name="hypothesis-statistics-tests/properties/test_patient_service_props.py::test_session_data_round_trip" value="dGVzdHMvcHJvcGVydGllcy90ZXN0X3BhdGllbnRfc2VydmljZV9wcm9wcy5weTo6dGVzdF9zZXNzaW9uX2RhdGFfcm91bmRfdHJpcDoKCiAgLSBkdXJpbmcgZ2VuZXJhdGUgcGhhc2UgKDAuMjAgc2Vjb25kcyk6CiAgICAtIFR5cGljYWwgcnVudGltZXM6IH4gOS0zNyBtcywgb2Ygd2hpY2ggfiAwLTcgbXMgaW4gZGF0YSBnZW5lcmF0aW9uCiAgICAtIDAgcGFzc2luZyBleGFtcGxlcywgMTAgZmFpbGluZyBleGFtcGxlcywgMCBpbnZhbGlkIGV4YW1wbGVzCiAgICAtIEZvdW5kIDEgZGlzdGluY3QgZXJyb3IgaW4gdGhpcyBwaGFzZQoKICAtIGR1cmluZyBzaHJpbmsgcGhhc2UgKDUuMDUgc2Vjb25kcyk6CiAgICAtIFR5cGljYWwgcnVudGltZXM6IH4gMTAtNDEgbXMsIG9mIHdoaWNoIH4gMC0xIG1zIGluIGRhdGEgZ2VuZXJhdGlvbgogICAgLSAwIHBhc3NpbmcgZXhhbXBsZXMsIDI5OSBmYWlsaW5nIGV4YW1wbGVzLCAwIGludmFsaWQgZXhhbXBsZXMKICAgIC0gVHJpZWQgMjk5IHNocmlua3Mgb2Ygd2hpY2ggMCB3ZXJlIHN1Y2Nlc3NmdWwKCiAgLSBTdG9wcGVkIGJlY2F1c2Ugbm90aGluZyBsZWZ0IHRvIGRv" /><property name="hypothesis-statistics-tests/properties/test_patient_service_props.py::test_message_exchange_round_trip" value="dGVzdHMvcHJvcGVydGllcy90ZXN0X3BhdGllbnRfc2VydmljZV9wcm9wcy5weTo6dGVzdF9tZXNzYWdlX2V4Y2hhbmdlX3JvdW5kX3RyaXA6CgogIC0gZHVyaW5nIGdlbmVyYXRlIHBoYXNlICgwLjIzIHNlY29uZHMpOgogICAgLSBUeXBpY2FsIHJ1bnRpbWVzOiB+IDE3LTMxIG1zLCBvZiB3aGljaCB+IDAtOCBtcyBpbiBkYXRhIGdlbmVyYXRpb24KICAgIC0gMCBwYXNzaW5nIGV4YW1wbGVzLCAxMCBmYWlsaW5nIGV4YW1wbGVzLCAwIGludmFsaWQgZXhhbXBsZXMKICAgIC0gRm91bmQgMSBkaXN0aW5jdCBlcnJvciBpbiB0aGlzIHBoYXNlCgogIC0gZHVyaW5nIHNocmluayBwaGFzZSAoMTEuMDUgc2Vjb25kcyk6CiAgICAtIFR5cGljYWwgcnVudGltZXM6IH4gMTQtNDcgbXMsIG9mIHdoaWNoIH4gMC0yIG1zIGluIGRhdGEgZ2VuZXJhdGlvbgogICAgLSAwIHBhc3NpbmcgZXhhbXBsZXMsIDQ5NyBmYWlsaW5nIGV4YW1wbGVzLCAwIGludmFsaWQgZXhhbXBsZXMKICAgIC0gVHJpZWQgNDk3IHNocmlua3Mgb2Ygd2hpY2ggMCB3ZXJlIHN1Y2Nlc3NmdWwKCiAgLSBTdG9wcGVkIGJlY2F1c2Ugbm90aGluZyBsZWZ0IHRvIGRv" /><property name="hypothesis-statistics-tests/properties/test_patient_service_props.py::test_response_includes_timestamp" value="dGVzdHMvcHJvcGVydGllcy90ZXN0X3BhdGllbnRfc2VydmljZV9wcm9wcy5weTo6dGVzdF9yZXNwb25zZV9pbmNsdWRlc190aW1lc3RhbXA6CgogIC0gZHVyaW5nIGdlbmVyYXRlIHBoYXNlICgwLjIwIHNlY29uZHMpOgogICAgLSBUeXBpY2FsIHJ1bnRpbWVzOiB+IDEzLTI3IG1zLCBvZiB3aGljaCB+IDAtMyBtcyBpbiBkYXRhIGdlbmVyYXRpb24KICAgIC0gMCBwYXNzaW5nIGV4YW1wbGVzLCAxMCBmYWlsaW5nIGV4YW1wbGVzLCAwIGludmFsaWQgZXhhbXBsZXMKICAgIC0gRm91bmQgMSBkaXN0aW5jdCBlcnJvciBpbiB0aGlzIHBoYXNlCgogIC0gZHVyaW5nIHNocmluayBwaGFzZSAoNi4xMyBzZWNvbmRzKToKICAgIC0gVHlwaWNhbCBydW50aW1lczogfiAxNC0yOCBtcywgb2Ygd2hpY2ggfiAwLTEgbXMgaW4gZGF0YSBnZW5lcmF0aW9uCiAgICAtIDAgcGFzc2luZyBleGFtcGxlcywgMjk3IGZhaWxpbmcgZXhhbXBsZXMsIDAgaW52YWxpZCBleGFtcGxlcwogICAgLSBUcmllZCAyOTcgc2hyaW5rcyBvZiB3aGljaCAwIHdlcmUgc3VjY2Vzc2Z1bAoKICAtIFN0b3BwZWQgYmVjYXVzZSBub3RoaW5nIGxlZnQgdG8gZG8=" /></properties><testcase classname="tests.test_elevenlabs_chat_mode" name="test_send_text_message_chat_mode" time="0.165" /><testcase classname="tests.test_elevenlabs_chat_mode" name="test_send_text_message_voice_mode" time="0.019" /><testcase classname="tests.test_elevenlabs_websocket_fix" name="test_drain_timeout_prevents_hang" time="0.014" /><testcase classname="tests.test_elevenlabs_websocket_fix" name="test_collects_trailing_audio_in_drain_mode" time="0.016" /><testcase classname="tests.properties.test_patient_service_props" name="test_session_creation_unique_id" time="5.153"><failure message="pydantic_core._pydantic_core.ValidationError: 4 validation errors for AgentResponse&#10;knowledge_ids&#10;  Field required [type=missing, input_value={'agent_id': '0', 'name':... 14, 8, 38, 34, 882424)}, input_type=dict]&#10;    For further information visit https://errors.pydantic.dev/2.12/v/missing&#10;voice_id&#10;  Field required [type=missing, input_value={'agent_id': '0', 'name':... 14, 8, 38, 34, 882424)}, input_type=dict]&#10;    For further information visit https://errors.pydantic.dev/2.12/v/missing&#10;answer_style&#10;  Field required [type=missing, input_value={'agent_id': '0', 'name':... 14, 8, 38, 34, 882424)}, input_type=dict]&#10;    For further information visit https://errors.pydantic.dev/2.12/v/missing&#10;doctor_id&#10;  Field required [type=missing, input_value={'agent_id': '0', 'name':... 14, 8, 38, 34, 882424)}, input_type=dict]&#10;    For further information visit https://errors.pydantic.dev/2.12/v/missing&#10;Falsifying example: test_session_creation_unique_id(&#10;    # The test always failed when commented parts were varied together.&#10;    patient_id='0',  # or any other generated value&#10;    agent_id='0',  # or any other generated value&#10;)">@settings(deadline=None)
+&gt;   @given(
+            
+        patient_id=st.text(min_size=1, alphabet="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"),
+        agent_id=st.text(min_size=1)
+    )
+
+tests\properties\test_patient_service_props.py:15: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+patient_id = '0', agent_id = '0'
+
+    @settings(deadline=None)
+    @given(
+        patient_id=st.text(min_size=1, alphabet="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"),
+        agent_id=st.text(min_size=1)
+    )
+    def test_session_creation_unique_id(patient_id, agent_id):
+        """Verify session creation returns unique session_id."""
+        # Mock ElevenLabs service to avoid API calls
+        mock_elevenlabs = MagicMock()
+        mock_elevenlabs.get_signed_url.return_value = "wss://mock-url"
+        # send_text_message not called here so no need to mock specific async property
+    
+    
+        data_store = MockDataService()
+&gt;       data_store.get_agent = AsyncMock(return_value=AgentResponse(
+            agent_id=str(agent_id),
+            name="Test Agent",
+            elevenlabs_agent_id="elevenlabs_id",
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        ))
+E       pydantic_core._pydantic_core.ValidationError: 4 validation errors for AgentResponse
+E       knowledge_ids
+E         Field required [type=missing, input_value={'agent_id': '0', 'name':... 14, 8, 38, 34, 882424)}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       voice_id
+E         Field required [type=missing, input_value={'agent_id': '0', 'name':... 14, 8, 38, 34, 882424)}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       answer_style
+E         Field required [type=missing, input_value={'agent_id': '0', 'name':... 14, 8, 38, 34, 882424)}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       doctor_id
+E         Field required [type=missing, input_value={'agent_id': '0', 'name':... 14, 8, 38, 34, 882424)}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       Falsifying example: test_session_creation_unique_id(
+E           # The test always failed when commented parts were varied together.
+E           patient_id='0',  # or any other generated value
+E           agent_id='0',  # or any other generated value
+E       )
+
+tests\properties\test_patient_service_props.py:28: ValidationError</failure></testcase><testcase classname="tests.properties.test_patient_service_props" name="test_session_data_round_trip" time="5.267"><failure message="pydantic_core._pydantic_core.ValidationError: 4 validation errors for AgentResponse&#10;knowledge_ids&#10;  Field required [type=missing, input_value={'agent_id': '0', 'name':... 14, 8, 38, 40, 229691)}, input_type=dict]&#10;    For further information visit https://errors.pydantic.dev/2.12/v/missing&#10;voice_id&#10;  Field required [type=missing, input_value={'agent_id': '0', 'name':... 14, 8, 38, 40, 229691)}, input_type=dict]&#10;    For further information visit https://errors.pydantic.dev/2.12/v/missing&#10;answer_style&#10;  Field required [type=missing, input_value={'agent_id': '0', 'name':... 14, 8, 38, 40, 229691)}, input_type=dict]&#10;    For further information visit https://errors.pydantic.dev/2.12/v/missing&#10;doctor_id&#10;  Field required [type=missing, input_value={'agent_id': '0', 'name':... 14, 8, 38, 40, 229691)}, input_type=dict]&#10;    For further information visit https://errors.pydantic.dev/2.12/v/missing&#10;Falsifying example: test_session_data_round_trip(&#10;    # The test always failed when commented parts were varied together.&#10;    patient_id='0',  # or any other generated value&#10;    agent_id='0',  # or any other generated value&#10;)">@settings(deadline=None)
+&gt;   @given(
+            
+        patient_id=st.text(min_size=1, alphabet="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"),
+        agent_id=st.text(min_size=1)
+    )
+
+tests\properties\test_patient_service_props.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+patient_id = '0', agent_id = '0'
+
+    @settings(deadline=None)
+    @given(
+        patient_id=st.text(min_size=1, alphabet="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"),
+        agent_id=st.text(min_size=1)
+    )
+    def test_session_data_round_trip(patient_id, agent_id):
+        """Verify session data round-trip to persistence."""
+        mock_elevenlabs = MagicMock()
+        mock_elevenlabs.get_signed_url.return_value = "wss://mock-url"
+    
+        data_store = MockDataService()
+&gt;       data_store.get_agent = AsyncMock(return_value=AgentResponse(
+            agent_id=str(agent_id),
+            name="Test Agent",
+            elevenlabs_agent_id="elevenlabs_id",
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        ))
+E       pydantic_core._pydantic_core.ValidationError: 4 validation errors for AgentResponse
+E       knowledge_ids
+E         Field required [type=missing, input_value={'agent_id': '0', 'name':... 14, 8, 38, 40, 229691)}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       voice_id
+E         Field required [type=missing, input_value={'agent_id': '0', 'name':... 14, 8, 38, 40, 229691)}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       answer_style
+E         Field required [type=missing, input_value={'agent_id': '0', 'name':... 14, 8, 38, 40, 229691)}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       doctor_id
+E         Field required [type=missing, input_value={'agent_id': '0', 'name':... 14, 8, 38, 40, 229691)}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       Falsifying example: test_session_data_round_trip(
+E           # The test always failed when commented parts were varied together.
+E           patient_id='0',  # or any other generated value
+E           agent_id='0',  # or any other generated value
+E       )
+
+tests\properties\test_patient_service_props.py:73: ValidationError</failure></testcase><testcase classname="tests.properties.test_patient_service_props" name="test_message_exchange_round_trip" time="11.305"><failure message="pydantic_core._pydantic_core.ValidationError: 4 validation errors for AgentResponse&#10;knowledge_ids&#10;  Field required [type=missing, input_value={'agent_id': '0', 'name':... 14, 8, 38, 51, 551371)}, input_type=dict]&#10;    For further information visit https://errors.pydantic.dev/2.12/v/missing&#10;voice_id&#10;  Field required [type=missing, input_value={'agent_id': '0', 'name':... 14, 8, 38, 51, 551371)}, input_type=dict]&#10;    For further information visit https://errors.pydantic.dev/2.12/v/missing&#10;answer_style&#10;  Field required [type=missing, input_value={'agent_id': '0', 'name':... 14, 8, 38, 51, 551371)}, input_type=dict]&#10;    For further information visit https://errors.pydantic.dev/2.12/v/missing&#10;doctor_id&#10;  Field required [type=missing, input_value={'agent_id': '0', 'name':... 14, 8, 38, 51, 551371)}, input_type=dict]&#10;    For further information visit https://errors.pydantic.dev/2.12/v/missing&#10;Falsifying example: test_message_exchange_round_trip(&#10;    # The test always failed when commented parts were varied together.&#10;    patient_id='0',  # or any other generated value&#10;    agent_id='0',  # or any other generated value&#10;    message_text='0',  # or any other generated value&#10;    agent_response_text='0',  # or any other generated value&#10;)">@settings(deadline=None)
+&gt;   @given(
+            
+        patient_id=st.text(min_size=1, alphabet="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"),
+        agent_id=st.text(min_size=1),
+        message_text=st.text(min_size=1),
+        agent_response_text=st.text(min_size=1)
+    )
+
+tests\properties\test_patient_service_props.py:105: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+patient_id = '0', agent_id = '0', message_text = '0', agent_response_text = '0'
+
+    @settings(deadline=None)
+    @given(
+        patient_id=st.text(min_size=1, alphabet="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"),
+        agent_id=st.text(min_size=1),
+        message_text=st.text(min_size=1),
+        agent_response_text=st.text(min_size=1)
+    )
+    def test_message_exchange_round_trip(patient_id, agent_id, message_text, agent_response_text):
+        """Verify message exchange persists both patient and agent messages."""
+        # Mock ElevenLabs to return specific text/audio
+        mock_elevenlabs = MagicMock()
+        mock_elevenlabs.get_signed_url.return_value = "wss://mock-url"
+        mock_elevenlabs.send_text_message = AsyncMock(return_value=(agent_response_text, b"mock_audio"))
+    
+        data_store = MockDataService()
+&gt;       data_store.get_agent = AsyncMock(return_value=AgentResponse(
+            agent_id=str(agent_id),
+            name="Test Agent",
+            elevenlabs_agent_id="elevenlabs_id",
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        ))
+E       pydantic_core._pydantic_core.ValidationError: 4 validation errors for AgentResponse
+E       knowledge_ids
+E         Field required [type=missing, input_value={'agent_id': '0', 'name':... 14, 8, 38, 51, 551371)}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       voice_id
+E         Field required [type=missing, input_value={'agent_id': '0', 'name':... 14, 8, 38, 51, 551371)}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       answer_style
+E         Field required [type=missing, input_value={'agent_id': '0', 'name':... 14, 8, 38, 51, 551371)}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       doctor_id
+E         Field required [type=missing, input_value={'agent_id': '0', 'name':... 14, 8, 38, 51, 551371)}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       Falsifying example: test_message_exchange_round_trip(
+E           # The test always failed when commented parts were varied together.
+E           patient_id='0',  # or any other generated value
+E           agent_id='0',  # or any other generated value
+E           message_text='0',  # or any other generated value
+E           agent_response_text='0',  # or any other generated value
+E       )
+
+tests\properties\test_patient_service_props.py:119: ValidationError</failure></testcase><testcase classname="tests.properties.test_patient_service_props" name="test_response_includes_timestamp" time="6.347"><failure message="pydantic_core._pydantic_core.ValidationError: 4 validation errors for AgentResponse&#10;knowledge_ids&#10;  Field required [type=missing, input_value={'agent_id': 'agent', 'na... 14, 8, 38, 57, 916736)}, input_type=dict]&#10;    For further information visit https://errors.pydantic.dev/2.12/v/missing&#10;voice_id&#10;  Field required [type=missing, input_value={'agent_id': 'agent', 'na... 14, 8, 38, 57, 916736)}, input_type=dict]&#10;    For further information visit https://errors.pydantic.dev/2.12/v/missing&#10;answer_style&#10;  Field required [type=missing, input_value={'agent_id': 'agent', 'na... 14, 8, 38, 57, 916736)}, input_type=dict]&#10;    For further information visit https://errors.pydantic.dev/2.12/v/missing&#10;doctor_id&#10;  Field required [type=missing, input_value={'agent_id': 'agent', 'na... 14, 8, 38, 57, 916736)}, input_type=dict]&#10;    For further information visit https://errors.pydantic.dev/2.12/v/missing&#10;Falsifying example: test_response_includes_timestamp(&#10;    # The test always failed when commented parts were varied together.&#10;    patient_id='0',  # or any other generated value&#10;    message_text='0',  # or any other generated value&#10;)">@settings(deadline=None)
+&gt;   @given(
+            
+        patient_id=st.text(min_size=1, alphabet="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"),
+        message_text=st.text(min_size=1)
+    )
+
+tests\properties\test_patient_service_props.py:163: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+patient_id = '0', message_text = '0'
+
+    @settings(deadline=None)
+    @given(
+        patient_id=st.text(min_size=1, alphabet="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"),
+        message_text=st.text(min_size=1)
+    )
+    def test_response_includes_timestamp(patient_id, message_text):
+        """Verify response includes valid timestamp."""
+        mock_elevenlabs = MagicMock()
+        mock_elevenlabs.get_signed_url.return_value = "wss://mock-url"
+        mock_elevenlabs.send_text_message = AsyncMock(return_value=("response", b"audio"))
+    
+        data_store = MockDataService()
+&gt;       data_store.get_agent = AsyncMock(return_value=AgentResponse(
+            agent_id="agent",
+            name="Test Agent",
+            elevenlabs_agent_id="elevenlabs_id",
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        ))
+E       pydantic_core._pydantic_core.ValidationError: 4 validation errors for AgentResponse
+E       knowledge_ids
+E         Field required [type=missing, input_value={'agent_id': 'agent', 'na... 14, 8, 38, 57, 916736)}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       voice_id
+E         Field required [type=missing, input_value={'agent_id': 'agent', 'na... 14, 8, 38, 57, 916736)}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       answer_style
+E         Field required [type=missing, input_value={'agent_id': 'agent', 'na... 14, 8, 38, 57, 916736)}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       doctor_id
+E         Field required [type=missing, input_value={'agent_id': 'agent', 'na... 14, 8, 38, 57, 916736)}, input_type=dict]
+E           For further information visit https://errors.pydantic.dev/2.12/v/missing
+E       Falsifying example: test_response_includes_timestamp(
+E           # The test always failed when commented parts were varied together.
+E           patient_id='0',  # or any other generated value
+E           message_text='0',  # or any other generated value
+E       )
+
+tests\properties\test_patient_service_props.py:174: ValidationError</failure></testcase></testsuite></testsuites>

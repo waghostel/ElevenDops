@@ -74,6 +74,15 @@ Visit `http://localhost:8000/api/health`. You should see:
 - **Firestore**: Open `http://localhost:8080` (might show "Ok" or similar)
 - **GCS**: Open `http://localhost:4443/storage/v1/b` (lists buckets)
 
+## Running Tests
+
+> [!IMPORTANT] > **Always use `uv run pytest`** to execute tests. This ensures the correct virtual environment (and installed packages like `slowapi`) are used. Using `pytest` directly may result in import errors.
+
+```bash
+# Run all tests
+uv run pytest tests/ -v
+```
+
 ## Using in Code
 
 The infrastructure is abstracted via service wrappers. Always use these services instead of initializing clients directly.

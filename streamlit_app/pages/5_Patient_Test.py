@@ -161,8 +161,8 @@ def render_conversation_interface():
         async def start_new_session(p_id, a_id):
             return await client.create_patient_session(p_id, a_id)
 
-        async def send_msg(s_id, msg):
-            return await client.send_patient_message(s_id, msg)
+        async def send_msg(s_id, msg, chat_mode):
+            return await client.send_patient_message(s_id, msg, chat_mode=chat_mode)
 
         async def end_sess(s_id):
             return await client.end_patient_session(s_id)
@@ -184,7 +184,13 @@ def render_conversation_interface():
         # 2. Active Conversation Interface
         else:
             # Show status
-            st.success(f"🟢 Connected - Session ID: {st.session_state.current_session.session_id}")
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.success(f"🟢 Connected - Session ID: {st.session_state.current_session.session_id}")
+            with col2:
+                # Chat Mode Toggle
+                chat_mode = st.toggle("💬 Chat Mode (Text Only)", value=True, help="Disable audio synthesis for faster response and cost saving")
+                st.info("ℹ️ **Note**: A full audio conversation mode will be implemented in the future React web interface.")
             
             # Display History
             for msg in st.session_state.conversation_history:
@@ -195,7 +201,7 @@ def render_conversation_interface():
                     
                     st.write(msg.content)
                     
-                    # Audio Playback
+                    # Audio Playback - only if audio exists and we are not strictly suppressing it (though history should play if it exists)
                     if msg.audio_data:
                         try:
                             audio_bytes = base64.b64decode(msg.audio_data)
@@ -213,7 +219,7 @@ def render_conversation_interface():
                 with st.spinner("Agent is thinking..."):
                     try:
                         response = run_async(
-                            send_msg(st.session_state.current_session.session_id, prompt)
+                            send_msg(st.session_state.current_session.session_id, prompt, chat_mode)
                         )
                         # Add agent response
                         agent_msg = ConversationMessage(

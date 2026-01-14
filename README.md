@@ -131,15 +131,17 @@ ElevenDops/
 
 ## Running Tests
 
+> [!IMPORTANT] > **Always use `uv run pytest`** to execute tests. This ensures the correct virtual environment (and installed packages like `slowapi`) are used. Using `pytest` directly may result in import errors.
+
 ```bash
 # Run all tests
-poetry run pytest tests/ -v
+uv run pytest tests/ -v
 
 # Run with coverage
-poetry run pytest tests/ -v --cov=backend --cov=streamlit_app
+uv run pytest tests/ -v --cov=backend --cov=streamlit_app
 
 # Run specific test file
-poetry run pytest tests/test_config_props.py -v
+uv run pytest tests/test_config_props.py -v
 ```
 
 ## Docker Deployment

@@ -1,0 +1,289 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="2" time="1.627" timestamp="2026-01-14T08:36:07.814036+08:00" hostname="DESKTOP-K3JOAO0"><testcase classname="tests.test_elevenlabs_websocket_fix" name="test_drain_timeout_prevents_hang" time="0.314"><failure message="backend.services.elevenlabs_service.ElevenLabsAgentError: Failed to send text message:">self = &lt;AsyncMock name='mock.recv' id='2847544890832'&gt;, args = (), kwargs = {}
+_call = call(), effect = &lt;list_iterator object at 0x00000296FEE5CD30&gt;
+
+    async def _execute_mock_call(self, /, *args, **kwargs):
+        # This is nearly just like super(), except for special handling
+        # of coroutines
+    
+        _call = _Call((args, kwargs), two=True)
+        self.await_count += 1
+        self.await_args = _call
+        self.await_args_list.append(_call)
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+                raise effect
+            elif not _callable(effect):
+                try:
+&gt;                   result = next(effect)
+                             ^^^^^^^^^^^^
+E                   StopIteration
+
+..\..\..\AppData\Local\Programs\Python\Python311\Lib\unittest\mock.py:2198: StopIteration
+
+During handling of the above exception, another exception occurred:
+
+self = &lt;backend.services.elevenlabs_service.ElevenLabsService object at 0x00000296FEE57E10&gt;
+agent_id = 'test_agent', text = 'Hello', text_only = False
+
+    async def send_text_message(self, agent_id: str, text: str, text_only: bool = False) -&gt; tuple[str, bytes]:
+        """Send a text message to the agent and get response.
+    
+        Args:
+            agent_id: The agent ID.
+            text: The user's message.
+            text_only: If True, request text-only response (no audio synthesis).
+    
+        Returns:
+            tuple[str, bytes]: (Response text, Audio data)
+    
+        Raises:
+            ElevenLabsAgentError: If communication fails.
+        """
+        if self.use_mock:
+            logging.info(f"[MOCK] send_text_message called: agent={agent_id}, text={text[:50]}..., text_only={text_only}")
+            if text_only:
+                return ("This is a mock text-only response.", b"")
+            # Return a minimal valid MP3 frame (silence) to prevent frontend audio errors
+            mock_audio = b'\xff\xfb\x90\x00' + b'\x00' * 417
+            return ("This is a mock response from the AI assistant.", mock_audio)
+    
+        try:
+            # Get signed URL
+            signed_url = self.get_signed_url(agent_id)
+    
+            async with websockets.connect(signed_url) as websocket:
+                # 1. Send text
+                payload = {
+                    "text": text,
+                    "try_trigger_generation": not text_only
+                }
+    
+                if text_only:
+                     logging.info(f"Sending text-only message to agent {agent_id}")
+    
+                await websocket.send(json.dumps(payload))
+    
+                audio_chunks = []
+                response_text_parts = []
+                drain_deadline = None  # Timestamp when we must stop waiting
+    
+                # Listen for response with drain timeout strategy
+                while True:
+                    try:
+                        # Calculate dynamic timeout
+                        if drain_deadline:
+                            # In drain mode: calculate time remaining until hard deadline
+                            import time
+                            time_left = drain_deadline - time.time()
+                            if time_left &lt;= 0:
+                                # Deadline reached, stop collecting
+                                logging.info("Drain timeout reached, ending message collection")
+                                break
+                            timeout = time_left
+                        else:
+                            # Normal mode: standard activity timeout
+                            timeout = 10.0
+    
+&gt;                       message = await asyncio.wait_for(websocket.recv(), timeout=timeout)
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+backend\services\elevenlabs_service.py:764: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+..\..\..\AppData\Local\Programs\Python\Python311\Lib\asyncio\tasks.py:479: in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;AsyncMock name='mock.recv' id='2847544890832'&gt;, args = (), kwargs = {}
+_call = call(), effect = &lt;list_iterator object at 0x00000296FEE5CD30&gt;
+
+    async def _execute_mock_call(self, /, *args, **kwargs):
+        # This is nearly just like super(), except for special handling
+        # of coroutines
+    
+        _call = _Call((args, kwargs), two=True)
+        self.await_count += 1
+        self.await_args = _call
+        self.await_args_list.append(_call)
+    
+        effect = self.side_effect
+        if effect is not None:
+            if _is_exception(effect):
+                raise effect
+            elif not _callable(effect):
+                try:
+                    result = next(effect)
+                except StopIteration:
+                    # It is impossible to propagate a StopIteration
+                    # through coroutines because of PEP 479
+&gt;                   raise StopAsyncIteration
+E                   StopAsyncIteration
+
+..\..\..\AppData\Local\Programs\Python\Python311\Lib\unittest\mock.py:2202: StopAsyncIteration
+
+During handling of the above exception, another exception occurred:
+
+    @pytest.mark.asyncio
+    async def test_drain_timeout_prevents_hang():
+        """Test that drain timeout prevents infinite hang from ping events."""
+    
+        # Create mock WebSocket that simulates ElevenLabs response pattern
+        mock_websocket = AsyncMock()
+    
+        # Simulate the event sequence that causes the hang
+        events = [
+            # Initial metadata
+            json.dumps({"conversation_initiation_metadata_event": {"conversation_id": "test"}}),
+            # Audio chunk
+            json.dumps({"audio_event": {"audio_base_64": base64.b64encode(b"audio_data").decode(), "event_id": 1}, "type": "audio"}),
+            # Agent response (text) - this should trigger drain mode
+            json.dumps({"agent_response_event": {"agent_response": "Hello! How can I help you?"}, "type": "agent_response"}),
+            # Ping events that would normally cause infinite loop
+            json.dumps({"ping_event": {"event_id": 2}, "type": "ping"}),
+            json.dumps({"ping_event": {"event_id": 3}, "type": "ping"}),
+            json.dumps({"ping_event": {"event_id": 4}, "type": "ping"}),
+        ]
+    
+        # Mock recv to return events sequentially
+        mock_websocket.recv = AsyncMock(side_effect=events)
+        mock_websocket.send = AsyncMock()
+        mock_websocket.__aenter__ = AsyncMock(return_value=mock_websocket)
+        mock_websocket.__aexit__ = AsyncMock(return_value=None)
+    
+        service = ElevenLabsService()
+    
+        # Mock get_signed_url
+        with patch.object(service, 'get_signed_url', return_value="wss://mock.url"):
+            # Mock websockets.connect
+            with patch('websockets.connect', return_value=mock_websocket):
+                # Measure execution time
+                import time
+                start = time.time()
+    
+&gt;               response_text, audio_data = await service.send_text_message(
+                    agent_id="test_agent",
+                    text="Hello"
+                )
+
+tests\test_elevenlabs_websocket_fix.py:48: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;backend.services.elevenlabs_service.ElevenLabsService object at 0x00000296FEE57E10&gt;
+agent_id = 'test_agent', text = 'Hello', text_only = False
+
+    async def send_text_message(self, agent_id: str, text: str, text_only: bool = False) -&gt; tuple[str, bytes]:
+        """Send a text message to the agent and get response.
+    
+        Args:
+            agent_id: The agent ID.
+            text: The user's message.
+            text_only: If True, request text-only response (no audio synthesis).
+    
+        Returns:
+            tuple[str, bytes]: (Response text, Audio data)
+    
+        Raises:
+            ElevenLabsAgentError: If communication fails.
+        """
+        if self.use_mock:
+            logging.info(f"[MOCK] send_text_message called: agent={agent_id}, text={text[:50]}..., text_only={text_only}")
+            if text_only:
+                return ("This is a mock text-only response.", b"")
+            # Return a minimal valid MP3 frame (silence) to prevent frontend audio errors
+            mock_audio = b'\xff\xfb\x90\x00' + b'\x00' * 417
+            return ("This is a mock response from the AI assistant.", mock_audio)
+    
+        try:
+            # Get signed URL
+            signed_url = self.get_signed_url(agent_id)
+    
+            async with websockets.connect(signed_url) as websocket:
+                # 1. Send text
+                payload = {
+                    "text": text,
+                    "try_trigger_generation": not text_only
+                }
+    
+                if text_only:
+                     logging.info(f"Sending text-only message to agent {agent_id}")
+    
+                await websocket.send(json.dumps(payload))
+    
+                audio_chunks = []
+                response_text_parts = []
+                drain_deadline = None  # Timestamp when we must stop waiting
+    
+                # Listen for response with drain timeout strategy
+                while True:
+                    try:
+                        # Calculate dynamic timeout
+                        if drain_deadline:
+                            # In drain mode: calculate time remaining until hard deadline
+                            import time
+                            time_left = drain_deadline - time.time()
+                            if time_left &lt;= 0:
+                                # Deadline reached, stop collecting
+                                logging.info("Drain timeout reached, ending message collection")
+                                break
+                            timeout = time_left
+                        else:
+                            # Normal mode: standard activity timeout
+                            timeout = 10.0
+    
+                        message = await asyncio.wait_for(websocket.recv(), timeout=timeout)
+                        data = json.loads(message)
+    
+                        if data.get("audio_event"):
+                            # Collect audio chunks
+                            audio_base64 = data["audio_event"].get("audio_base_64")
+                            if audio_base64:
+                                audio_chunks.append(base64.b64decode(audio_base64))
+    
+                        if data.get("agent_response_event"):
+                            # Collect text portion
+                            part = data["agent_response_event"].get("agent_response")
+                            if part:
+                                response_text_parts.append(part)
+    
+                            # Text response received
+                            # If text_only, we can stop immediately after full text (single turn assumption)
+                            # or wait for a very short drain if needed.
+                            # For now, we reuse drain logic but strict it for text-only.
+    
+                            if not drain_deadline:
+                                import time
+                                if text_only:
+                                    # In text-only mode, we don't expect audio, so we can stop faster
+                                    # But sometimes multiple text events might come?
+                                    # Usually it's one event or stream.
+                                    # We give a short drain just in case of multiple text parts.
+                                    drain_deadline = time.time() + 0.5
+                                    logging.info("Text-only response received, entering short drain (0.5s)")
+                                else:
+                                    drain_deadline = time.time() + 2.0
+                                    logging.info("Agent response received, entering drain mode (2s deadline)")
+    
+                        # Ignore ping_event - it doesn't affect our drain deadline
+    
+                    except asyncio.TimeoutError:
+                        break
+                    except websockets.exceptions.ConnectionClosed:
+                        break
+    
+                full_text = "".join(response_text_parts)
+                full_audio = b"".join(audio_chunks)
+    
+                if not full_text and not full_audio:
+                     # If we got nothing, maybe try to wait longer or check for errors
+                     logging.warning("No response received from ElevenLabs agent")
+    
+                return full_text, full_audio
+    
+        except Exception as e:
+            logging.error(f"Failed to send text message: {e}")
+&gt;           raise ElevenLabsAgentError(f"Failed to send text message: {str(e)}")
+E           backend.services.elevenlabs_service.ElevenLabsAgentError: Failed to send text message:
+
+backend\services\elevenlabs_service.py:815: ElevenLabsAgentError</failure></testcase><testcase classname="tests.test_elevenlabs_websocket_fix" name="test_collects_trailing_audio_in_drain_mode" time="0.014" /></testsuite></testsuites>

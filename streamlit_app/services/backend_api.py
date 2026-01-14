@@ -1124,27 +1124,27 @@ class BackendAPIClient:
                 status_code=e.response.status_code,
             ) from e
 
-    async def send_patient_message(
-        self, session_id: str, message: str
-    ) -> ConversationResponse:
-        """Send a message to the agent.
+    async def send_patient_message(self, session_id: str, message: str, chat_mode: bool = False) -> PatientMessageResponse:
+        """Send a message to the agent in a patient session.
 
         Args:
             session_id: Active session ID.
-            message: Message content.
+            message: Patient's message text.
+            chat_mode: Whether to use text-only mode (no audio).
 
         Returns:
-            ConversationResponse with text and audio.
+            The agent's response.
         """
         try:
-            payload = {"message": message}
+            payload = {"message": message, "chat_mode": chat_mode}
             async with self._get_client() as client:
                 response = await client.post(
-                    f"/api/patient/session/{session_id}/message", json=payload
+                    f"/api/patient/session/{session_id}/message", 
+                    json=payload
                 )
                 response.raise_for_status()
                 data = response.json()
-                return ConversationResponse(
+                return PatientMessageResponse(
                     response_text=data["response_text"],
                     audio_data=data.get("audio_data"),
                     timestamp=datetime.fromisoformat(data["timestamp"]),
@@ -1153,7 +1153,7 @@ class BackendAPIClient:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
         except httpx.HTTPStatusError as e:
             raise APIError(
-                message=f"Failed to send message: {self._parse_error_message(e.response)}",
+                message=f"Message failed: {self._parse_error_message(e.response)}",
                 status_code=e.response.status_code,
             ) from e
 

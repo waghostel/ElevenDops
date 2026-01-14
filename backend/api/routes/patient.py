@@ -47,7 +47,7 @@ async def send_message(
 ):
     """Send a text message and get an audio response."""
     try:
-        return await service.send_message(session_id, request.message)
+        return await service.send_message(session_id, request.message, chat_mode=request.chat_mode)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except ElevenLabsServiceError as e:
