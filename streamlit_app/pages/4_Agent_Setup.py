@@ -264,26 +264,23 @@ def render_edit_agent_dialog(agent, docs, client, LANGUAGE_OPTIONS):
     # Initialize state with current values if not set
     # Using form-specific keys to avoid conflicts
     name_key = f"edit_name_{agent.agent_id}"
-    langs_key = f"edit_langs_{agent.agent_id}" 
     docs_key = f"edit_docs_{agent.agent_id}"
 
     # 1. Edit Name
     new_name = st.text_input("Agent Name", value=agent.name, key=name_key)
     
-    # 2. Edit Languages
-    # Ensure current languages are valid options
+    # 2. Languages - Display Only (ElevenLabs API limitation)
     current_langs = agent.languages if hasattr(agent, "languages") else ["en"]
-    # Filter out any languages not in our options to prevent errors
     valid_current_langs = [l for l in current_langs if l in LANGUAGE_OPTIONS]
+    lang_display = ", ".join([LANGUAGE_OPTIONS.get(l, l) for l in valid_current_langs])
     
-    new_languages = st.multiselect(
+    st.text_input(
         "Conversation Languages",
-        options=list(LANGUAGE_OPTIONS.keys()),
-        default=valid_current_langs,
-        format_func=lambda x: LANGUAGE_OPTIONS[x],
-        help="First language is primary.",
-        key=langs_key
+        value=lang_display,
+        disabled=True,
+        help="Languages cannot be modified after agent creation due to ElevenLabs API limitations."
     )
+    st.caption("⚠️ **Note:** To change languages, delete this agent and create a new one.")
 
     # 3. Edit Knowledge
     current_docs = [d for d in agent.knowledge_ids if d in doc_options]
@@ -303,16 +300,14 @@ def render_edit_agent_dialog(agent, docs, client, LANGUAGE_OPTIONS):
         if st.button("Save Changes", type="primary", use_container_width=True, key=f"save_{agent.agent_id}"):
             if not new_name.strip():
                 st.error("Name cannot be empty.")
-            elif not new_languages:
-                st.error("At least one language is required.")
             else:
                 try:
                     with st.spinner("Updating agent..."):
                         run_async(client.update_agent(
                             agent_id=agent.agent_id,
                             name=new_name,
-                            knowledge_ids=new_doc_ids,
-                            languages=new_languages
+                            knowledge_ids=new_doc_ids
+                            # languages removed - not updateable via ElevenLabs API
                         ))
                     st.success("Agent updated successfully!")
                     get_cached_agents.clear()

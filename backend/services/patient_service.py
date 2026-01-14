@@ -13,10 +13,10 @@ from backend.models.schemas import (
     ConversationMessageSchema,
     ConversationDetailSchema,
 )
-from backend.services.data_service import get_data_service
+from backend.services.data_service import get_data_service, DataServiceInterface
 from backend.services.elevenlabs_service import get_elevenlabs_service, ElevenLabsServiceError
 from backend.services.conversation_service import ConversationService
-from backend.services.data_service import DataServiceInterface
+from backend.services.websocket_manager import get_connection_manager, WebSocketConnectionManager
 
 class PatientService:
     """Service for managing patient conversation sessions."""
@@ -26,6 +26,7 @@ class PatientService:
         data_service: Optional[DataServiceInterface] = None,
         elevenlabs_service=None,
         conversation_service: Optional[ConversationService] = None,
+        connection_manager: Optional[WebSocketConnectionManager] = None,
     ):
         """Initialize the service.
         
@@ -33,10 +34,12 @@ class PatientService:
             data_service: Optional data service injection for testing.
             elevenlabs_service: Optional ElevenLabs service injection.
             conversation_service: Optional conversation service injection.
+            connection_manager: Optional WebSocket connection manager injection.
         """
         self.data_service = data_service or get_data_service()
         self.elevenlabs_service = elevenlabs_service or get_elevenlabs_service()
         self.conversation_service = conversation_service or ConversationService()
+        self.connection_manager = connection_manager or get_connection_manager()
 
     async def create_session(self, request: PatientSessionCreate) -> PatientSessionResponse:
         """Create a new patient conversation session.
@@ -63,6 +66,18 @@ class PatientService:
         except ElevenLabsServiceError as e:
             logging.error(f"Failed to get signed URL for session {session_id}: {e}")
             raise e
+
+        # Create persistent WebSocket connection for this session
+        try:
+            await self.connection_manager.create_connection(
+                session_id=session_id,
+                signed_url=signed_url,
+                agent_id=agent.elevenlabs_agent_id,
+            )
+            logging.info(f"WebSocket connection established for session {session_id}")
+        except Exception as e:
+            logging.error(f"Failed to create WebSocket connection for session {session_id}: {e}")
+            # Continue without persistent connection - will fall back to one-shot mode
 
         # Create session object
         session = PatientSessionResponse(
@@ -114,10 +129,21 @@ class PatientService:
         if not agent or not agent.elevenlabs_agent_id:
             raise ValueError(f"Agent {session.agent_id} not found or has no ElevenLabs ID")
         
+        # Use persistent connection if available, otherwise fall back to one-shot
         try:
-            response_text, audio_bytes = await self.elevenlabs_service.send_text_message(
-                agent.elevenlabs_agent_id, message, text_only=chat_mode
-            )
+            has_conn = self.connection_manager.has_connection(session_id)
+            if has_conn:
+                # Use the persistent WebSocket connection
+                logging.info(f"Using persistent connection for session {session_id}")
+                response_text, audio_bytes = await self.connection_manager.send_message(
+                    session_id, message, text_only=chat_mode
+                )
+            else:
+                # Fallback to one-shot connection (legacy behavior)
+                logging.warning(f"No persistent connection for session {session_id}, using one-shot")
+                response_text, audio_bytes = await self.elevenlabs_service.send_text_message(
+                    agent.elevenlabs_agent_id, message, text_only=chat_mode
+                )
         except Exception as e:
             logging.error(f"Failed to get response from ElevenLabs for session {session_id}: {e}")
             # Graceful degradation: return text-only fallback
@@ -158,6 +184,10 @@ class PatientService:
         Returns:
             SessionEndResponse: The end session result.
         """
+        # Close WebSocket connection first
+        await self.connection_manager.close_connection(session_id)
+        logging.info(f"WebSocket connection closed for session {session_id}")
+        
         session = await self.data_service.get_patient_session(session_id)
         if not session:
              # Idempotent success or error? 

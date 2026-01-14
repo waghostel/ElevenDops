@@ -442,8 +442,8 @@ class ElevenLabsService:
                  agent_config["prompt"]["knowledge_base"] = knowledge_base
                  
             # Determine TTS model and Primary Language based on configuration
-            # - English-only agents (language="en") MUST use turbo_v2
-            # - Multilingual agents use turbo_v2_5, BUT cannot have "en" as primary language due to API validation
+            # - English-only agents (language="en") use turbo_v2
+            # - Multilingual agents use turbo_v2_5
             
             model_id = "eleven_turbo_v2_5" # Default to multilingual
             
@@ -453,20 +453,7 @@ class ElevenLabsService:
                 logging.info(f"Creating English-only agent with {model_id}")
             else:
                 # Case 2: Multilingual or Non-English -> Use v2.5
-                # CRITICAL FIX: If primary is 'en' but we are using v2.5 (multilingual),
-                # we must SWAP primary to a non-English language to pass API validation.
-                if primary_language == "en":
-                    # Find first non-English language to be primary
-                    non_en_langs = [l for l in languages if l != "en"]
-                    if non_en_langs:
-                        new_primary = non_en_langs[0]
-                        logging.warning(
-                            f"Swapping primary language from 'en' to '{new_primary}' to satisfy "
-                            f"{model_id} validation. English remains supported via presets."
-                        )
-                        primary_language = new_primary
-                        agent_config["language"] = primary_language # Update config
-                
+                # Primary language is whatever the user specified first
                 logging.info(f"Creating Multilingual agent with {model_id} (Primary: {primary_language})")
 
             # DEBUG LOGGING

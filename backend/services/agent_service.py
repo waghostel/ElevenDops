@@ -258,6 +258,13 @@ class AgentService:
                 local_updates["name"] = request.name
             
             if request.languages is not None:
+                # WARNING: ElevenLabs API does NOT support updating language_presets via PATCH.
+                # The API call will succeed but language presets won't be updated.
+                # Languages can only be set at agent creation time.
+                logging.warning(
+                    f"Language update requested for agent {agent_id}, but ElevenLabs API "
+                    "does not support updating language_presets. The update may be ignored."
+                )
                 update_kwargs["languages"] = request.languages
                 local_updates["languages"] = request.languages
                 
