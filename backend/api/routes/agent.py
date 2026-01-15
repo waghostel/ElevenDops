@@ -41,6 +41,25 @@ async def list_agents(
     return await service.get_agents()
 
 
+@router.post("/{agent_id}/sync", response_model=AgentResponse)
+@limiter.limit(RATE_LIMITS["agent"])
+async def sync_agent(
+    agent_id: str,
+    request: Request,
+    service: AgentService = Depends(get_agent_service),
+):
+    """Sync agent configuration from ElevenLabs."""
+    try:
+        updated_agent = await service.sync_agent_configuration(agent_id)
+        return updated_agent
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    except ElevenLabsAgentError as e:
+        raise HTTPException(status_code=502, detail=f"ElevenLabs error: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
 @router.put("/{agent_id}", response_model=AgentResponse)
 @limiter.limit(RATE_LIMITS["agent"])
 async def update_agent(

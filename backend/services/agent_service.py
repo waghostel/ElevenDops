@@ -319,6 +319,108 @@ class AgentService:
         return await self.data_service.delete_agent(agent_id)
 
 
+    async def sync_agent_configuration(self, agent_id: str) -> AgentResponse:
+        """Sync agent configuration from ElevenLabs to local Firestore.
+        
+        Fetches the latest configuration (languages, voice, etc.) from ElevenLabs
+        and updates the local record to match.
+        
+        Args:
+            agent_id: The local agent ID.
+            
+        Returns:
+            AgentResponse: The updated agent.
+            
+        Raises:
+            KeyError: If agent not found.
+            ElevenLabsAgentError: If remote fetch fails.
+        """
+        # 1. Get local agent
+        agent = await self.data_service.get_agent(agent_id)
+        if not agent:
+            raise KeyError(f"Agent {agent_id} not found")
+
+        # 2. Fetch remote agent details
+        try:
+            # We need the underlying client to get the full object or dict
+            # The service wrapper 'get_agent' returns a dict, but let's use the method we have
+            remote_agent_data = self.elevenlabs.get_agent(agent.elevenlabs_agent_id)
+            
+            # 3. Extract relevant fields
+            # Handle potential dict vs object differences (get_agent returns dict or object depending on mock/sdk)
+            # Our service implementation of get_agent tries to return dict-like or model_dump
+            
+            # Access helper
+            def get_val(obj, path):
+                """Helper to safely get nested values from dict or object."""
+                current = obj
+                for key in path:
+                    if isinstance(current, dict):
+                        current = current.get(key)
+                    elif hasattr(current, key):
+                        current = getattr(current, key)
+                    else:
+                        return None
+                    if current is None:
+                        return None
+                return current
+
+            # Extract config
+            config = remote_agent_data.get("conversation_config") if isinstance(remote_agent_data, dict) else getattr(remote_agent_data, "conversation_config", None)
+            
+            # If we can't find config, we can't sync
+            if not config:
+                logging.warning(f"Could not find conversation_config for agent {agent.elevenlabs_agent_id}")
+                return agent
+
+            agent_config = get_val(config, ["agent"]) or {}
+            tts_config = get_val(config, ["tts"]) or {}
+
+            # Extract Languages
+            # Note: 'language' is under 'agent', but 'language_presets' is at the top level of 'conversation_config'
+            primary_lang = get_val(agent_config, ["language"]) or "en"
+            presets = get_val(config, ["language_presets"]) or {}
+            
+            detected_languages = [primary_lang]
+            if presets:
+                 detected_languages.extend([k for k in presets.keys() if k != primary_lang])
+            
+            # Remove duplicates and ensure primary is first? 
+            # Logic: start with primary. Add others. 
+            # If primary is also in presets keys, don't duplicate.
+            # Convert to list of unique values preserving primary first
+            unique_langs = [primary_lang]
+            for lang in presets.keys():
+                if lang != primary_lang:
+                    unique_langs.append(lang)
+            detected_languages = unique_langs
+            
+            # Extract Voice ID (if changed remotely)
+            remote_voice_id = get_val(tts_config, ["voice_id"])
+
+            # 4. Compare and Update
+            updates = {}
+            if set(agent.languages) != set(detected_languages):
+                updates["languages"] = detected_languages
+                logging.info(f"Syncing languages for {agent_id}: {agent.languages} -> {detected_languages}")
+            
+            if remote_voice_id and agent.voice_id != remote_voice_id:
+                updates["voice_id"] = remote_voice_id
+                logging.info(f"Syncing voice for {agent_id}: {agent.voice_id} -> {remote_voice_id}")
+
+            # 5. Save if needed
+            if updates:
+                updated_agent = agent.model_copy(update=updates)
+                await self.data_service.save_agent(updated_agent)
+                return updated_agent
+            
+            return agent
+
+        except Exception as e:
+            logging.error(f"Sync failed for agent {agent_id}: {e}")
+            raise ElevenLabsAgentError(f"Sync failed: {str(e)}")
+
+
 # Singleton instance
 _service = AgentService()
 

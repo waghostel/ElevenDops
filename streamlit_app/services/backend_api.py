@@ -969,6 +969,39 @@ class BackendAPIClient:
                 status_code=e.response.status_code,
             ) from e
 
+    async def sync_agent(self, agent_id: str) -> AgentConfig:
+        """Sync an agent from ElevenLabs.
+
+        Args:
+            agent_id: The ID of the agent to sync.
+
+        Returns:
+            Updated AgentConfig object.
+        """
+        try:
+            async with self._get_client() as client:
+                response = await client.post(f"/api/agent/{agent_id}/sync")
+                response.raise_for_status()
+                d = response.json()
+                return AgentConfig(
+                    agent_id=d["agent_id"],
+                    name=d["name"],
+                    knowledge_ids=d["knowledge_ids"],
+                    voice_id=d["voice_id"],
+                    answer_style=d["answer_style"],
+                    languages=d.get("languages", []),
+                    system_prompt_override=d.get("system_prompt_override"),
+                    created_at=datetime.fromisoformat(d["created_at"]),
+                    modified_at=datetime.fromisoformat(d["modified_at"]) if d.get("modified_at") else None,
+                )
+        except httpx.ConnectError as e:
+            raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.HTTPStatusError as e:
+             raise APIError(
+                message=f"Failed to sync agent: {self._parse_error_message(e.response)}",
+                status_code=e.response.status_code,
+            ) from e
+
     async def update_agent(
         self,
         agent_id: str,

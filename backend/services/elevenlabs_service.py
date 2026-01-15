@@ -643,7 +643,22 @@ class ElevenLabsService:
             return {
                 "agent_id": agent_id,
                 "name": "Mock Agent",
-                "conversation_config": {"agent": {"prompt": {"prompt": "Mock system prompt"}}}
+                "conversation_config": {
+                    "agent": {
+                        "prompt": {"prompt": "Mock system prompt"},
+                        "language": "en",
+                        "language_presets": {
+                            "de": {},
+                            "es": {},
+                            "fr": {},
+                            "zh": {}
+                        }
+                    },
+                    "tts": {
+                        "voice_id": "mock_voice_id",
+                        "model_id": "eleven_turbo_v2_5"
+                    }
+                }
             }
 
         try:

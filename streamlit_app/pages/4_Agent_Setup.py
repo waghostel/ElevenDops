@@ -365,12 +365,23 @@ def render_existing_agents(agents, docs, client):
 
 
 
-                    c1, c2 = st.columns([1, 4])
+                    c1, c2, c3 = st.columns([1, 1, 3])
                     with c1:
                         if st.button("✏️ Edit", key=f"edit_btn_{agent.agent_id}"):
                             render_edit_agent_dialog(agent, docs, client, LANGUAGE_DISPLAY)
                     
                     with c2:
+                         if st.button("🔄 Sync", key=f"sync_btn_{agent.agent_id}", help="Fetch configuration from ElevenLabs"):
+                            try:
+                                with st.spinner("Syncing from ElevenLabs..."):
+                                    run_async(client.sync_agent(agent.agent_id))
+                                st.success("Synced!")
+                                get_cached_agents.clear()
+                                st.rerun()
+                            except Exception as e:
+                                add_error_to_log(f"Sync failed: {str(e)}")
+                    
+                    with c3:
                         if st.button("🗑️ Delete", key=f"del_{agent.agent_id}"):
                             try:
                                 with st.spinner("Deleting agent..."):

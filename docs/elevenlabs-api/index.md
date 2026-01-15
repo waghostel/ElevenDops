@@ -1,6 +1,15 @@
 # ElevenLabs API Documentation Index
 
-Welcome to the ElevenLabs API documentation. This comprehensive guide covers all aspects of integrating with ElevenLabs' powerful voice AI platform, from basic text-to-speech to advanced conversational agents.
+Welcome to the ElevenLabs API documentation. This guide serves as a local reference for our project's integration with the ElevenLabs platform, complementing the [Official ElevenLabs Documentation](https://elevenlabs.io/docs).
+
+> [!NOTE] > **Official Resources**
+>
+> - [**API Reference**](https://elevenlabs.io/docs/api-reference) - Full endpoint documentation
+> - [**Python SDK**](https://github.com/elevenlabs/elevenlabs-python) - Official Python client
+> - [**React SDK**](https://www.npmjs.com/package/@elevenlabs/react) - Official React components
+> - [**Help Center**](https://help.elevenlabs.io) - Guides and FAQs
+
+This comprehensive guide covers all aspects of our integration, from basic text-to-speech to advanced conversational agents.
 
 ## Getting Started
 
