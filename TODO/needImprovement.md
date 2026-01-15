@@ -27,8 +27,8 @@ During Phase 4 execution, the following potential improvements were identified f
 - [x] 🧪 **#15** Results Reporter - Standard Format Support (`tests/postman/results_reporter.py`) ✅ Fixed: Added `parse_newman_report()` method
 - [ ] 🧪 **#17** Health & Infrastructure Tests - Timing Flakiness (`tests/postman/test_health_endpoints.py`)
 - [ ] 🧪 **#19** Test Configuration - Timeout Management (`tests/postman/test_health_endpoints.py`)
-- [ ] ⚙️ **#21** Health API - Semantic Readiness Checks (`backend/api/health.py`)
-- [ ] ⚙️ **#7** TestScriptGenerator - Script Escaping (`backend/services/test_script_generator.py`)
+- [x] ⚙️ **#21** Health API - Semantic Readiness Checks (`backend/api/health.py`) ✅ Fixed: Implemented dependency checks for Firestore and Storage
+- [x] ⚙️ **#7** TestScriptGenerator - Script Escaping (`backend/services/test_script_generator.py`) ✅ Fixed: Implemented safe JSON serialization for JS literals
 
 ### 🟡 Low Severity
 
@@ -214,6 +214,15 @@ if isinstance(expected_value, str):
 Implement proper JavaScript string escaping for quotes, newlines, and special characters.
 
 **Impact**: Would prevent script generation errors with special characters
+
+**Resolution** (January 15, 2026):
+
+- Analyzed `TestScriptGenerator` and identified insecure string interpolation.
+- Implemented `_to_js_literal` helper method using `json.dumps` for safe serialization.
+- Updated `generate_value_assertion` to correctly escape strings and handle `matches` with `new RegExp()`.
+- Updated value generation for `equals`, `contains`, `greater_than`, `less_than`.
+- Updated `generate_pre_request_script`, `generate_header_check`, `generate_content_type_check` to use safe escaping.
+- Verified with new unit test suite `tests/unit/test_script_generator_escaping.py`.
 
 ---
 

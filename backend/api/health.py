@@ -1,6 +1,6 @@
 import os
 from datetime import datetime
-from fastapi import APIRouter
+from fastapi import APIRouter, Response, status
 from backend.services.firestore_service import get_firestore_service
 from backend.services.storage_service import get_storage_service
 from backend.config import get_settings
@@ -78,9 +78,63 @@ async def health_check():
 
 
 @router.get("/health/ready")
-async def readiness_check():
-    """Simple readiness check for container orchestration."""
+async def readiness_check(response: Response):
+    """Readiness check that verifies dependency connectivity.
+    
+    Returns 200 if all critical dependencies are reachable.
+    Returns 503 if any dependency is down.
+    """
+    settings = get_settings()
+    
+    # Check Firestore
+    firestore_healthy = False
+    firestore_error = None
+    
+    if settings.use_mock_data:
+        firestore_healthy = True
+        firestore_status = "healthy (mock)"
+    else:
+        try:
+            firestore_service = get_firestore_service()
+            firestore_healthy = firestore_service.health_check()
+            firestore_status = "healthy" if firestore_healthy else "unhealthy"
+        except Exception as e:
+            firestore_status = "unhealthy"
+            firestore_error = str(e)
+            
+    # Check Storage
+    storage_healthy = False
+    storage_error = None
+    
+    try:
+        storage_service = get_storage_service()
+        storage_healthy = storage_service.health_check()
+        if settings.use_mock_storage:
+             storage_status = "healthy (mock)" if storage_healthy else "unhealthy"
+        else:
+             storage_status = "healthy" if storage_healthy else "unhealthy"
+    except Exception as e:
+        storage_status = "unhealthy"
+        storage_error = str(e)
+    
+    # Overall readiness
+    is_ready = firestore_healthy and storage_healthy
+    
+    # Set status code based on readiness
+    if not is_ready:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        
     return {
-        "status": "ready",
-        "services": ["firestore", "storage"]
+        "status": "ready" if is_ready else "not_ready",
+        "ready": is_ready,
+        "services": {
+            "firestore": {
+                "status": firestore_status,
+                "error": firestore_error
+            },
+            "storage": {
+                "status": storage_status,
+                "error": storage_error
+            }
+        }
     }

@@ -18,7 +18,9 @@ import json
 from pathlib import Path
 from typing import Dict, Any, List
 from datetime import datetime
+from datetime import datetime
 import httpx
+from fastapi.testclient import TestClient
 from hypothesis import given, strategies as st, settings
 
 from postman_test_helpers import (
@@ -37,10 +39,11 @@ from backend.services.test_script_generator import TestScriptGenerator
 from backend.services.test_data_generator import TestDataGenerator
 from backend.services.collection_builder import CollectionBuilder
 from backend.services.environment_manager import EnvironmentManager
+from backend.main import app
 
 
 # Test Configuration
-BASE_URL = "http://localhost:8000"
+BASE_URL = ""  # Relative paths for TestClient
 WORKSPACE_ID = "workspace_test_11"
 
 
@@ -49,13 +52,13 @@ class TestRootEndpoint:
     
     def test_root_endpoint_status_200(self):
         """Test root endpoint returns 200."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/")
             assert response.status_code == 200
     
     def test_root_endpoint_response_structure(self):
         """Test root endpoint response structure."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/")
             data = response.json()
             
@@ -65,7 +68,7 @@ class TestRootEndpoint:
     
     def test_root_endpoint_has_message(self):
         """Test root endpoint has welcome message."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/")
             data = response.json()
             
@@ -74,20 +77,20 @@ class TestRootEndpoint:
     
     def test_root_endpoint_content_type(self):
         """Test root endpoint returns JSON."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/")
             assert "application/json" in response.headers.get("content-type", "")
     
     def test_root_endpoint_no_auth_required(self):
         """Test root endpoint doesn't require authentication."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/")
             # Should not return 401 or 403
             assert response.status_code not in [401, 403]
     
     def test_root_endpoint_response_time(self):
         """Test root endpoint responds quickly."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/")
             # Should respond in less than 10.0 seconds
             assert response.elapsed.total_seconds() < 10.0
@@ -98,13 +101,13 @@ class TestHealthEndpoint:
     
     def test_health_endpoint_status_200(self):
         """Test health endpoint returns 200."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/health")
             assert response.status_code == 200
     
     def test_health_endpoint_response_structure(self):
         """Test health endpoint response structure."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/health")
             data = response.json()
             
@@ -114,7 +117,7 @@ class TestHealthEndpoint:
     
     def test_health_endpoint_has_timestamp(self):
         """Test health endpoint includes timestamp."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/health")
             data = response.json()
             
@@ -123,7 +126,7 @@ class TestHealthEndpoint:
     
     def test_health_endpoint_has_version(self):
         """Test health endpoint includes version info."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/health")
             data = response.json()
             
@@ -132,26 +135,26 @@ class TestHealthEndpoint:
     
     def test_health_endpoint_content_type(self):
         """Test health endpoint returns JSON."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/health")
             assert "application/json" in response.headers.get("content-type", "")
     
     def test_health_endpoint_no_auth_required(self):
         """Test health endpoint doesn't require authentication."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/health")
             assert response.status_code not in [401, 403]
     
     def test_health_endpoint_response_time(self):
         """Test health endpoint responds quickly."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/health")
             # Should respond in less than 10.0s
             assert response.elapsed.total_seconds() < 10.0
     
     def test_health_endpoint_consistent_status(self):
         """Test health endpoint returns consistent status."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response1 = client.get(f"{BASE_URL}/api/health")
             response2 = client.get(f"{BASE_URL}/api/health")
             
@@ -167,53 +170,59 @@ class TestReadinessEndpoint:
     
     def test_readiness_endpoint_status_200(self):
         """Test readiness endpoint returns 200."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/health/ready")
             assert response.status_code == 200
     
     def test_readiness_endpoint_response_structure(self):
         """Test readiness endpoint response structure."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/health/ready")
             data = response.json()
             
-            # Should have ready status
-            assert "ready" in data or "status" in data
+            # Should have new structure
+            assert "status" in data
+            assert "ready" in data
+            assert isinstance(data["ready"], bool)
+            assert "services" in data
+            assert isinstance(data["services"], dict)
     
     def test_readiness_endpoint_has_dependencies(self):
-        """Test readiness endpoint checks dependencies."""
-        with httpx.Client(timeout=30.0) as client:
+        """Test readiness endpoint checks specific dependencies."""
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/health/ready")
             data = response.json()
             
-            # Should have dependency checks
-            assert "dependencies" in data or "checks" in data or "services" in data
+            # Should have specific services
+            services = data["services"]
+            assert "firestore" in services
+            assert "storage" in services
     
     def test_readiness_endpoint_firestore_check(self):
-        """Test readiness endpoint checks Firestore."""
-        with httpx.Client(timeout=30.0) as client:
+        """Test readiness endpoint checks Firestore details."""
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/health/ready")
             data = response.json()
             
-            # Should check Firestore
-            if "dependencies" in data:
-                assert "firestore" in str(data).lower()
+            # Should check Firestore status
+            firestore_status = data["services"]["firestore"]
+            assert "status" in firestore_status
     
     def test_readiness_endpoint_content_type(self):
         """Test readiness endpoint returns JSON."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/health/ready")
             assert "application/json" in response.headers.get("content-type", "")
-    
+
     def test_readiness_endpoint_no_auth_required(self):
         """Test readiness endpoint doesn't require authentication."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/health/ready")
             assert response.status_code not in [401, 403]
     
     def test_readiness_endpoint_response_time(self):
         """Test readiness endpoint responds quickly."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/health/ready")
             # Should respond in less than 10.0 seconds
             assert response.elapsed.total_seconds() < 10.0
@@ -224,13 +233,13 @@ class TestDashboardStatsEndpoint:
     
     def test_dashboard_stats_status_200(self):
         """Test dashboard stats endpoint returns 200."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/dashboard/stats")
             assert response.status_code == 200
     
     def test_dashboard_stats_response_structure(self):
         """Test dashboard stats response structure."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/dashboard/stats")
             data = response.json()
             
@@ -240,7 +249,7 @@ class TestDashboardStatsEndpoint:
     
     def test_dashboard_stats_has_counts(self):
         """Test dashboard stats includes resource counts."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/dashboard/stats")
             data = response.json()
             
@@ -250,7 +259,7 @@ class TestDashboardStatsEndpoint:
     
     def test_dashboard_stats_has_knowledge_count(self):
         """Test dashboard stats includes knowledge document count."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/dashboard/stats")
             data = response.json()
             
@@ -259,7 +268,7 @@ class TestDashboardStatsEndpoint:
     
     def test_dashboard_stats_has_agent_count(self):
         """Test dashboard stats includes agent count."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/dashboard/stats")
             data = response.json()
             
@@ -268,7 +277,7 @@ class TestDashboardStatsEndpoint:
     
     def test_dashboard_stats_has_conversation_count(self):
         """Test dashboard stats includes conversation count."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/dashboard/stats")
             data = response.json()
             
@@ -277,7 +286,7 @@ class TestDashboardStatsEndpoint:
     
     def test_dashboard_stats_counts_are_numbers(self):
         """Test dashboard stats counts are numeric."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/dashboard/stats")
             data = response.json()
             
@@ -288,19 +297,19 @@ class TestDashboardStatsEndpoint:
     
     def test_dashboard_stats_content_type(self):
         """Test dashboard stats returns JSON."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/dashboard/stats")
             assert "application/json" in response.headers.get("content-type", "")
     
     def test_dashboard_stats_no_auth_required(self):
         """Test dashboard stats doesn't require authentication."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/dashboard/stats")
             assert response.status_code not in [401, 403]
     
     def test_dashboard_stats_response_time(self):
         """Test dashboard stats responds quickly."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/dashboard/stats")
             # Should respond in less than 10.0 seconds
             assert response.elapsed.total_seconds() < 10.0
@@ -318,7 +327,7 @@ class TestHealthEndpointIntegration:
             "/api/dashboard/stats",
         ]
         
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             for endpoint in endpoints:
                 response = client.get(f"{BASE_URL}{endpoint}")
                 assert response.status_code == 200, f"Endpoint {endpoint} failed"
@@ -332,7 +341,7 @@ class TestHealthEndpointIntegration:
             "/api/dashboard/stats",
         ]
         
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             for endpoint in endpoints:
                 response = client.get(f"{BASE_URL}{endpoint}")
                 assert "application/json" in response.headers.get("content-type", "")
@@ -346,7 +355,7 @@ class TestHealthEndpointIntegration:
             ("/api/dashboard/stats", 2.0),
         ]
         
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             for endpoint, max_time in endpoints:
                 response = client.get(f"{BASE_URL}{endpoint}")
                 assert response.elapsed.total_seconds() < 10.0
@@ -357,28 +366,28 @@ class TestHealthEndpointErrorHandling:
     
     def test_invalid_method_on_health(self):
         """Test invalid HTTP method on health endpoint."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.post(f"{BASE_URL}/api/health")
             # Should return 405 or 400
             assert response.status_code in [405, 400, 404]
     
     def test_invalid_method_on_readiness(self):
         """Test invalid HTTP method on readiness endpoint."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.post(f"{BASE_URL}/api/health/ready")
             # Should return 405 or 400
             assert response.status_code in [405, 400, 404]
     
     def test_invalid_method_on_stats(self):
         """Test invalid HTTP method on stats endpoint."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.post(f"{BASE_URL}/api/dashboard/stats")
             # Should return 405 or 400
             assert response.status_code in [405, 400, 404]
     
     def test_nonexistent_health_endpoint(self):
         """Test nonexistent health endpoint."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/health/nonexistent")
             # Should return 404
             assert response.status_code == 404
@@ -408,7 +417,7 @@ class TestTestScriptGeneration:
     def test_generate_readiness_endpoint_test_script(self):
         """Test generating test script for readiness endpoint."""
         script = TestScriptGenerator.generate_status_check(200)
-        script += TestScriptGenerator.generate_schema_validation(["ready", "dependencies"])
+        script += TestScriptGenerator.generate_schema_validation(["status", "ready", "services"])
         
         assert "pm.test" in script
         assert TestScriptGenerator.validate_javascript(script)
@@ -533,7 +542,7 @@ class TestHealthEndpointProperties:
     @given(st.just(None))
     def test_property_root_endpoint_always_200(self, _):
         """Property: Root endpoint always returns 200."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/")
             assert response.status_code == 200
     
@@ -541,7 +550,7 @@ class TestHealthEndpointProperties:
     @given(st.just(None))
     def test_property_health_endpoint_always_200(self, _):
         """Property: Health endpoint always returns 200."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/health")
             assert response.status_code == 200
     
@@ -549,7 +558,7 @@ class TestHealthEndpointProperties:
     @given(st.just(None))
     def test_property_readiness_endpoint_always_200(self, _):
         """Property: Readiness endpoint always returns 200."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/health/ready")
             assert response.status_code == 200
     
@@ -557,7 +566,7 @@ class TestHealthEndpointProperties:
     @given(st.just(None))
     def test_property_stats_endpoint_always_200(self, _):
         """Property: Stats endpoint always returns 200."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/dashboard/stats")
             assert response.status_code == 200
     
@@ -572,7 +581,7 @@ class TestHealthEndpointProperties:
             "/api/dashboard/stats",
         ]
         
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             for endpoint in endpoints:
                 response = client.get(f"{BASE_URL}{endpoint}")
                 
@@ -593,7 +602,7 @@ class TestHealthEndpointProperties:
     @given(st.just(None))
     def test_property_response_schema_consistency(self, _):
         """Property: Response schema is consistent across calls."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             # Call each endpoint twice
             response1 = client.get(f"{BASE_URL}/api/health")
             response2 = client.get(f"{BASE_URL}/api/health")
@@ -612,7 +621,7 @@ class TestHealthEndpointProperties:
     @given(st.just(None))
     def test_property_no_null_values_in_required_fields(self, _):
         """Property: Required fields are never null."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/health")
             data = response.json()
             
@@ -635,7 +644,7 @@ class TestHealthEndpointProperties:
             ("/api/dashboard/stats", 2.0),
         ]
         
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             for endpoint, max_time in endpoints:
                 response = client.get(f"{BASE_URL}{endpoint}")
                 assert response.elapsed.total_seconds() < 10.0
@@ -646,25 +655,25 @@ class TestHealthEndpointRequirements:
     
     def test_requirement_2_1_root_endpoint(self):
         """Requirement 2.1: Root endpoint accessible."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/")
             assert response.status_code == 200
     
     def test_requirement_2_2_health_endpoint(self):
         """Requirement 2.2: Health endpoint accessible."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/health")
             assert response.status_code == 200
     
     def test_requirement_2_3_readiness_endpoint(self):
         """Requirement 2.3: Readiness endpoint accessible."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/health/ready")
             assert response.status_code == 200
     
     def test_requirement_2_4_stats_endpoint(self):
         """Requirement 2.4: Stats endpoint accessible."""
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             response = client.get(f"{BASE_URL}/api/dashboard/stats")
             assert response.status_code == 200
     
@@ -672,7 +681,7 @@ class TestHealthEndpointRequirements:
         """Requirement 2.5: All endpoints return JSON."""
         endpoints = ["/", "/api/health", "/api/health/ready", "/api/dashboard/stats"]
         
-        with httpx.Client(timeout=30.0) as client:
+        with TestClient(app) as client:
             for endpoint in endpoints:
                 response = client.get(f"{BASE_URL}{endpoint}")
                 assert "application/json" in response.headers.get("content-type", "")

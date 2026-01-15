@@ -27,6 +27,20 @@ class TestScriptGenerator:
     """
     
     @staticmethod
+    def _to_js_literal(value: Any) -> str:
+        """
+        Convert Python value to safe JavaScript literal.
+        
+        Args:
+            value: Python value
+            
+        Returns:
+            String representation of JavaScript literal
+        """
+        # use json.dumps for safe serialization of basic types
+        return json.dumps(value)
+
+    @staticmethod
     def generate_status_check(expected_status: int) -> str:
         """
         Generate status code assertion.
@@ -58,8 +72,9 @@ class TestScriptGenerator:
         if not required_fields:
             return ""
         
+        # Safe field access check
         field_checks = "\n    ".join([
-            f"pm.expect(jsonData).to.have.property('{field}');"
+            f"pm.expect(jsonData).to.have.property({TestScriptGenerator._to_js_literal(field)});"
             for field in required_fields
         ])
         
@@ -119,27 +134,23 @@ class TestScriptGenerator:
         Returns:
             JavaScript test script
         """
-        # Format expected value
-        if isinstance(expected_value, str):
-            formatted_value = f"'{expected_value}'"
-        elif isinstance(expected_value, bool):
-            formatted_value = "true" if expected_value else "false"
-        else:
-            formatted_value = str(expected_value)
+        formatted_value = TestScriptGenerator._to_js_literal(expected_value)
         
         # Generate comparison
-        comparison_map = {
-            "equals": f"pm.expect(jsonData.{field_path}).to.equal({formatted_value});",
-            "contains": f"pm.expect(jsonData.{field_path}).to.include({formatted_value});",
-            "matches": f"pm.expect(jsonData.{field_path}).to.match(/{formatted_value}/);",
-            "greater_than": f"pm.expect(jsonData.{field_path}).to.be.above({formatted_value});",
-            "less_than": f"pm.expect(jsonData.{field_path}).to.be.below({formatted_value});",
-        }
-        
-        comparison_code = comparison_map.get(
-            comparison,
-            f"pm.expect(jsonData.{field_path}).to.equal({formatted_value});"
-        )
+        if comparison == "matches":
+            # For regex matches, use new RegExp() constructor with the string pattern
+            comparison_code = f"pm.expect(jsonData.{field_path}).to.match(new RegExp({formatted_value}));"
+        else:
+            comparison_map = {
+                "equals": f"pm.expect(jsonData.{field_path}).to.equal({formatted_value});",
+                "contains": f"pm.expect(jsonData.{field_path}).to.include({formatted_value});",
+                "greater_than": f"pm.expect(jsonData.{field_path}).to.be.above({formatted_value});",
+                "less_than": f"pm.expect(jsonData.{field_path}).to.be.below({formatted_value});",
+            }
+            comparison_code = comparison_map.get(
+                comparison,
+                f"pm.expect(jsonData.{field_path}).to.equal({formatted_value});"
+            )
         
         script = f"""pm.test('Field {field_path} {comparison} {formatted_value}', function () {{
     var jsonData = pm.response.json();
@@ -166,14 +177,17 @@ class TestScriptGenerator:
         Returns:
             JavaScript test script
         """
+        # Ensure var_name is safely quoted
+        safe_var_name = TestScriptGenerator._to_js_literal(var_name)
+        
         if scope == "collection":
-            set_var = f"pm.collectionVariables.set('{var_name}', value);"
+            set_var = f"pm.collectionVariables.set({safe_var_name}, value);"
         elif scope == "environment":
-            set_var = f"pm.environment.set('{var_name}', value);"
+            set_var = f"pm.environment.set({safe_var_name}, value);"
         elif scope == "global":
-            set_var = f"pm.globals.set('{var_name}', value);"
+            set_var = f"pm.globals.set({safe_var_name}, value);"
         else:
-            set_var = f"pm.collectionVariables.set('{var_name}', value);"
+            set_var = f"pm.collectionVariables.set({safe_var_name}, value);"
         
         script = f"""pm.test('Save {var_name} for chaining', function () {{
     var jsonData = pm.response.json();
@@ -214,9 +228,10 @@ class TestScriptGenerator:
         Returns:
             JavaScript test script
         """
+        safe_type = TestScriptGenerator._to_js_literal(expected_type)
         script = f"""pm.test('Content-Type is {expected_type}', function () {{
     pm.response.to.have.header('Content-Type');
-    pm.expect(pm.response.headers.get('Content-Type')).to.include('{expected_type}');
+    pm.expect(pm.response.headers.get('Content-Type')).to.include({safe_type});
 }});
 """
         logger.debug(f"Generated content type check for {expected_type}")
@@ -234,15 +249,17 @@ class TestScriptGenerator:
         Returns:
             JavaScript test script
         """
+        safe_header_name = TestScriptGenerator._to_js_literal(header_name)
         if expected_value:
+            safe_value = TestScriptGenerator._to_js_literal(expected_value)
             script = f"""pm.test('Header {header_name} equals {expected_value}', function () {{
-    pm.response.to.have.header('{header_name}');
-    pm.expect(pm.response.headers.get('{header_name}')).to.equal('{expected_value}');
+    pm.response.to.have.header({safe_header_name});
+    pm.expect(pm.response.headers.get({safe_header_name})).to.equal({safe_value});
 }});
 """
         else:
             script = f"""pm.test('Header {header_name} exists', function () {{
-    pm.response.to.have.header('{header_name}');
+    pm.response.to.have.header({safe_header_name});
 }});
 """
         logger.debug(f"Generated header check for {header_name}")
@@ -259,9 +276,10 @@ class TestScriptGenerator:
         Returns:
             JavaScript test script
         """
+        safe_field = TestScriptGenerator._to_js_literal(error_field)
         script = f"""pm.test('Response contains error information', function () {{
     var jsonData = pm.response.json();
-    pm.expect(jsonData).to.have.property('{error_field}');
+    pm.expect(jsonData).to.have.property({safe_field});
     pm.expect(jsonData.{error_field}).to.not.be.empty;
 }});
 """
@@ -362,10 +380,9 @@ class TestScriptGenerator:
         
         # Add variables
         for key, value in variables.items():
-            if isinstance(value, str):
-                script_lines.append(f"pm.collectionVariables.set('{key}', '{value}');")
-            else:
-                script_lines.append(f"pm.collectionVariables.set('{key}', {json.dumps(value)});")
+            safe_key = TestScriptGenerator._to_js_literal(key)
+            safe_value = TestScriptGenerator._to_js_literal(value)
+            script_lines.append(f"pm.collectionVariables.set({safe_key}, {safe_value});")
         
         script = "\n".join(script_lines)
         logger.debug(f"Generated pre-request script with {len(variables)} variables")
