@@ -21,6 +21,7 @@ class DashboardStatsResponse(BaseModel):
     document_count: int = Field(..., ge=0, description="Number of uploaded documents")
     agent_count: int = Field(..., ge=0, description="Number of active agents")
     audio_count: int = Field(..., ge=0, description="Number of generated audio files")
+    conversation_count: int = Field(..., ge=0, description="Number of conversations")
     last_activity: datetime = Field(..., description="Timestamp of last activity")
 
 

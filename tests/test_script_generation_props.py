@@ -6,7 +6,7 @@ import datetime
 
 
 @given(
-    model_name=st.sampled_from(["gemini-2.5-flash-lite", "gemini-3.0-flash", "gemini-3.0-pro"]),
+    model_name=st.sampled_from(["gemini-2.5-flash-lite", "gemini-3-flash-preview", "gemini-3-pro-preview"]),
     prompt=st.text(min_size=1, max_size=100),
     content=st.text(min_size=1, max_size=100)
 )
@@ -64,11 +64,11 @@ async def test_successful_response_format(content, generated_text):
             mock_settings.return_value.use_mock_data = False
             
             service = ScriptGenerationService()
-            result = await service.generate_script(content, "gemini-2.5-flash-lite", "prompt")
+            result = await service.generate_script(content, "gemini-3-flash-preview", "prompt")
             
             # post_process_node might strip whitespace
             assert result["script"] == generated_text.strip()
-            assert result["model_used"] == "gemini-2.5-flash-lite"
+            assert result["model_used"] == "gemini-3-flash-preview"
             assert isinstance(result["generated_at"], datetime.datetime)
             assert result["error"] is None
 

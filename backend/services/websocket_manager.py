@@ -44,6 +44,8 @@ class WebSocketConnectionManager:
         session_id: str,
         signed_url: str,
         agent_id: str,
+        text_only: bool = True,
+        language: str = "en",
     ) -> bool:
         """Create and store a new WebSocket connection for a session.
 
@@ -51,6 +53,8 @@ class WebSocketConnectionManager:
             session_id: Unique session identifier.
             signed_url: The signed WebSocket URL from ElevenLabs.
             agent_id: The ElevenLabs agent ID.
+            text_only: Whether to use text-only mode (no audio).
+            language: The primary language for the agent.
 
         Returns:
             bool: True if connection was successfully established.
@@ -73,8 +77,11 @@ class WebSocketConnectionManager:
                 init_event = {
                     "type": "conversation_initiation_client_data",
                     "conversation_config_override": {
+                        "agent": {
+                            "language": language
+                        },
                         "conversation": {
-                            "text_only": True
+                            "text_only": text_only
                         }
                     }
                 }
@@ -123,7 +130,8 @@ class WebSocketConnectionManager:
                     continue
 
                 if msg_type == "agent_response":
-                    return data.get("agent_response", {}).get("message", "")
+                    # ElevenLabs sends text in agent_response_event
+                    return data.get("agent_response_event", {}).get("agent_response", "")
                 
                 if msg_type == "conversation_initiation_metadata":
                     continue
@@ -167,6 +175,7 @@ class WebSocketConnectionManager:
                     "type": "user_message",
                     "text": text
                 }
+                logging.info(f"Sending user_message to session {session_id}: {text[:50]}...")
                 await websocket.send(json.dumps(payload))
 
                 # Collect response parts
@@ -175,9 +184,15 @@ class WebSocketConnectionManager:
                 
                 start_time = time.time()
                 while time.time() - start_time < timeout:
-                    message = await asyncio.wait_for(websocket.recv(), timeout=1.0)
+                    try:
+                        message = await asyncio.wait_for(websocket.recv(), timeout=1.0)
+                    except asyncio.TimeoutError:
+                        # Inner timeout - just continue waiting for agent response
+                        continue
+                    
                     data = json.loads(message)
                     msg_type = data.get("type", "")
+                    logging.debug(f"[WS] Received message type: {msg_type}")
 
                     if msg_type == "ping":
                         event = data["ping_event"]
@@ -189,30 +204,31 @@ class WebSocketConnectionManager:
                         continue
 
                     if msg_type == "agent_response":
-                        response = data.get("agent_response", {})
-                        text_part = response.get("message", "")
+                        # ElevenLabs sends text in agent_response_event
+                        text_part = data.get("agent_response_event", {}).get("agent_response", "")
                         if text_part:
                             full_text.append(text_part)
                         
-                        # Check for end of response
-                        # ElevenLabs usually sends multiple parts, then a final metadata or next user prompt
-                        # For simple implementation, we assume a single response message is complete
-                        # or we wait for a specific flag if the SDK provides it.
+                        # In text-only mode, stop after agent_response
+                        # In audio mode, we might wait for stop/metadata, but for simplicity
+                        # we break once we get it.
                         break
 
                     if msg_type == "audio_event":
                         audio_b64 = data.get("audio_event", {}).get("audio", "")
                         if audio_b64:
                             audio_parts.append(base64.b64decode(audio_b64))
+                
+                # Check if we got a response or exhausted timeout
+                if not full_text:
+                    logging.warning(f"No response received for session {session_id} within {timeout}s")
+                    return "Response timed out.", None
 
                 response_text = " ".join(full_text)
                 audio_bytes = b"".join(audio_parts) if audio_parts else None
                 
                 return response_text, audio_bytes
 
-            except asyncio.TimeoutError:
-                logging.error(f"Timeout waiting for response on session {session_id}")
-                return "Response timed out.", None
             except Exception as e:
                 logging.error(f"Error sending message on session {session_id}: {e}")
                 state.is_active = False

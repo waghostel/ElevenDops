@@ -69,12 +69,18 @@ class PatientService:
 
         # Create persistent WebSocket connection for this session
         try:
+            # Default to text_only=True for faster initial response/cost saving in Streamlit
+            # The agent's primary language is typically the first one in the list
+            primary_lang = agent.languages[0] if agent.languages else "en"
+            
             await self.connection_manager.create_connection(
                 session_id=session_id,
                 signed_url=signed_url,
                 agent_id=agent.elevenlabs_agent_id,
+                text_only=True,  # Default to text-only for Streamlit test tool
+                language=primary_lang
             )
-            logging.info(f"WebSocket connection established for session {session_id}")
+            logging.info(f"WebSocket connection established for session {session_id} (lang: {primary_lang})")
         except Exception as e:
             logging.error(f"Failed to create WebSocket connection for session {session_id}: {e}")
             # Continue without persistent connection - will fall back to one-shot mode

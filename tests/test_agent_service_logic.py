@@ -47,9 +47,9 @@ class TestAgentCreationLogic(unittest.TestCase):
         tts_config = kwargs['conversation_config']['tts']
         self.assertEqual(tts_config['model_id'], "eleven_turbo_v2_5")
         
-        # Check language SWAP (Primary should NOT be 'en')
+        # Check language (Should NOT swap, should stay 'en')
         agent_config = kwargs['conversation_config']['agent']
-        self.assertEqual(agent_config['language'], "fr")
+        self.assertEqual(agent_config['language'], "en")
         
         # Check presets include both
         presets = agent_config.get('language_presets', {})
@@ -133,9 +133,8 @@ class TestAgentUpdateLogic(unittest.TestCase):
         self.assertEqual(tts_config['model_id'], "eleven_turbo_v2_5")
         
         agent_config = kwargs['conversation_config']['agent']
-        # Should swap primary to 'fr' because 'en' primary with multilingual requires swap for best quality? 
-        # Wait, the logic I implemented swaps EN to first non-EN if mixed.
-        self.assertEqual(agent_config['language'], "fr")
+        # Should NOT swap primary to 'fr' even if 'en' primary with multilingual
+        self.assertEqual(agent_config['language'], "en")
         
         presets = agent_config['language_presets']
         self.assertIn('en', presets)

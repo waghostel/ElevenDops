@@ -54,7 +54,7 @@ MOCK_SCRIPT_CONTENT = "Generated script"
 
 async def mock_script_stream(*args, **kwargs):
     yield {"type": "token", "content": MOCK_SCRIPT_CONTENT}
-    yield {"type": "complete", "script": MOCK_SCRIPT_CONTENT, "model_used": "gemini-2.5-flash-lite"}
+    yield {"type": "complete", "script": MOCK_SCRIPT_CONTENT, "model_used": "gemini-3-flash-preview"}
 
 @pytest.fixture
 def mock_client():
@@ -111,7 +111,7 @@ def test_script_generation_flow(mock_client):
         # Verify client call
         mock_client.generate_script_stream.assert_called_with(
             knowledge_id="doc_1",
-            model_name="gemini-2.5-flash-lite",
+            model_name="gemini-3-flash-preview",
             custom_prompt=None,
             template_ids=["pre_surgery"],
             quick_instructions="",

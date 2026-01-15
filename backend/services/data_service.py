@@ -296,6 +296,7 @@ class MockDataService(DataServiceInterface):
             document_count=len(self._documents),
             agent_count=len(self._agents),
             audio_count=len(self._audio_files),
+            conversation_count=len(self._conversation_details),
             last_activity=datetime.now(),
         )
 

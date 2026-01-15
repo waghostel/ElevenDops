@@ -5,21 +5,1051 @@
   "environment_id": "a3bf18a2-9357-4834-a978-7b6049aa0292",
   "environment_uid": "42874768-a3bf18a2-9357-4834-a978-7b6049aa0292",
   "base_url": "http://localhost:8000",
-  "description": "ElevenDops Backend API Testing Configuration - Updated with working collection",
+  "description": "ElevenDops Backend API Testing Configuration - Comprehensive collection for all endpoints",
   "created_at": "2025-12-23T07:08:45.656Z",
-  "updated_at": "2025-12-23T07:33:49.000Z",
-  "test_results": {
-    "backend_status": "running",
-    "endpoints_tested": [
-      {"endpoint": "/", "status": "✅ working", "response": "ElevenDops Backend API v0.1.0"},
-      {"endpoint": "/api/health", "status": "✅ working", "response": "healthy with mock services"},
-      {"endpoint": "/api/dashboard/stats", "status": "✅ working", "response": "1 document, 0 agents, 0 audio files"},
-      {"endpoint": "/api/knowledge", "status": "✅ working", "response": "1 knowledge document found"},
-      {"endpoint": "/api/audio/voices/list", "status": "✅ working", "response": "2 mock voices available"},
-      {"endpoint": "/api/agent", "status": "✅ working", "response": "0 agents configured"},
-      {"endpoint": "/api/conversations", "status": "✅ working", "response": "0 conversations logged"},
-      {"endpoint": "/api/conversations/statistics", "status": "✅ working", "response": "conversation stats available"}
+  "updated_at": "2026-01-15T00:00:00.000Z",
+  "collection": {
+    "info": {
+      "name": "ElevenDops Backend API",
+      "description": "Complete API testing collection for ElevenDops intelligent medical assistant system",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+      {
+        "name": "Health & Infrastructure",
+        "item": [
+          {
+            "name": "Root Endpoint",
+            "request": {
+              "method": "GET",
+              "url": {
+                "raw": "{{base_url}}/",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  ""
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Health Check",
+            "request": {
+              "method": "GET",
+              "url": {
+                "raw": "{{base_url}}/api/health",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "health"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Dashboard Stats",
+            "request": {
+              "method": "GET",
+              "url": {
+                "raw": "{{base_url}}/api/dashboard/stats",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "dashboard",
+                  "stats"
+                ]
+              }
+            },
+            "response": []
+          }
+        ]
+      },
+      {
+        "name": "Knowledge Management",
+        "item": [
+          {
+            "name": "Create Knowledge Document",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"text\": \"Cataract is a clouding of the eye lens that develops over time.\",\n  \"disease_name\": \"Cataract\",\n  \"document_type\": \"patient_education\",\n  \"doctor_id\": \"doctor_001\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/api/knowledge",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "knowledge"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "List Knowledge Documents",
+            "request": {
+              "method": "GET",
+              "url": {
+                "raw": "{{base_url}}/api/knowledge",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "knowledge"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Get Knowledge Document",
+            "request": {
+              "method": "GET",
+              "url": {
+                "raw": "{{base_url}}/api/knowledge/{{knowledge_id}}",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "knowledge",
+                  "{{knowledge_id}}"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Update Knowledge Document",
+            "request": {
+              "method": "PUT",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"text\": \"Updated cataract information with more details.\",\n  \"disease_name\": \"Cataract\",\n  \"document_type\": \"patient_education\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/api/knowledge/{{knowledge_id}}",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "knowledge",
+                  "{{knowledge_id}}"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Delete Knowledge Document",
+            "request": {
+              "method": "DELETE",
+              "url": {
+                "raw": "{{base_url}}/api/knowledge/{{knowledge_id}}",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "knowledge",
+                  "{{knowledge_id}}"
+                ]
+              }
+            },
+            "response": []
+          }
+        ]
+      },
+      {
+        "name": "Audio Generation",
+        "item": [
+          {
+            "name": "List Available Voices",
+            "request": {
+              "method": "GET",
+              "url": {
+                "raw": "{{base_url}}/api/audio/voices/list",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "audio",
+                  "voices",
+                  "list"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Generate Script",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"knowledge_id\": \"{{knowledge_id}}\",\n  \"model\": \"gemini-pro\",\n  \"custom_prompt\": null\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/api/audio/generate-script",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "audio",
+                  "generate-script"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Generate Audio",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"script_content\": \"Cataract is a clouding of the eye lens.\",\n  \"voice_id\": \"21m00Tcm4TlvDq8ikWAM\",\n  \"disease_name\": \"Cataract\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/api/audio",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "audio"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "List Audio Files",
+            "request": {
+              "method": "GET",
+              "url": {
+                "raw": "{{base_url}}/api/audio/list",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "audio",
+                  "list"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Stream Audio",
+            "request": {
+              "method": "GET",
+              "url": {
+                "raw": "{{base_url}}/api/audio/stream/{{audio_id}}",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "audio",
+                  "stream",
+                  "{{audio_id}}"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Delete Audio",
+            "request": {
+              "method": "DELETE",
+              "url": {
+                "raw": "{{base_url}}/api/audio/{{audio_id}}",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "audio",
+                  "{{audio_id}}"
+                ]
+              }
+            },
+            "response": []
+          }
+        ]
+      },
+      {
+        "name": "Agent Management",
+        "item": [
+          {
+            "name": "Create Agent",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"name\": \"Cataract Assistant\",\n  \"knowledge_ids\": [\"{{knowledge_id}}\"],\n  \"voice_id\": \"21m00Tcm4TlvDq8ikWAM\",\n  \"answer_style\": \"professional\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/api/agent",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "agent"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "List Agents",
+            "request": {
+              "method": "GET",
+              "url": {
+                "raw": "{{base_url}}/api/agent",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "agent"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Get Agent",
+            "request": {
+              "method": "GET",
+              "url": {
+                "raw": "{{base_url}}/api/agent/{{agent_id}}",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "agent",
+                  "{{agent_id}}"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Update Agent",
+            "request": {
+              "method": "PUT",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"name\": \"Updated Cataract Assistant\",\n  \"knowledge_ids\": [\"{{knowledge_id}}\"],\n  \"voice_id\": \"21m00Tcm4TlvDq8ikWAM\",\n  \"answer_style\": \"friendly\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/api/agent/{{agent_id}}",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "agent",
+                  "{{agent_id}}"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Delete Agent",
+            "request": {
+              "method": "DELETE",
+              "url": {
+                "raw": "{{base_url}}/api/agent/{{agent_id}}",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "agent",
+                  "{{agent_id}}"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Get System Prompts",
+            "request": {
+              "method": "GET",
+              "url": {
+                "raw": "{{base_url}}/api/agent/system-prompts",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "agent",
+                  "system-prompts"
+                ]
+              }
+            },
+            "response": []
+          }
+        ]
+      },
+      {
+        "name": "Patient Sessions",
+        "item": [
+          {
+            "name": "Start Session",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"patient_id\": \"patient_001\",\n  \"agent_id\": \"{{agent_id}}\",\n  \"chat_mode\": true\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/api/patient/session",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "patient",
+                  "session"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Send Message",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"message\": \"What is a cataract?\",\n  \"session_id\": \"{{session_id}}\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/api/patient/session/{{session_id}}/message",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "patient",
+                  "session",
+                  "{{session_id}}",
+                  "message"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "End Session",
+            "request": {
+              "method": "POST",
+              "url": {
+                "raw": "{{base_url}}/api/patient/session/{{session_id}}/end",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "patient",
+                  "session",
+                  "{{session_id}}",
+                  "end"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Get Patient Summary",
+            "request": {
+              "method": "GET",
+              "url": {
+                "raw": "{{base_url}}/api/patient/{{patient_id}}/summary",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "patient",
+                  "{{patient_id}}",
+                  "summary"
+                ]
+              }
+            },
+            "response": []
+          }
+        ]
+      },
+      {
+        "name": "Conversations",
+        "item": [
+          {
+            "name": "List Conversations",
+            "request": {
+              "method": "GET",
+              "url": {
+                "raw": "{{base_url}}/api/conversations?patient_id={{patient_id}}&agent_id={{agent_id}}",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "conversations"
+                ],
+                "query": [
+                  {
+                    "key": "patient_id",
+                    "value": "{{patient_id}}"
+                  },
+                  {
+                    "key": "agent_id",
+                    "value": "{{agent_id}}"
+                  }
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Get Conversation Statistics",
+            "request": {
+              "method": "GET",
+              "url": {
+                "raw": "{{base_url}}/api/conversations/statistics",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "conversations",
+                  "statistics"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Get Conversation Details",
+            "request": {
+              "method": "GET",
+              "url": {
+                "raw": "{{base_url}}/api/conversations/{{conversation_id}}",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "conversations",
+                  "{{conversation_id}}"
+                ]
+              }
+            },
+            "response": []
+          }
+        ]
+      },
+      {
+        "name": "Templates",
+        "item": [
+          {
+            "name": "List Templates",
+            "request": {
+              "method": "GET",
+              "url": {
+                "raw": "{{base_url}}/api/templates",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "templates"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Create Template",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"name\": \"Medical Education Template\",\n  \"description\": \"Template for medical education content\",\n  \"content\": \"Explain {{disease}} in simple terms for patients.\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/api/templates",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "templates"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Get Template",
+            "request": {
+              "method": "GET",
+              "url": {
+                "raw": "{{base_url}}/api/templates/{{template_id}}",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "templates",
+                  "{{template_id}}"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Update Template",
+            "request": {
+              "method": "PUT",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"name\": \"Updated Medical Education Template\",\n  \"description\": \"Updated template for medical education\",\n  \"content\": \"Explain {{disease}} in detail for patient education.\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/api/templates/{{template_id}}",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "templates",
+                  "{{template_id}}"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Delete Template",
+            "request": {
+              "method": "DELETE",
+              "url": {
+                "raw": "{{base_url}}/api/templates/{{template_id}}",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "templates",
+                  "{{template_id}}"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Get System Prompt",
+            "request": {
+              "method": "GET",
+              "url": {
+                "raw": "{{base_url}}/api/templates/system-prompt",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "templates",
+                  "system-prompt"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Preview Template",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"template_id\": \"{{template_id}}\",\n  \"variables\": {\n    \"disease\": \"Cataract\"\n  }\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/api/templates/preview",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "templates",
+                  "preview"
+                ]
+              }
+            },
+            "response": []
+          }
+        ]
+      },
+      {
+        "name": "Debug Endpoints",
+        "item": [
+          {
+            "name": "Debug Health",
+            "request": {
+              "method": "GET",
+              "url": {
+                "raw": "{{base_url}}/api/debug/health",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "debug",
+                  "health"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Debug Script Generation",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"knowledge_id\": \"{{knowledge_id}}\",\n  \"model\": \"gemini-pro\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/api/debug/script-generation",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "debug",
+                  "script-generation"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Debug List Sessions",
+            "request": {
+              "method": "GET",
+              "url": {
+                "raw": "{{base_url}}/api/debug/sessions",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "debug",
+                  "sessions"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Debug Create Session",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"patient_id\": \"debug_patient\",\n  \"agent_id\": \"{{agent_id}}\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/api/debug/sessions",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "debug",
+                  "sessions"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Debug Get Session",
+            "request": {
+              "method": "GET",
+              "url": {
+                "raw": "{{base_url}}/api/debug/sessions/{{session_id}}",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "debug",
+                  "sessions",
+                  "{{session_id}}"
+                ]
+              }
+            },
+            "response": []
+          },
+          {
+            "name": "Debug End Session",
+            "request": {
+              "method": "POST",
+              "url": {
+                "raw": "{{base_url}}/api/debug/sessions/{{session_id}}/end",
+                "protocol": "http",
+                "host": [
+                  "localhost"
+                ],
+                "port": "8000",
+                "path": [
+                  "api",
+                  "debug",
+                  "sessions",
+                  "{{session_id}}",
+                  "end"
+                ]
+              }
+            },
+            "response": []
+          }
+        ]
+      }
     ],
-    "last_tested": "2025-12-23T07:33:49.000Z"
+    "variable": [
+      {
+        "key": "base_url",
+        "value": "http://localhost:8000",
+        "type": "string"
+      },
+      {
+        "key": "knowledge_id",
+        "value": "",
+        "type": "string"
+      },
+      {
+        "key": "agent_id",
+        "value": "",
+        "type": "string"
+      },
+      {
+        "key": "audio_id",
+        "value": "",
+        "type": "string"
+      },
+      {
+        "key": "session_id",
+        "value": "",
+        "type": "string"
+      },
+      {
+        "key": "patient_id",
+        "value": "patient_001",
+        "type": "string"
+      },
+      {
+        "key": "conversation_id",
+        "value": "",
+        "type": "string"
+      },
+      {
+        "key": "template_id",
+        "value": "",
+        "type": "string"
+      }
+    ]
+  },
+  "test_results": {
+    "status": "pending",
+    "backend_status": "not_running",
+    "message": "Backend server is not currently running. Start the backend with: poetry run uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload",
+    "endpoints_tested": [],
+    "last_tested": "2026-01-15T00:00:00.000Z",
+    "notes": "To run the collection tests, ensure the backend is running first."
+  },
+  "last_run": {
+    "timestamp": "2026-01-15T11:05:20.142142",
+    "passed": 1,
+    "failed": 0,
+    "total": 1
   }
 }

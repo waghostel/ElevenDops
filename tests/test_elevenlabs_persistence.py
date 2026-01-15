@@ -23,7 +23,12 @@ async def test_websocket_persistence_lifecycle():
     # 2nd recv: agent response (greeting)
     mock_ws.recv.side_effect = [
         json.dumps({"type": "conversation_initiation_metadata"}),
-        json.dumps({"type": "agent_response", "agent_response": {"message": "Hello!"}})
+        json.dumps({
+            "type": "agent_response", 
+            "agent_response_event": {
+                "agent_response": "Hello!"
+            }
+        })
     ]
 
     with patch("websockets.connect", new_callable=AsyncMock) as mock_connect:
@@ -42,7 +47,12 @@ async def test_websocket_persistence_lifecycle():
     # 3. Test send_message (Persistence Check)
     # mock_ws.recv for next message
     mock_ws.recv.side_effect = [
-        json.dumps({"type": "agent_response", "agent_response": {"message": "I am persistent."}})
+        json.dumps({
+            "type": "agent_response", 
+            "agent_response_event": {
+                "agent_response": "I am persistent."
+            }
+        })
     ]
     
     response_text, audio = await manager.send_message(session_id, "Who are you?")
@@ -56,7 +66,12 @@ async def test_websocket_persistence_lifecycle():
     # 4. Test Ping/Pong handling during send_message
     mock_ws.recv.side_effect = [
         json.dumps({"type": "ping", "ping_event": {"event_id": "p1"}}),
-        json.dumps({"type": "agent_response", "agent_response": {"message": "Ping pong worked."}})
+        json.dumps({
+            "type": "agent_response", 
+            "agent_response_event": {
+                "agent_response": "Ping pong worked."
+            }
+        })
     ]
     
     response_text, audio = await manager.send_message(session_id, "Testing ping.")

@@ -67,11 +67,22 @@ class TestDockerInfrastructure:
             assert firestore_healthy, "Firestore Emulator failed to become healthy within 60 seconds"
             assert gcs_healthy, "GCS Emulator failed to become healthy within 60 seconds"
 
+        except subprocess.CalledProcessError as e:
+            # Skip test if Docker is not available
+            stderr_text = e.stderr.decode() if e.stderr else ""
+            if "cannot find the file specified" in stderr_text or "docker daemon" in stderr_text.lower():
+                pytest.skip(f"Docker not available: {stderr_text}")
+            raise
+
         finally:
-            # Tear down services
+            # Tear down services (ignore errors if Docker not running)
             print("\nStopping Docker services...")
-            subprocess.run(
-                ["docker-compose", "-f", compose_file, "down"], 
-                check=True,
-                capture_output=True
-            )
+            try:
+                subprocess.run(
+                    ["docker-compose", "-f", compose_file, "down"], 
+                    check=False,
+                    capture_output=True
+                )
+            except Exception:
+                pass  # Ignore cleanup errors
+

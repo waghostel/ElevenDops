@@ -80,4 +80,7 @@ async def health_check():
 @router.get("/health/ready")
 async def readiness_check():
     """Simple readiness check for container orchestration."""
-    return {"status": "ready"}
+    return {
+        "status": "ready",
+        "services": ["firestore", "storage"]
+    }

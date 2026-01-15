@@ -40,10 +40,35 @@ ElevenDops is an intelligent medical assistant system combining ElevenLabs voice
 6. **Conversation Logs** - Track patient questions for doctor review
 
 ## Current Implementation Status
-- ✅ Backend services: elevenlabs, audio, agent, knowledge, conversation, storage
-- ✅ LangGraph workflow for AI script generation
-- ✅ Prompt template service with configurable prompts
-- ✅ LangSmith tracing integration
-- ✅ Firestore data service
-- 🔄 AI Script Generation frontend integration (in progress)
+
+### Backend Services (✅ Complete)
+- `elevenlabs_service.py` - ElevenLabs API integration
+- `audio_service.py` - TTS audio generation
+- `agent_service.py` - Agent management
+- `conversation_service.py` - Conversation handling
+- `storage_service.py` - GCS file storage
+- `firestore_data_service.py` - Firestore operations
+- `langgraph_workflow.py` - AI script generation workflow
+- `script_generation_service.py` - Script generation orchestration
+- `prompt_template_service.py` - Configurable prompts
+- `langsmith_tracer.py` - LangSmith observability
+- `patient_service.py` - Patient session management
+- `analysis_service.py` - Conversation analysis
+- `websocket_manager.py` - WebSocket connections
+
+### API Routes (✅ Complete)
+- `/api/knowledge` - Knowledge document management
+- `/api/audio` - Audio generation
+- `/api/agent` - Agent configuration
+- `/api/patient` - Patient sessions
+- `/api/conversation` - Conversation logs
+- `/api/templates` - Prompt templates
+- `/api/debug` - Debug endpoints
+
+### Frontend Pages (✅ Complete)
+- Doctor Dashboard, Upload Knowledge, Education Audio
+- Agent Setup, Patient Test, Conversation Logs
+
+### In Progress
 - 🔄 Property-based testing coverage expansion
+- 🔄 Cloud Run deployment optimization

@@ -22,7 +22,7 @@ def test_settings_defaults():
         assert settings.firestore_emulator_host == "localhost:8080"
         assert settings.use_gcs_emulator is True
         assert settings.gcs_emulator_host == "http://localhost:4443"
-        assert settings.gcs_bucket_name == "elevenlabs-audio"
+        assert settings.gcs_bucket_name == "elevendops-bucket-test"
 
 @given(
     use_firestore=st.booleans(),
@@ -46,8 +46,8 @@ def test_settings_env_overrides(use_firestore, use_gcs, firestore_host, gcs_host
         settings = Settings()
         assert settings.use_firestore_emulator == use_firestore
         assert settings.use_gcs_emulator == use_gcs
-        assert settings.firestore_emulator_host == firestore_host
-        assert settings.gcs_emulator_host == gcs_host
+        assert settings.firestore_emulator_host == firestore_host.strip()
+        assert settings.gcs_emulator_host == gcs_host.strip()
 
 
 @pytest.mark.integration

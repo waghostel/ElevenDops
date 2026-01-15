@@ -160,7 +160,7 @@ async def test_audio_query_by_knowledge_id_returns_all_matching_records(
     
     # Verify
     assert result == expected_result
-    data.get_audio_files.assert_called_once_with(knowledge_id)
+    data.get_audio_files.assert_called_once_with(knowledge_id=knowledge_id, doctor_id=None)
 
 
 # **Feature: elevenlabs-tts-audio, Property 2: Voice list contains required fields**

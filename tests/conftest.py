@@ -14,13 +14,19 @@ def disable_rate_limiter():
     # Ensure the environment variable is set for any code that checks it
     os.environ["LIMITER_ENABLED"] = "False"
     # Import limiter here to ensure it's available and can be modified
-    from backend.middleware.rate_limit import limiter
-    original_limiter_state = limiter.enabled
-    limiter.enabled = False
-    yield
-    # Restore original state after tests
-    limiter.enabled = original_limiter_state
-    del os.environ["LIMITER_ENABLED"]
+    try:
+        from backend.middleware.rate_limit import limiter
+        original_limiter_state = limiter.enabled
+        limiter.enabled = False
+        yield
+        # Restore original state after tests
+        limiter.enabled = original_limiter_state
+    except (ImportError, ModuleNotFoundError):
+        # If rate limiting module is not available, just skip
+        yield
+    finally:
+        if "LIMITER_ENABLED" in os.environ:
+            del os.environ["LIMITER_ENABLED"]
 
 
 # Mock google.cloud modules for testing without GCP dependencies

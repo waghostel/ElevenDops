@@ -182,7 +182,7 @@ class FirestoreDataService(DataServiceInterface):
             # Use aggregation queries for counts
             doc_count_query = self._db.collection(KNOWLEDGE_DOCUMENTS).count()
             agent_count_query = self._db.collection(AGENTS).count()
-            audio_count_query = self._db.collection(AUDIO_FILES).count()
+            conversation_count_query = self._db.collection(CONVERSATIONS).count()
             
             # Execute queries
             # Note: In a real production scenario, we might want to run these concurrently
@@ -199,10 +199,12 @@ class FirestoreDataService(DataServiceInterface):
             doc_snapshot = doc_count_query.get()
             agent_snapshot = agent_count_query.get()
             audio_snapshot = audio_count_query.get()
+            conversation_snapshot = conversation_count_query.get()
             
             doc_count = doc_snapshot[0][0].value
             agent_count = agent_snapshot[0][0].value
             audio_count = audio_snapshot[0][0].value
+            conversation_count = conversation_snapshot[0][0].value
             
             # Calculate last_activity across all collections
             last_activity = await self._get_last_activity_timestamp()
@@ -211,6 +213,7 @@ class FirestoreDataService(DataServiceInterface):
                 document_count=doc_count,
                 agent_count=agent_count,
                 audio_count=audio_count,
+                conversation_count=conversation_count,
                 last_activity=last_activity,
             )
         except Exception as e:
@@ -220,6 +223,7 @@ class FirestoreDataService(DataServiceInterface):
                 document_count=0,
                 agent_count=0,
                 audio_count=0,
+                conversation_count=0,
                 last_activity=datetime.now(),
             )
 

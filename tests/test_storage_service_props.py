@@ -164,12 +164,12 @@ def storage_service():
         pytest.skip(f"Storage service not available: {e}")
 
 
-@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
 @pytest.mark.integration
 class TestStorageServiceIntegration:
     """Integration tests requiring GCS emulator."""
     
 
+    @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
     @given(audio_data=s_audio_bytes(), filename=s_valid_filename())
     def test_property_2_upload_produces_correct_url(self, storage_service, audio_data, filename):
         """Test upload produces correct storage and URL format."""
@@ -191,6 +191,7 @@ class TestStorageServiceIntegration:
         storage_service.delete_audio(filename)
     
 
+    @settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
     @given(audio_data=s_audio_bytes(), filename=s_valid_filename())
     def test_property_3_upload_then_delete_roundtrip(self, storage_service, audio_data, filename):
         """Test upload then delete round-trip."""

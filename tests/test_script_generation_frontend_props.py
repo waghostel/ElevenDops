@@ -28,7 +28,7 @@ MOCK_SCRIPT = ScriptResponse(
     script="Generated script",
     knowledge_id="doc_1",
     generated_at=datetime.utcnow(),
-    model_used="gemini-2.5-flash"
+    model_used="gemini-3-flash-preview"
 )
 
 MOCK_VOICES = []
@@ -37,7 +37,7 @@ MOCK_SCRIPT_CONTENT = "Generated script"
 
 async def mock_script_stream(*args, **kwargs):
     yield {"type": "token", "content": MOCK_SCRIPT_CONTENT}
-    yield {"type": "complete", "script": MOCK_SCRIPT_CONTENT, "model_used": "gemini-2.5-flash-lite"}
+    yield {"type": "complete", "script": MOCK_SCRIPT_CONTENT, "model_used": "gemini-3-flash-preview"}
 
 @pytest.fixture
 def mock_client():
@@ -71,7 +71,7 @@ def test_configuration_persistence(mock_client):
         # Find AI Model selectbox
         model_sb = next((sb for sb in at.selectbox if sb.label == "AI Model"), None)
         assert model_sb is not None, "AI Model selectbox not found"
-        assert model_sb.value == "gemini-2.5-flash-lite"
+        assert model_sb.value == "gemini-3-flash-preview"
         
         # Change selection to a valid option
         model_sb.select("gemini-3-flash-preview").run()

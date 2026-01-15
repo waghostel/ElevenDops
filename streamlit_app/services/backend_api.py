@@ -1137,7 +1137,8 @@ class BackendAPIClient:
         """
         try:
             payload = {"message": message, "chat_mode": chat_mode}
-            async with self._get_client() as client:
+            # Use extended timeout client - ElevenLabs WebSocket can take up to 30s
+            async with self._get_llm_client() as client:
                 response = await client.post(
                     f"/api/patient/session/{session_id}/message", 
                     json=payload
@@ -1151,6 +1152,11 @@ class BackendAPIClient:
                 )
         except httpx.ConnectError as e:
             raise APIConnectionError(f"Failed to connect to backend: {e}") from e
+        except httpx.TimeoutException as e:
+            raise APITimeoutError(
+                f"Patient message timed out after {LLM_TIMEOUT}s. "
+                "The agent may be taking too long to respond. Please try again."
+            ) from e
         except httpx.HTTPStatusError as e:
             raise APIError(
                 message=f"Message failed: {self._parse_error_message(e.response)}",

@@ -1,0 +1,414 @@
+================================================================================
+POSTMAN BACKEND TESTING - DEPENDENCY GRAPH
+================================================================================
+
+PHASE 1: FOUNDATION (SEQUENTIAL)
+================================================================================
+
+    ┌─────────────────────────────────────────────────────────────┐
+    │ Task 1: Set up project structure and dependencies           │
+    │ Duration: 30 min                                            │
+    │ Status: BLOCKING (all other tasks depend on this)           │
+    └─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │ PHASE 2: CORE INFRASTRUCTURE (PARALLEL - 3 TASKS)           │
+    └─────────────────────────────────────────────────────────────┘
+
+
+PHASE 2: CORE INFRASTRUCTURE (PARALLEL)
+================================================================================
+
+    Task 1 ──┬──────────────────────────────────────────────────┐
+             │                                                  │
+             ▼                                                  ▼
+    ┌──────────────────────────┐                    ┌──────────────────────────┐
+    │ Task 2:                  │                    │ Task 3:                  │
+    │ Configuration Management │                    │ Postman Power Integration│
+    │ Duration: 2-3 hrs        │                    │ Duration: 2-3 hrs        │
+    │ - PostmanConfig model    │                    │ - PostmanPowerClient     │
+    │ - Config loading         │                    │ - Unit tests             │
+    │ - Property tests         │                    │ - activate_power()       │
+    │ - Unit tests             │                    │ - get_collection()       │
+    └──────────────────────────┘                    └──────────────────────────┘
+             │                                                  │
+             │                                                  │
+             │                    ┌────────────────────────────┘
+             │                    │
+             │                    ▼
+             │          ┌──────────────────────────┐
+             │          │ Task 4:                  │
+             │          │ Backend Health Check     │
+             │          │ Duration: 2-3 hrs        │
+             │          │ - Health check utility   │
+             │          │ - Retry logic            │
+             │          │ - Property tests         │
+             │          │ - Unit tests             │
+             │          └──────────────────────────┘
+             │                    │
+             └────────┬───────────┘
+                      │
+                      ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │ Task 5: CHECKPOINT - Ensure all tests pass                  │
+    │ Duration: 15 min                                            │
+    │ Blocks: Phase 4                                             │
+    └─────────────────────────────────────────────────────────────┘
+                      │
+                      ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │ PHASE 4: COMPONENT IMPLEMENTATION (PARALLEL - 4 TASKS)      │
+    └─────────────────────────────────────────────────────────────┘
+
+
+PHASE 4: COMPONENT IMPLEMENTATION (PARALLEL)
+================================================================================
+
+    Task 5 ──┬──────────────────────────────────────────────────┐
+             │                                                  │
+             ▼                                                  ▼
+    ┌──────────────────────────┐                    ┌──────────────────────────┐
+    │ Task 6:                  │                    │ Task 7:                  │
+    │ Environment Manager      │                    │ Test Script Generator    │
+    │ Duration: 3-4 hrs        │                    │ Duration: 3-4 hrs        │
+    │ - EnvironmentManager     │                    │ - TestScriptGenerator    │
+    │ - create_environment()   │                    │ - generate_status_check()│
+    │ - set_variable()         │                    │ - generate_schema_val()  │
+    │ - Property tests (2)     │                    │ - Unit tests             │
+    │ - Unit tests             │                    │                          │
+    └──────────────────────────┘                    └──────────────────────────┘
+             │                                                  │
+             │                                                  │
+             │                    ┌────────────────────────────┘
+             │                    │
+             │                    ▼
+             │          ┌──────────────────────────┐
+             │          │ Task 8:                  │
+             │          │ Test Data Generator      │
+             │          │ Duration: 3-4 hrs        │
+             │          │ - TestDataGenerator      │
+             │          │ - generate_knowledge()   │
+             │          │ - generate_audio_req()   │
+             │          │ - Unit tests             │
+             │          └──────────────────────────┘
+             │                    │
+             │                    │
+             │                    ▼
+             │          ┌──────────────────────────┐
+             │          │ Task 9:                  │
+             │          │ Collection Builder       │
+             │          │ Duration: 3-4 hrs        │
+             │          │ - CollectionBuilder      │
+             │          │ - create_collection()    │
+             │          │ - add_request()          │
+             │          │ - Unit tests             │
+             │          └──────────────────────────┘
+             │                    │
+             └────────┬───────────┘
+                      │
+                      ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │ Task 10: CHECKPOINT - Ensure all tests pass                 │
+    │ Duration: 15 min                                            │
+    │ Blocks: Phase 6                                             │
+    └─────────────────────────────────────────────────────────────┘
+                      │
+                      ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │ PHASE 6: API TEST IMPLEMENTATION (PARALLEL - 9 TASKS)       │
+    └─────────────────────────────────────────────────────────────┘
+
+
+PHASE 6: API TEST IMPLEMENTATION (PARALLEL)
+================================================================================
+
+    Task 10 ──┬──────────────────────────────────────────────────────────────┐
+              │                                                              │
+              ▼                                                              ▼
+    ┌──────────────────────────┐                            ┌──────────────────────────┐
+    │ Task 11:                 │                            │ Task 12:                 │
+    │ Health & Infrastructure  │                            │ Knowledge API Tests      │
+    │ Duration: 6-8 hrs        │                            │ Duration: 6-8 hrs        │
+    │ - Health endpoints       │                            │ - CRUD operations        │
+    │ - Response schema test   │                            │ - Property tests (5)     │
+    │ - Unit tests             │                            │ - Unit tests             │
+    └──────────────────────────┘                            └──────────────────────────┘
+              │                                                              │
+              │                                                              │
+              │                    ┌─────────────────────────────────────────┘
+              │                    │
+              │                    ▼
+              │          ┌──────────────────────────┐
+              │          │ Task 13:                 │
+              │          │ Audio API Tests          │
+              │          │ Duration: 6-8 hrs        │
+              │          │ - Audio generation       │
+              │          │ - SSE streaming          │
+              │          │ - Property tests (5)     │
+              │          │ - Unit tests             │
+              │          └──────────────────────────┘
+              │                    │
+              │                    │
+              │                    ▼
+              │          ┌──────────────────────────┐
+              │          │ Task 14:                 │
+              │          │ Agent API Tests          │
+              │          │ Duration: 6-8 hrs        │
+              │          │ - Agent management       │
+              │          │ - Property tests (1)     │
+              │          │ - Unit tests             │
+              │          └──────────────────────────┘
+              │                    │
+              │                    │
+              │                    ▼
+              │          ┌──────────────────────────┐
+              │          │ Task 15:                 │
+              │          │ Patient API Tests        │
+              │          │ Duration: 6-8 hrs        │
+              │          │ - Patient sessions       │
+              │          │ - Property tests (3)     │
+              │          │ - Unit tests             │
+              │          └──────────────────────────┘
+              │                    │
+              │                    │
+              │                    ▼
+              │          ┌──────────────────────────┐
+              │          │ Task 16:                 │
+              │          │ Conversations API Tests  │
+              │          │ Duration: 6-8 hrs        │
+              │          │ - Conversation logs      │
+              │          │ - Property tests (1)     │
+              │          │ - Unit tests             │
+              │          └──────────────────────────┘
+              │                    │
+              │                    │
+              │                    ▼
+              │          ┌──────────────────────────┐
+              │          │ Task 17:                 │
+              │          │ Templates API Tests      │
+              │          │ Duration: 6-8 hrs        │
+              │          │ - Template management    │
+              │          │ - Property tests (1)     │
+              │          │ - Unit tests             │
+              │          └──────────────────────────┘
+              │                    │
+              │                    │
+              │                    ▼
+              │          ┌──────────────────────────┐
+              │          │ Task 18:                 │
+              │          │ Debug API Tests          │
+              │          │ Duration: 6-8 hrs        │
+              │          │ - Debug endpoints        │
+              │          │ - Property tests (2)     │
+              │          │ - Unit tests             │
+              │          └──────────────────────────┘
+              │                    │
+              │                    │
+              │                    ▼
+              │          ┌──────────────────────────┐
+              │          │ Task 19:                 │
+              │          │ Error Handling Tests     │
+              │          │ Duration: 6-8 hrs        │
+              │          │ - Error scenarios        │
+              │          │ - Property tests (5)     │
+              │          │ - Unit tests             │
+              │          └──────────────────────────┘
+              │                    │
+              └────────┬───────────┘
+                       │
+                       ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │ Task 20: CHECKPOINT - Ensure all tests pass                 │
+    │ Duration: 15 min                                            │
+    │ Blocks: Phase 8                                             │
+    └─────────────────────────────────────────────────────────────┘
+                       │
+                       ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │ PHASE 8: INTEGRATION & ORCHESTRATION (SEQUENTIAL)           │
+    └─────────────────────────────────────────────────────────────┘
+
+
+PHASE 8: INTEGRATION & ORCHESTRATION (SEQUENTIAL)
+================================================================================
+
+    Task 20
+       │
+       ▼
+    ┌──────────────────────────────────────────────────────────────┐
+    │ Task 21: Integration Workflow Tests                          │
+    │ Duration: 4-5 hrs                                            │
+    │ - Knowledge-to-audio workflow                                │
+    │ - Agent setup workflow                                       │
+    │ - Patient conversation workflow                              │
+    │ - Property tests (4)                                         │
+    │ - Unit tests                                                 │
+    └──────────────────────────────────────────────────────────────┘
+       │
+       ▼
+    ┌──────────────────────────────────────────────────────────────┐
+    │ Task 22: Cleanup Requests                                    │
+    │ Duration: 1-2 hrs                                            │
+    │ - Cleanup test requests                                      │
+    │ - Property tests (2)                                         │
+    │ - Unit tests                                                 │
+    └──────────────────────────────────────────────────────────────┘
+       │
+       ▼
+    ┌──────────────────────────────────────────────────────────────┐
+    │ Task 23: Test Orchestration Component                        │
+    │ Duration: 2-3 hrs                                            │
+    │ - TestOrchestrator class                                     │
+    │ - Property tests (4)                                         │
+    │ - Unit tests                                                 │
+    └──────────────────────────────────────────────────────────────┘
+       │
+       ▼
+    ┌──────────────────────────────────────────────────────────────┐
+    │ Task 24: Results Reporter Component                          │
+    │ Duration: 2-3 hrs                                            │
+    │ - ResultsReporter class                                      │
+    │ - Property tests (3)                                         │
+    │ - Unit tests                                                 │
+    └──────────────────────────────────────────────────────────────┘
+       │
+       ▼
+    ┌─────────────────────────────────────────────────────────────┐
+    │ PHASE 9: CLI & FINAL ASSEMBLY (SEQUENTIAL)                  │
+    └─────────────────────────────────────────────────────────────┘
+
+
+PHASE 9: CLI & FINAL ASSEMBLY (SEQUENTIAL)
+================================================================================
+
+    Task 24
+       │
+       ▼
+    ┌──────────────────────────────────────────────────────────────┐
+    │ Task 25: CLI Test Runner                                     │
+    │ Duration: 1-2 hrs                                            │
+    │ - Command-line interface                                     │
+    │ - run-all, run-folder, setup, cleanup commands               │
+    │ - Unit tests                                                 │
+    └──────────────────────────────────────────────────────────────┘
+       │
+       ▼
+    ┌──────────────────────────────────────────────────────────────┐
+    │ Task 26: Test Idempotence                                    │
+    │ Duration: 1-2 hrs                                            │
+    │ - Property test for idempotence                              │
+    │ - Test data cleanup between runs                             │
+    └──────────────────────────────────────────────────────────────┘
+       │
+       ▼
+    ┌──────────────────────────────────────────────────────────────┐
+    │ Task 27: Complete Test Collection                            │
+    │ Duration: 2-3 hrs                                            │
+    │ - Build full collection                                      │
+    │ - Upload to Postman workspace                                │
+    │ - Create test environments                                   │
+    └──────────────────────────────────────────────────────────────┘
+       │
+       ▼
+    ┌──────────────────────────────────────────────────────────────┐
+    │ Task 28: Final Integration Testing                           │
+    │ Duration: 2-3 hrs                                            │
+    │ - Run in mock mode                                           │
+    │ - Run in real service mode                                   │
+    │ - Verify cleanup                                             │
+    └──────────────────────────────────────────────────────────────┘
+       │
+       ▼
+    ┌──────────────────────────────────────────────────────────────┐
+    │ Task 29: Documentation and CI/CD Integration                 │
+    │ Duration: 1-2 hrs                                            │
+    │ - Usage documentation                                        │
+    │ - CI/CD integration guide                                    │
+    │ - Update .postman.json                                       │
+    └──────────────────────────────────────────────────────────────┘
+       │
+       ▼
+    ┌──────────────────────────────────────────────────────────────┐
+    │ Task 30: Final Checkpoint                                    │
+    │ Duration: 15 min                                             │
+    │ - Ensure all tests pass                                      │
+    │ - COMPLETE ✅                                                │
+    └──────────────────────────────────────────────────────────────┘
+
+
+================================================================================
+PARALLELIZATION SUMMARY
+================================================================================
+
+PARALLEL GROUPS:
+
+Group A (Phase 2):  Tasks 2, 3, 4       → 3 tasks in parallel
+Group B (Phase 4):  Tasks 6, 7, 8, 9    → 4 tasks in parallel
+Group C (Phase 6):  Tasks 11-19         → 9 tasks in parallel
+
+SEQUENTIAL PHASES:
+
+Phase 1: Task 1                         → 1 task (foundation)
+Phase 3: Task 5                         → 1 task (checkpoint)
+Phase 5: Task 10                        → 1 task (checkpoint)
+Phase 7: Task 20                        → 1 task (checkpoint)
+Phase 8: Tasks 21-24                    → 4 tasks (sequential chain)
+Phase 9: Tasks 25-30                    → 6 tasks (sequential chain)
+
+TOTAL PARALLELIZABLE: 16 tasks (53%)
+TOTAL SEQUENTIAL: 14 tasks (47%)
+
+SPEEDUP ANALYSIS:
+
+Sequential Execution:  40-50 hours
+Parallel Execution:    20-25 hours
+Speedup Factor:        2-2.5x
+Efficiency:            60-70%
+
+
+================================================================================
+CRITICAL PATH
+================================================================================
+
+Task 1 → Task 5 → Task 10 → Task 20 → Task 21 → Task 22 → Task 23 → 
+Task 24 → Task 25 → Task 26 → Task 27 → Task 28 → Task 29 → Task 30
+
+Critical Path Length: 15 sequential phases
+Estimated Duration: 20-25 hours (with optimal parallelization)
+
+
+================================================================================
+RESOURCE REQUIREMENTS
+================================================================================
+
+For Parallel Execution:
+
+Group A (3 tasks):
+  - 3 CPU cores
+  - 3 GB RAM
+  - 3 Firestore connections
+  - 3 test data namespaces
+
+Group B (4 tasks):
+  - 4 CPU cores
+  - 4 GB RAM
+  - 4 Firestore connections
+  - 4 test data namespaces
+
+Group C (9 tasks):
+  - 9 CPU cores
+  - 9 GB RAM
+  - 9 Firestore connections
+  - 9 test data namespaces
+  - Backend rate limiting: 100+ req/sec
+
+Recommended:
+  - 16 CPU cores (or ThreadPoolExecutor with max_workers=16)
+  - 16 GB RAM
+  - Firestore connection pooling
+  - Unique test data prefixes per task
+  - Cleanup hooks for each task
+
+
+================================================================================

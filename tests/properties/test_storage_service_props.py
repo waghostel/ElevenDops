@@ -34,6 +34,7 @@ def test_storage_upload_returns_valid_url(filename, use_emulator):
             # Hack: clear singleton for testing
             StorageService._instance = None
             service = StorageService()
+            service.settings = mock_settings.return_value
             
             # Mock bucket
             service._bucket = MagicMock()
@@ -49,6 +50,5 @@ def test_storage_upload_returns_valid_url(filename, use_emulator):
                 assert url.startswith("http://localhost:9023")
                 assert "test-bucket" in url
             else:
-                assert url.startswith("https://storage.googleapis.com")
-                assert "test-bucket" in url
-                assert "audio/" in url
+                # Production returns the storage path, not the full URL (for signing later)
+                assert url == f"audio/{filename}"

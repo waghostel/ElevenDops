@@ -565,16 +565,6 @@ class ElevenLabsService:
                 else:
                     # Multilingual: use v2.5
                     model_id = "eleven_turbo_v2_5"
-                    # If primary is English but we're multilingual, swap to first non-English
-                    if primary_language == "en":
-                        non_en_langs = [l for l in languages if l != "en"]
-                        if non_en_langs:
-                            primary_language = non_en_langs[0]
-                            logging.warning(
-                                f"Swapping primary language from 'en' to '{primary_language}' "
-                                f"for {model_id} validation."
-                            )
-                
                 agent_config["language"] = primary_language
                 
                 # Add language_presets for multi-language support

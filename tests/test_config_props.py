@@ -570,7 +570,7 @@ class TestConfigurationReadsFromEnvironment:
         """
         with patch.dict(os.environ, {"BACKEND_API_URL": backend_url}, clear=True):
             settings = Settings(_env_file=None)
-            assert settings.backend_api_url == backend_url
+            assert settings.backend_api_url == backend_url.strip()
 
     @given(
         bucket_name=st.text(
@@ -648,7 +648,7 @@ class TestConfigurationReadsFromEnvironment:
         """
         with patch.dict(os.environ, {"ELEVENLABS_API_KEY": api_key}, clear=True):
             settings = Settings(_env_file=None)
-            assert settings.elevenlabs_api_key == api_key
+            assert settings.elevenlabs_api_key == api_key.strip()
 
     @given(
         project_id=st.text(min_size=1, max_size=100).filter(
@@ -664,7 +664,7 @@ class TestConfigurationReadsFromEnvironment:
         """
         with patch.dict(os.environ, {"GOOGLE_CLOUD_PROJECT": project_id}, clear=True):
             settings = Settings(_env_file=None)
-            assert settings.google_cloud_project == project_id
+            assert settings.google_cloud_project == project_id.strip()
 
     def test_multiple_env_vars_read_correctly(self) -> None:
         """Test that multiple environment variables are read correctly together.

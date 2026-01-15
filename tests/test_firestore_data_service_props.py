@@ -29,10 +29,10 @@ s_answer_style = st.sampled_from(list(AnswerStyle))
 @composite
 def s_knowledge_document_create(draw):
     return KnowledgeDocumentCreate(
-        disease_name=draw(st.text(min_size=1, max_size=50)),
+        disease_name=draw(st.text(min_size=1, max_size=50).filter(lambda x: x.strip())),
         tags=draw(s_tags),
-        raw_content=draw(st.text(min_size=10, max_size=1000)),
-        doctor_id=draw(st.text(min_size=1, max_size=20))
+        raw_content=draw(st.text(min_size=10, max_size=1000).filter(lambda x: x.strip())),
+        doctor_id=draw(st.text(min_size=1, max_size=20).filter(lambda x: x.strip()))
     )
 
 @composite
