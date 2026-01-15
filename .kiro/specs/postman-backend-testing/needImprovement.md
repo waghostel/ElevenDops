@@ -12,6 +12,45 @@ During Phase 4 execution, the following potential improvements were identified f
 
 ---
 
+## TODO List (Sorted by Severity)
+
+### 🔴 High Severity
+
+- [ ] **#18** Test Orchestration - Simulation vs Reality (`tests/postman/test_orchestrator.py`)
+- [ ] **#20** Data Architecture - Schema & Service Consistency (`backend/services/data_service.py`)
+
+### 🟠 Medium Severity
+
+- [ ] **#11** Collection Creation - Logic Duplication (`tests/postman/create_full_collection.py`)
+- [ ] **#12** Test Orchestrator - Execution Simulation (`tests/postman/test_orchestrator.py`)
+- [ ] **#15** Results Reporter - Standard Format Support (`tests/postman/results_reporter.py`)
+- [ ] **#17** Health & Infrastructure Tests - Timing Flakiness (`tests/postman/test_health_endpoints.py`)
+- [ ] **#19** Test Configuration - Timeout Management (`tests/postman/test_health_endpoints.py`)
+- [ ] **#22** Devops Scripts - Process Management (`stop_server.ps1`, `start-servers-gcp-firestore.ps1`)
+
+### 🟡 Low Severity
+
+- [ ] **#1** EnvironmentManager - Variable Scope Optimization (`backend/services/environment_manager.py`)
+- [ ] **#2** TestScriptGenerator - JavaScript Validation Enhancement (`backend/services/test_script_generator.py`)
+- [ ] **#3** TestDataGenerator - Disease/Tag Extensibility (`backend/services/test_data_generator.py`)
+- [ ] **#4** CollectionBuilder - Request URL Parsing (`backend/services/collection_builder.py`)
+- [ ] **#5** All Components - Logging Configuration (All service files)
+- [ ] **#6** EnvironmentManager - Thread Safety (`backend/services/environment_manager.py`)
+- [ ] **#7** TestScriptGenerator - Script Escaping (`backend/services/test_script_generator.py`)
+- [ ] **#8** CollectionBuilder - Memory Usage (`backend/services/collection_builder.py`)
+- [ ] **#9** TestDataGenerator - Randomness Control (`backend/services/test_data_generator.py`)
+- [ ] **#13** Health Checks - Robust Retry Logic (`tests/postman/test_orchestrator.py`)
+- [ ] **#14** CLI Runner - Library Modernization (`tests/postman/cli_runner.py`)
+- [ ] **#16** TestDataGenerator - Audio Request Signature (`backend/services/test_data_generator.py`)
+- [ ] **#21** Health API - Semantic Readiness Checks (`backend/api/health.py`)
+- [ ] **#23** Testing - Property Test Efficiency (`tests/postman/test_health_endpoints.py`)
+
+### 🟢 Very Low Severity
+
+- [ ] **#10** All Components - Type Hints Completeness (All service files)
+
+---
+
 ## Identified Improvements
 
 ### 1. EnvironmentManager - Variable Scope Optimization
@@ -357,7 +396,7 @@ Make `knowledge_id` optional or allow passing `**kwargs` to override default fie
 
 **Category**: Reliability
 **Severity**: Medium
-**Location**: `tests/postman/task_11_test.py`
+**Location**: `tests/postman/test_health_endpoints.py`
 
 **Issue**:
 Response time assertions (e.g., `< 1.0s`) are too strict for CI/CD or variable environments, leading to flaky test failures.
@@ -432,3 +471,83 @@ The `TestOrchestrator` currently simulates Postman collection runs rather than e
 Integrate with the Newman CLI (via `subprocess`) or Postman API to execute the exported JSON collection against a real environment.
 
 **Impact**: Critical for true end-to-end verification.
+
+---
+
+### 19. Test Configuration - Timeout Management
+
+**Category**: Reliability
+**Severity**: Medium
+**Location**: `tests/postman/test_health_endpoints.py` (and others)
+
+**Issue**:
+Tests use hardcoded `httpx.Client(timeout=30.0)` instantiation. The default 5s was prone to failure, but hardcoding 30s in every test method is inflexible and hard to maintain across the suite.
+
+**Suggested Improvement**:
+Centralize timeout configuration in `tests/conftest.py` or a helper class. Use environment variables to override timeouts for CI vs local dev.
+
+**Impact**: Reduces maintenance burden and allows tuning for slower CI runners without code changes.
+
+---
+
+### 20. Data Architecture - Schema & Service Consistency
+
+**Category**: Robustness
+**Severity**: High
+**Location**: `backend/services/data_service.py` vs `backend/models/schemas.py`
+
+**Issue**:
+`DashboardStatsResponse` schema was updated to include `conversation_count` as a required field, but `FirestoreDataService` was not updated simultaneously, leading to 500 errors. The codebase lacks strict enforcement that DataService implementations matching the Pydantic schemas they return until runtime.
+
+**Suggested Improvement**:
+Add contract tests that specifically validate `DataService` return values against the Pydantic models with comprehensive field coverage, or use static analysis (mypy) more strictly to catch missing fields in constructor calls.
+
+**Impact**: Prevents runtime 500 errors due to schema mismatches.
+
+---
+
+### 21. Health API - Semantic Readiness Checks
+
+**Category**: Reliability
+**Severity**: Low
+**Location**: `backend/api/health.py`
+
+**Issue**:
+The `/api/health/ready` endpoint currently returns a static "ready" status without correctly verifying if dependencies (DB, Storage) are actually reachable. While this satisfies k8s liveness, true readiness often requires functional checks. The tests enforced "dependencies" presence but the code didn't implement it.
+
+**Suggested Improvement**:
+Implement a lightweight dependency check for readiness (e.g. check connection pool status only, not full query) and return structured status. Ensure semantic difference between Liveness (I am running) and Readiness (I can serve).
+
+**Impact**: Improves reliability of deployments by preventing traffic to broken pods.
+
+---
+
+### 22. Devops Scripts - Process Management
+
+**Category**: Developer Experience
+**Severity**: Medium
+**Location**: `stop_server.ps1`, `start-servers-gcp-firestore.ps1`
+
+**Issue**:
+Current PowerShell scripts rely on `netstat` and `taskkill` to manage servers. This is flaky when processes are spawned via wrappers like `uv run`, leading to zombie processes (phantom PIDs) that block ports and prevent code reloading.
+
+**Suggested Improvement**:
+Use a PID file (`.server.pid`) mechanism to track specific process IDs spawned by the start script, allowing precise termination. Alternatively, use a proper process manager (e.g., supervisord, or just Docker Compose for all local dev).
+
+**Impact**: Significantly reduces developer frustration and "port in use" errors.
+
+---
+
+### 23. Testing - Property Test Efficiency
+
+**Category**: Performance
+**Severity**: Low
+**Location**: `tests/postman/test_health_endpoints.py`
+
+**Issue**:
+Property-based tests (`@given`) create a new `httpx.Client` for every iteration (100 times per test). This causes excessive connection churn and slows down the test suite unnecessarily.
+
+**Suggested Improvement**:
+Use a `pytest` fixture with `scope="session"` or `scope="module"` to provide a single `httpx.Client` instance (or one per test function) that is reused across property examples.
+
+**Impact**: Speeds up test execution and reduces resource usage.
