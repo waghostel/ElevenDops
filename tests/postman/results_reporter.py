@@ -3,12 +3,15 @@ Results Reporter Component for Postman Backend Testing.
 
 This module processes test results, generates summaries, and updates configuration
 with execution metrics.
+
+Supports both internal TestResult objects and external Newman JSON reports.
 """
 
 import logging
 import json
+import os
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from .test_orchestrator import TestResult
 from .postman_test_helpers import PostmanConfigHelper
@@ -18,7 +21,12 @@ logger = logging.getLogger(__name__)
 
 
 class ResultsReporter:
-    """Handles reporting of Postman test results."""
+    """Handles reporting of Postman test results.
+    
+    Supports:
+    - Internal TestResult objects from TestOrchestrator
+    - External Newman JSON report files for CI/CD integration
+    """
     
     def __init__(self, output_file: str = "test_report.md"):
         self.output_file = output_file
@@ -56,6 +64,63 @@ class ResultsReporter:
             "failures": failures,
             "timestamp": datetime.now().isoformat()
         }
+    
+    def parse_newman_report(self, report_path: str) -> List[TestResult]:
+        """Parse a Newman JSON report file into TestResult objects.
+        
+        This allows generating summaries from offline Newman runs or CI artifacts.
+        
+        Args:
+            report_path: Path to Newman JSON report file.
+            
+        Returns:
+            List[TestResult]: Parsed test results.
+            
+        Raises:
+            FileNotFoundError: If report file doesn't exist.
+            json.JSONDecodeError: If report is not valid JSON.
+        """
+        if not os.path.exists(report_path):
+            raise FileNotFoundError(f"Newman report not found: {report_path}")
+        
+        with open(report_path, "r", encoding="utf-8") as f:
+            report = json.load(f)
+        
+        run_data = report.get("run", {})
+        executions = run_data.get("executions", [])
+        
+        results = []
+        for execution in executions:
+            item = execution.get("item", {})
+            response = execution.get("response", {})
+            assertions = execution.get("assertions", [])
+            
+            # Build assertions dict
+            assertion_dict = {}
+            error_msg = None
+            for assertion in assertions:
+                assertion_name = assertion.get("assertion", "Unknown")
+                assertion_error = assertion.get("error")
+                assertion_dict[assertion_name] = assertion_error is None
+                if assertion_error:
+                    error_msg = assertion_error.get("message", str(assertion_error))
+            
+            # Determine overall status
+            has_failures = any(not passed for passed in assertion_dict.values())
+            status = "failed" if has_failures else "passed"
+            
+            results.append(
+                TestResult(
+                    name=item.get("name", "Unknown Request"),
+                    status=status,
+                    duration_ms=response.get("responseTime", 0),
+                    error_message=error_msg,
+                    assertions=assertion_dict,
+                )
+            )
+        
+        logger.info(f"Parsed {len(results)} test results from Newman report")
+        return results
         
     def generate_summary(self, results: List[TestResult]) -> str:
         """
@@ -108,6 +173,20 @@ class ResultsReporter:
             logger.error(f"Failed to write report: {e}")
             
         return report
+    
+    def generate_summary_from_newman_report(self, report_path: str) -> str:
+        """Generate summary directly from a Newman JSON report file.
+        
+        Convenience method that combines parse_newman_report and generate_summary.
+        
+        Args:
+            report_path: Path to Newman JSON report file.
+            
+        Returns:
+            String containing markdown report.
+        """
+        results = self.parse_newman_report(report_path)
+        return self.generate_summary(results)
 
     def update_config_file(self, results: List[TestResult]) -> None:
         """
@@ -128,3 +207,4 @@ class ResultsReporter:
         }
         
         PostmanConfigHelper.update_config(update)
+

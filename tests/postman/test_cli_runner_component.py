@@ -68,10 +68,17 @@ def test_run_tests_folder_success(mock_reporter_cls, mock_orch_cls):
     args.folder = 'my_folder'
     args.check_health = False
     args.report = 'report.md'
+    args.newman = False  # Add newman mode flag
+    args.collection = None  # Add collection path
+    args.environment = None  # Add environment path
     
     run_tests(args)
     
-    mock_orch.run_test_folder.assert_called_with('my_folder')
+    mock_orch.run_test_folder.assert_called_with(
+        'my_folder',
+        collection_path=None,
+        environment_path=None,
+    )
 
 @patch('tests.postman.cli_runner.TestOrchestrator')
 def test_run_tests_health_check_fail(mock_orch_cls):

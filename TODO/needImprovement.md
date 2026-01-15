@@ -16,38 +16,43 @@ During Phase 4 execution, the following potential improvements were identified f
 
 ### 🔴 High Severity
 
-- [ ] **#18** Test Orchestration - Simulation vs Reality (`tests/postman/test_orchestrator.py`)
-- [ ] **#20** Data Architecture - Schema & Service Consistency (`backend/services/data_service.py`)
+- [x] 🧪 **#18** Test Orchestration - Simulation vs Reality (`tests/postman/test_orchestrator.py`) ✅ Fixed: Added Newman CLI integration
+- [x] ⚙️ **#20** Data Architecture - Schema & Service Consistency (`backend/services/data_service.py`) ✅ Fixed: Added contract tests in `tests/contracts/`
+- [ ] ⚙️ **#22** Devops Scripts - Process Management (`stop_server.ps1`, `start-servers-gcp-firestore.ps1`)
 
 ### 🟠 Medium Severity
 
-- [ ] **#11** Collection Creation - Logic Duplication (`tests/postman/create_full_collection.py`)
-- [ ] **#12** Test Orchestrator - Execution Simulation (`tests/postman/test_orchestrator.py`)
-- [ ] **#15** Results Reporter - Standard Format Support (`tests/postman/results_reporter.py`)
-- [ ] **#17** Health & Infrastructure Tests - Timing Flakiness (`tests/postman/test_health_endpoints.py`)
-- [ ] **#19** Test Configuration - Timeout Management (`tests/postman/test_health_endpoints.py`)
-- [ ] **#22** Devops Scripts - Process Management (`stop_server.ps1`, `start-servers-gcp-firestore.ps1`)
+- [ ] 🧪 **#11** Collection Creation - Logic Duplication (`tests/postman/create_full_collection.py`)
+- [ ] 🧪 **#12** Test Orchestrator - Execution Simulation (`tests/postman/test_orchestrator.py`)
+- [x] 🧪 **#15** Results Reporter - Standard Format Support (`tests/postman/results_reporter.py`) ✅ Fixed: Added `parse_newman_report()` method
+- [ ] 🧪 **#17** Health & Infrastructure Tests - Timing Flakiness (`tests/postman/test_health_endpoints.py`)
+- [ ] 🧪 **#19** Test Configuration - Timeout Management (`tests/postman/test_health_endpoints.py`)
+- [ ] ⚙️ **#21** Health API - Semantic Readiness Checks (`backend/api/health.py`)
+- [ ] ⚙️ **#7** TestScriptGenerator - Script Escaping (`backend/services/test_script_generator.py`)
 
 ### 🟡 Low Severity
 
-- [ ] **#1** EnvironmentManager - Variable Scope Optimization (`backend/services/environment_manager.py`)
-- [ ] **#2** TestScriptGenerator - JavaScript Validation Enhancement (`backend/services/test_script_generator.py`)
-- [ ] **#3** TestDataGenerator - Disease/Tag Extensibility (`backend/services/test_data_generator.py`)
-- [ ] **#4** CollectionBuilder - Request URL Parsing (`backend/services/collection_builder.py`)
-- [ ] **#5** All Components - Logging Configuration (All service files)
-- [ ] **#6** EnvironmentManager - Thread Safety (`backend/services/environment_manager.py`)
-- [ ] **#7** TestScriptGenerator - Script Escaping (`backend/services/test_script_generator.py`)
-- [ ] **#8** CollectionBuilder - Memory Usage (`backend/services/collection_builder.py`)
-- [ ] **#9** TestDataGenerator - Randomness Control (`backend/services/test_data_generator.py`)
-- [ ] **#13** Health Checks - Robust Retry Logic (`tests/postman/test_orchestrator.py`)
-- [ ] **#14** CLI Runner - Library Modernization (`tests/postman/cli_runner.py`)
-- [ ] **#16** TestDataGenerator - Audio Request Signature (`backend/services/test_data_generator.py`)
-- [ ] **#21** Health API - Semantic Readiness Checks (`backend/api/health.py`)
-- [ ] **#23** Testing - Property Test Efficiency (`tests/postman/test_health_endpoints.py`)
+- [ ] ⚙️ **#1** EnvironmentManager - Variable Scope Optimization (`backend/services/environment_manager.py`)
+- [ ] ⚙️ **#2** TestScriptGenerator - JavaScript Validation Enhancement (`backend/services/test_script_generator.py`)
+- [ ] ⚙️ **#3** TestDataGenerator - Disease/Tag Extensibility (`backend/services/test_data_generator.py`)
+- [ ] ⚙️ **#4** CollectionBuilder - Request URL Parsing (`backend/services/collection_builder.py`)
+- [ ] ⚙️ **#5** All Components - Logging Configuration (All service files)
+- [ ] ⚙️ **#6** EnvironmentManager - Thread Safety (`backend/services/environment_manager.py`)
+- [ ] ⚙️ **#8** CollectionBuilder - Memory Usage (`backend/services/collection_builder.py`)
+- [ ] ⚙️ **#9** TestDataGenerator - Randomness Control (`backend/services/test_data_generator.py`)
+- [ ] 🧪 **#13** Health Checks - Robust Retry Logic (`tests/postman/test_orchestrator.py`)
+- [ ] 🧪 **#14** CLI Runner - Library Modernization (`tests/postman/cli_runner.py`)
+- [ ] ⚙️ **#16** TestDataGenerator - Audio Request Signature (`backend/services/test_data_generator.py`)
+- [ ] 🧪 **#23** Testing - Property Test Efficiency (`tests/postman/test_health_endpoints.py`)
 
 ### 🟢 Very Low Severity
 
-- [ ] **#10** All Components - Type Hints Completeness (All service files)
+- [ ] ⚙️ **#10** All Components - Type Hints Completeness (All service files)
+
+### Type of optimization
+
+- ⚙️ Backend
+- 🧪 Postman Testing
 
 ---
 
@@ -192,7 +197,7 @@ Add thread-safe operations using `threading.Lock` for concurrent access scenario
 ### 7. TestScriptGenerator - Script Escaping
 
 **Category**: Security
-**Severity**: Low
+**Severity**: Medium
 **Location**: `backend/services/test_script_generator.py`
 
 **Issue**:
@@ -458,7 +463,7 @@ These improvements should be considered for:
 
 ---
 
-### 18. Test Orchestration - Simulation vs Reality
+### 18. Test Orchestration - Simulation vs Reality ✅ RESOLVED
 
 **Category**: Testing
 **Severity**: High
@@ -471,6 +476,14 @@ The `TestOrchestrator` currently simulates Postman collection runs rather than e
 Integrate with the Newman CLI (via `subprocess`) or Postman API to execute the exported JSON collection against a real environment.
 
 **Impact**: Critical for true end-to-end verification.
+
+**Resolution** (January 15, 2026):
+
+- Created `tests/postman/newman_runner.py` - Newman CLI wrapper with subprocess execution
+- Updated `tests/postman/test_orchestrator.py` - Added `use_newman` parameter and Newman mode
+- Updated `tests/postman/results_reporter.py` - Added `parse_newman_report()` method (also fixes #15)
+- Updated `tests/postman/cli_runner.py` - Added `--newman`, `--collection`, `--environment` flags and `parse-report` command
+- Created `tests/postman/test_newman_runner.py` - 12 unit tests for Newman runner
 
 ---
 
@@ -490,7 +503,7 @@ Centralize timeout configuration in `tests/conftest.py` or a helper class. Use e
 
 ---
 
-### 20. Data Architecture - Schema & Service Consistency
+### 20. Data Architecture - Schema & Service Consistency ✅ RESOLVED
 
 **Category**: Robustness
 **Severity**: High
@@ -504,12 +517,19 @@ Add contract tests that specifically validate `DataService` return values agains
 
 **Impact**: Prevents runtime 500 errors due to schema mismatches.
 
+**Resolution** (January 15, 2026):
+
+- Created `tests/contracts/` directory with contract test suite
+- Added `contract_test_data_service.py` with 10 tests covering all response schemas
+- Tests validate: `DashboardStatsResponse`, `KnowledgeDocumentResponse`, `AudioMetadata`, `AgentResponse`, `PatientSessionResponse`, `ConversationDetailSchema`, `CustomTemplateResponse`
+- All tests pass, confirming schema-service consistency
+
 ---
 
 ### 21. Health API - Semantic Readiness Checks
 
 **Category**: Reliability
-**Severity**: Low
+**Severity**: Medium
 **Location**: `backend/api/health.py`
 
 **Issue**:
@@ -525,7 +545,7 @@ Implement a lightweight dependency check for readiness (e.g. check connection po
 ### 22. Devops Scripts - Process Management
 
 **Category**: Developer Experience
-**Severity**: Medium
+**Severity**: High
 **Location**: `stop_server.ps1`, `start-servers-gcp-firestore.ps1`
 
 **Issue**:
