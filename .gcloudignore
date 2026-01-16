@@ -1,0 +1,91 @@
+# =============================================================================
+# .gcloudignore - Files to exclude from Cloud Build uploads
+# Used by: gcloud run deploy --source .
+# =============================================================================
+
+# Self and Git
+.gcloudignore
+.git
+.gitignore
+.github/
+
+# =============================================================================
+# SECURITY: Environment and Secrets (Critical - Never deploy these!)
+# =============================================================================
+.env
+.env.*
+.env.local
+*-service-account-key*.json
+elevendops-dev-service-account-key-9c0f74fe81d2.json
+.streamlit/secrets.toml
+
+# =============================================================================
+# Python/Environment
+# =============================================================================
+.venv/
+venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*.pyc
+*.so
+.pytest_cache/
+.hypothesis/
+.ruff_cache/
+*.egg-info/
+
+# =============================================================================
+# Debug/Development Scripts (not needed at runtime)
+# =============================================================================
+debug--*.py
+debug_*.py
+fix--*.py
+check_*.py
+repro_*.py
+
+# =============================================================================
+# Test Outputs and Logs
+# =============================================================================
+*.log
+*.xml
+test_*.txt
+*_output*.txt
+*_result*.txt
+*_errors.txt
+failed_tests_summary.txt
+TEST_ERROR_REPORT.md
+scripts/*.out
+
+# =============================================================================
+# Large Folders Not Needed for Runtime
+# =============================================================================
+tests/
+docs/
+reports/
+user-need/
+TODO/
+temp/
+temp_storage/
+z-backup/
+emulator-data/
+
+# =============================================================================
+# Development/IDE Folders
+# =============================================================================
+.kiro/
+.agent/
+.vscode/
+.idea/
+deploy/
+langsmith-studio/
+
+# =============================================================================
+# Build/OS Artifacts
+# =============================================================================
+.DS_Store
+Thumbs.db
+node_modules/
+*.swp
+*.swo
+*~

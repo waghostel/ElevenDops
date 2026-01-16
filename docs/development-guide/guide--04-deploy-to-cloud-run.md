@@ -281,14 +281,66 @@ You should see a new version (e.g., version 2 or 3) marked as **Enabled**.
 
 ## Managing Artifact Registry Space
 
-Every time you deploy, a new image version is stored. Over time, these can add up.
+Every time you run `gcloud run deploy --source .`, a **new image** is created and stored in Artifact Registry. Over time, these can add up significantly (~350 MB per image).
 
-- **Layer Reuse**: Docker only stores the _changes_. If you only change code (not dependencies), the extra space used is very small.
-- **Manual Cleanup**: To see your images:
-  ```bash
-  gcloud artifacts docker images list us-central1-docker.pkg.dev/[PROJECT_ID]/cloud-run-source-deploy/elevendops-service
-  ```
-- **Automation (Set-and-Forget)**: You can set **Cleanup Policies** in the Artifact Registry console. Once set, Google Cloud automatically runs a background job daily to delete images based on your rules (e.g., "Keep only the 5 most recent images").
+### Deploy vs Update: Choosing the Right Command
+
+| Action                           | Command                        | New Image? | Time    | Storage Impact |
+| :------------------------------- | :----------------------------- | :--------- | :------ | :------------- |
+| **Changed Code** (`.py`, `.css`) | `gcloud run deploy --source .` | **Yes**    | 3-5 min | +350 MB        |
+| **Changed Env Vars**             | `gcloud run services update`   | **No**     | ~30 sec | **0 bytes**    |
+| **Rotated API Keys**             | `gcloud run services update`   | **No**     | ~30 sec | **0 bytes**    |
+
+**Example: Update environment variables without rebuilding:**
+
+```bash
+gcloud run services update elevendops-demo `
+    --region us-central1 `
+    --set-env-vars "DEMO_MODE=false"
+```
+
+> [!TIP]
+> Use `services update` whenever you only need to change settings. It's faster and doesn't consume any additional storage.
+
+### Checking Storage Usage
+
+To see all images and their sizes:
+
+```bash
+gcloud artifacts docker images list us-central1-docker.pkg.dev/elevendops-dev/cloud-run-source-deploy --sort-by=~CREATE_TIME
+```
+
+This will show each image with its digest, create time, and size in bytes.
+
+### Manual Cleanup
+
+To delete a specific old image version:
+
+```bash
+gcloud artifacts docker images delete us-central1-docker.pkg.dev/elevendops-dev/cloud-run-source-deploy/elevendops-service@sha256:[DIGEST] --delete-tags --quiet
+```
+
+> [!WARNING]
+> Do NOT delete the image currently deployed to Cloud Run. Only delete older versions that are no longer in use.
+
+### Automated Cleanup Policies (Recommended)
+
+Instead of manual cleanup, configure automatic deletion:
+
+1.  Go to **GCP Console** → **Artifact Registry** → **Repositories**.
+2.  Click on `cloud-run-source-deploy`.
+3.  Click **Cleanup Policies** tab.
+4.  Create a policy with rules like:
+    - **Keep**: Only the 3 most recent images per package.
+    - **Delete**: Images older than 7 days (except those tagged `latest`).
+
+Once set, Google Cloud automatically runs a daily background job to enforce these rules.
+
+### Storage Cost Reference
+
+- **Free Tier**: ~0.5 GB/month.
+- **After Free Tier**: ~$0.10 per GB/month.
+- **Example**: 1.2 GB stored = ~$0.07/month after free tier.
 
 ---
 
