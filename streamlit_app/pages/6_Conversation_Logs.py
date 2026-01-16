@@ -80,7 +80,7 @@ def render_filters():
     """Render filters in a horizontal layout at the top of the page."""
     st.subheader("Filter Logs")
     
-    # Initialize session state for demo mode
+    # Initialize session state for demo mode (logical state)
     if "logs_patient_id" not in st.session_state:
         st.session_state.logs_patient_id = ""
     if "logs_demo_mode" not in st.session_state:
@@ -93,6 +93,17 @@ def render_filters():
         st.session_state.logs_demo_conversations = None
     if "logs_requires_attention" not in st.session_state:
         st.session_state.logs_requires_attention = False
+    
+    # Initialize widget session state keys (sync from logical state)
+    # This must happen BEFORE widgets are created to avoid value/session_state conflict
+    if "widget_patient_id" not in st.session_state:
+        st.session_state.widget_patient_id = st.session_state.logs_patient_id
+    if "widget_start_date" not in st.session_state:
+        st.session_state.widget_start_date = st.session_state.logs_start_date
+    if "widget_end_date" not in st.session_state:
+        st.session_state.widget_end_date = st.session_state.logs_end_date
+    if "widget_requires_attention" not in st.session_state:
+        st.session_state.widget_requires_attention = st.session_state.logs_requires_attention
     
     with st.container(border=True):
         if st.button("🎯 Demo Patient ID", help="Load demo patient with cataract surgery post-op conversations (June 2025)"):
@@ -135,7 +146,6 @@ def render_filters():
         with col1:
             st.text_input(
                 "Patient ID",
-                value=st.session_state.logs_patient_id,
                 placeholder="Enter ID...",
                 key="widget_patient_id",
                 on_change=_on_patient_id_change
@@ -144,7 +154,7 @@ def render_filters():
         with col2:
             st.date_input(
                 "Start Date",
-                value=st.session_state.logs_start_date,
+                value=None,  # Explicitly set None as default when no date is selected
                 key="widget_start_date",
                 on_change=_on_start_date_change
             )
@@ -152,7 +162,7 @@ def render_filters():
         with col3:
             st.date_input(
                 "End Date",
-                value=st.session_state.logs_end_date,
+                value=None,  # Explicitly set None as default when no date is selected
                 key="widget_end_date",
                 on_change=_on_end_date_change
             )
@@ -160,7 +170,6 @@ def render_filters():
         with col4:
             st.checkbox(
                 "Attention Only",
-                value=st.session_state.logs_requires_attention,
                 key="widget_requires_attention",
                 on_change=_on_attention_change
             )

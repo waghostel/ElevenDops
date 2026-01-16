@@ -108,6 +108,18 @@ gcloud run deploy elevendops-service `
     --set-secrets "ELEVENLABS_API_KEY=ELEVENLABS_API_KEY:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest"
 ```
 
+### What is Deployed?
+
+When you run `gcloud run deploy --source .`, Google Cloud:
+
+1.  **Takes a Snapshot**: Captures the current files in your local directory (saved changes).
+2.  **Respects Ignores**: It uses your `.gcloudignore` or `.gitignore` to skip temporary files.
+3.  **Builds Remotely**: It uploads the code to Cloud Build, which builds the Docker image.
+4.  **Deploys**: It creates a new revision on Cloud Run from that image.
+
+> [!IMPORTANT]
+> This command deploys the **code on your disk**, not necessarily what is committed to Git. Ensure you have saved all files before running.
+
 ### Why use --source?
 
 - **All-in-one**: It manages the Artifact Registry and Cloud Build steps for you.
@@ -120,12 +132,13 @@ gcloud run deploy elevendops-service `
 To deploy a **budget-controlled demo** for public showcases, add the `DEMO_MODE` environment variable:
 
 ```bash
+# Windows PowerShell example for elevendops-demo
 gcloud run deploy elevendops-demo `
     --source . `
     --region us-central1 `
     --allow-unauthenticated `
     --port 8080 `
-    --set-env-vars "DEMO_MODE=true,GOOGLE_CLOUD_PROJECT=elevendops-dev,..." `
+    --set-env-vars "DEMO_MODE=true,GOOGLE_CLOUD_PROJECT=elevendops-dev,BACKEND_API_URL=http://localhost:8000,USE_FIRESTORE_EMULATOR=false,USE_GCS_EMULATOR=false,GCS_BUCKET_NAME=elevendops-bucket,FIRESTORE_DATABASE_ID=elevendops-db" `
     --set-secrets "ELEVENLABS_API_KEY=ELEVENLABS_API_KEY:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest"
 ```
 
@@ -158,6 +171,12 @@ Use these values for your current development environment:
 | **GCS Bucket**   | `elevendops-bucket`  |
 | **Region**       | `us-central1`        |
 | **Service Name** | `elevendops-service` |
+
+### Recent Successful Deployments
+
+| Date       | Service Name      | Revision                    | Note                 |
+| :--------- | :---------------- | :-------------------------- | :------------------- |
+| 2026-01-16 | `elevendops-demo` | `elevendops-demo-00001-qps` | First successful run |
 
 ---
 
@@ -255,6 +274,8 @@ You should see a new version (e.g., version 2 or 3) marked as **Enabled**.
   `--set-secrets "ELEVENLABS_API_KEY=ELEVENLABS_API_KEY:1"`
 
 > [!NOTE] > **Automation Note**: Unlike Artifact Registry, Secret Manager does **not** have an automated "cleanup policy." Old versions are kept for safety/history. Keep them unless a key is leaked, as they use negligible space.
+
+> [!WARNING] > **No Automatic Fallback**: If the latest secret version contains an invalid key (e.g., revoked by the provider), Secret Manager will NOT automatically try older versions. The app will simply fail with authentication errors. You must manually rollback by pinning to a known-good version (e.g., `:1`) or add a new valid key.
 
 ---
 

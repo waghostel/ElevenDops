@@ -1,4 +1,5 @@
 import streamlit as st
+from backend.config import get_settings
 
 def render_sidebar() -> None:
     """Render the sidebar navigation."""
@@ -138,6 +139,12 @@ def render_sidebar() -> None:
             if st.button("⚙️ Settings", use_container_width=True):
                 st.toast("Settings page coming soon!", icon="⚙️")
             
+            # Demo Mode Badge
+            if get_settings().demo_mode:
+                st.warning("🚧 **Demo Mode Active**", icon="🔒")
+                st.caption("Destructive actions (Delete) are disabled to protect the sample data.")
+                st.divider()
+
             status = check_backend_status()
             if status:
                 st.success("Backend: Online", icon="✅")
