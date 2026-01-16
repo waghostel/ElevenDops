@@ -6,6 +6,7 @@ from streamlit_app.components.sidebar import render_sidebar
 from streamlit_app.components.footer import render_footer
 from streamlit_app.components.error_console import add_error_to_log, render_error_console
 from backend.models.schemas import DEFAULT_DOCUMENT_TAGS
+from backend.config import get_settings
 
 st.set_page_config(page_title="Upload Knowledge", page_icon="📚", layout="wide")
 
@@ -305,8 +306,14 @@ def render_document_list():
                             edit_document_dialog(doc)
 
                     with col4:
-                        # Delete button opens confirmation dialog
-                        if st.button("Delete", key=f"del_{doc.knowledge_id}"):
+                        # Delete button opens confirmation dialog (disabled in demo mode)
+                        is_demo = get_settings().demo_mode
+                        if st.button(
+                            "Delete",
+                            key=f"del_{doc.knowledge_id}",
+                            disabled=is_demo,
+                            help="Delete is disabled in demo mode" if is_demo else None
+                        ):
                             confirm_delete_dialog(doc)
 
                     with col5:

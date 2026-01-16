@@ -33,6 +33,7 @@ from streamlit_app.services.cached_data import (
 from streamlit_app.components.sidebar import render_sidebar
 from streamlit_app.components.footer import render_footer
 from streamlit_app.components.error_console import add_error_to_log, render_error_console
+from backend.config import get_settings
 
 # Page configuration
 st.set_page_config(page_title="Education Audio", page_icon="🎧", layout="wide")
@@ -494,7 +495,16 @@ def render_template_manager():
                         else:
                             st.session_state[edit_key] = False
                 with c3:
-                    if st.button("Delete", key=f"del_{tmpl.template_id}", type="secondary", use_container_width=True):
+                    # Delete button (disabled in demo mode)
+                    is_demo = get_settings().demo_mode
+                    if st.button(
+                        "Delete",
+                        key=f"del_{tmpl.template_id}",
+                        type="secondary",
+                        use_container_width=True,
+                        disabled=is_demo,
+                        help="Delete is disabled in demo mode" if is_demo else None
+                    ):
                         # Queue delete operation for async execution
                         st.session_state._pending_template_op = {
                             "action": "delete",
@@ -1219,7 +1229,14 @@ def render_audio_history():
                         st.session_state._pending_audio_edit = audio
                         st.rerun(scope="fragment")
                 with btn_del:
-                    if st.button("🗑️", key=f"del_audio_{audio.audio_id}", help="Delete this audio"):
+                    # Audio delete button (disabled in demo mode)
+                    is_demo = get_settings().demo_mode
+                    if st.button(
+                        "🗑️",
+                        key=f"del_audio_{audio.audio_id}",
+                        disabled=is_demo,
+                        help="Delete is disabled in demo mode" if is_demo else "Delete this audio"
+                    ):
                         st.session_state._pending_audio_deletion = audio.audio_id
                         st.rerun(scope="fragment")
             

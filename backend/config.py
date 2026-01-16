@@ -50,6 +50,10 @@ class Settings(BaseSettings):
         default=True,
         description="Enable debug mode",
     )
+    demo_mode: bool = Field(
+        default=False,
+        description="Enable demo mode with restricted delete operations (frontend only)",
+    )
 
     # Data Service Configuration
     use_mock_data: bool = Field(

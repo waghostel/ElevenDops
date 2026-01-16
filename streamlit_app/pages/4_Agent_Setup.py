@@ -7,6 +7,7 @@ from backend.models.schemas import AnswerStyle
 from streamlit_app.components.sidebar import render_sidebar
 from streamlit_app.components.footer import render_footer
 from streamlit_app.components.error_console import add_error_to_log, render_error_console
+from backend.config import get_settings
 
 # Page config
 st.set_page_config(
@@ -382,7 +383,14 @@ def render_existing_agents(agents, docs, client):
                                 add_error_to_log(f"Sync failed: {str(e)}")
                     
                     with c3:
-                        if st.button("🗑️ Delete", key=f"del_{agent.agent_id}"):
+                        # Delete button (disabled in demo mode)
+                        is_demo = get_settings().demo_mode
+                        if st.button(
+                            "🗑️ Delete",
+                            key=f"del_{agent.agent_id}",
+                            disabled=is_demo,
+                            help="Delete is disabled in demo mode" if is_demo else None
+                        ):
                             try:
                                 with st.spinner("Deleting agent..."):
                                     run_async(client.delete_agent(agent.agent_id))

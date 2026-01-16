@@ -8,6 +8,7 @@ from streamlit_app.components.sidebar import render_sidebar
 from streamlit_app.components.footer import render_footer
 from streamlit_app.components.error_console import add_error_to_log, render_error_console
 from streamlit_app.services.models import PatientSession, ConversationMessage
+from backend.config import get_settings
 
 # Page Configuration
 st.set_page_config(
@@ -204,7 +205,11 @@ def render_conversation_interface():
     # 2. Active Conversation Interface
     else:
         # Init Chat Mode state (needed for logic before UI render)
-        if "chat_mode_enabled" not in st.session_state:
+        # In demo mode, force text-only to save ElevenLabs costs
+        is_demo = get_settings().demo_mode
+        if is_demo:
+            st.session_state.chat_mode_enabled = True  # Force text-only
+        elif "chat_mode_enabled" not in st.session_state:
             st.session_state.chat_mode_enabled = True
         chat_mode = st.session_state.chat_mode_enabled
 
@@ -256,8 +261,14 @@ def render_conversation_interface():
         # End Conversation Section
         st.divider()
         
-        # Toggle at bottom 
-        st.toggle("💬 Chat Mode (Text Only)", key="chat_mode_enabled", help="Disable audio synthesis for faster response and cost saving")
+        # Toggle at bottom (disabled in demo mode)
+        is_demo = get_settings().demo_mode
+        st.toggle(
+            "💬 Chat Mode (Text Only)",
+            key="chat_mode_enabled",
+            disabled=is_demo,
+            help="Locked to text-only in demo mode" if is_demo else "Disable audio synthesis for faster response and cost saving"
+        )
         
         col_clear, col_end = st.columns([1, 1])
         

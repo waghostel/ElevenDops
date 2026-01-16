@@ -115,6 +115,38 @@ gcloud run deploy elevendops-service `
 
 ---
 
+## Step 4.5: Deploy a Demo Version (Optional)
+
+To deploy a **budget-controlled demo** for public showcases, add the `DEMO_MODE` environment variable:
+
+```bash
+gcloud run deploy elevendops-demo `
+    --source . `
+    --region us-central1 `
+    --allow-unauthenticated `
+    --port 8080 `
+    --set-env-vars "DEMO_MODE=true,GOOGLE_CLOUD_PROJECT=elevendops-dev,..." `
+    --set-secrets "ELEVENLABS_API_KEY=ELEVENLABS_API_KEY:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest"
+```
+
+### Demo Mode Restrictions
+
+When `DEMO_MODE=true`:
+
+| Feature              | Behavior                               |
+| :------------------- | :------------------------------------- |
+| **Chat Mode Toggle** | Forced to Text-Only (no TTS synthesis) |
+| **Delete Knowledge** | Button disabled                        |
+| **Delete Agent**     | Button disabled                        |
+| **Delete Audio**     | Button disabled                        |
+| **Delete Template**  | Button disabled                        |
+| **Create/Upload**    | All creation features remain enabled   |
+
+> [!NOTE]
+> Demo mode only affects the **frontend UI**. Backend API endpoints are not restricted.
+
+---
+
 ## Deployment Reference (elevendops-dev)
 
 Use these values for your current development environment:
@@ -160,13 +192,57 @@ The commands in **Step 3** and **Step 3.5** grant just enough power for the app 
 
 ## Managing and Rotating Secrets
 
-To update an API key without changing your deployment settings:
+To update an API key (ElevenLabs or Gemini) without changing your deployment settings:
 
-1.  **Add a new version**:
-    ```bash
-    echo -n "NEW_API_KEY_VALUE" | gcloud secrets versions add ELEVENLABS_API_KEY --data-file=-
-    ```
-2.  **Redeploy**: Run the `gcloud run deploy` command again. Cloud Run will resolve the `:latest` version and inject the new key into the new containers.
+### Update ElevenLabs API Key
+
+```bash
+echo -n "YOUR_NEW_ELEVENLABS_KEY" | gcloud secrets versions add ELEVENLABS_API_KEY --data-file=-
+```
+
+### Update Google (Gemini) API Key
+
+```bash
+echo -n "YOUR_NEW_GEMINI_KEY" | gcloud secrets versions add GOOGLE_API_KEY --data-file=-
+```
+
+> [!TIP] > **Windows/PowerShell Encoding Tip**: If keys appear corrupted (PowerShell's `echo` adds invisible characters), use this safer method:
+>
+> ```powershell
+> [System.IO.File]::WriteAllBytes("temp_key.txt", [System.Text.Encoding]::UTF8.GetBytes("YOUR_NEW_KEY"))
+> gcloud secrets versions add GOOGLE_API_KEY --data-file=temp_key.txt
+> Remove-Item temp_key.txt
+> ```
+
+### Which Version is Used?
+
+When you have multiple versions enabled (e.g., version 1 and 2), **`:latest` always picks the highest enabled version number**. In this example, version 2 will be used.
+
+- `:latest` → Highest enabled version (dynamic)
+- `:1` → Exactly version 1 (pinned)
+
+### Activate the New Key
+
+After adding a new version, trigger a new deployment so Cloud Run fetches the latest secret:
+
+```bash
+# Option A: Full redeploy
+gcloud run deploy elevendops-service --source . --region us-central1 ...
+
+# Option B: Fast restart (no code changes)
+gcloud run services update elevendops-service --region us-central1
+```
+
+### Verify
+
+Check that the new version was created by listing the secret versions:
+
+```bash
+gcloud secrets versions list GOOGLE_API_KEY
+gcloud secrets versions list ELEVENLABS_API_KEY
+```
+
+You should see a new version (e.g., version 2 or 3) marked as **Enabled**.
 
 ### Advanced Secret Management
 

@@ -63,12 +63,13 @@ API keys and secrets are never stored in YAML files. They are referenced from Se
 
 ## 📊 Summary of Configuration Flow
 
-| Component        | Dev Source      | Prod Source                 | Fallback Default         |
-| :--------------- | :-------------- | :-------------------------- | :----------------------- |
-| **GCS Bucket**   | `.env`          | `cloudbuild.yaml`           | `elevendops-bucket-test` |
-| **Firestore DB** | `.env`          | `cloudbuild.yaml`           | `elevendops-db-test`     |
-| **API Keys**     | `.env`          | Secret Manager              | `None` (Error)           |
-| **Debug Mode**   | `.env` (`true`) | `cloudbuild.yaml` (`false`) | `true`                   |
+| Component        | Dev Source       | Prod Source                 | Fallback Default         |
+| :--------------- | :--------------- | :-------------------------- | :----------------------- |
+| **GCS Bucket**   | `.env`           | `cloudbuild.yaml`           | `elevendops-bucket-test` |
+| **Firestore DB** | `.env`           | `cloudbuild.yaml`           | `elevendops-db-test`     |
+| **API Keys**     | `.env`           | Secret Manager              | `None` (Error)           |
+| **Debug Mode**   | `.env` (`true`)  | `cloudbuild.yaml` (`false`) | `true`                   |
+| **Demo Mode**    | `.env` (`false`) | `cloudbuild.yaml` (`true`)  | `false`                  |
 
 ---
 
