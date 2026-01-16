@@ -13,6 +13,9 @@ HEALTH_CHECK_INTERVAL=1
 MONITOR_INTERVAL=5
 MAX_RESTART_ATTEMPTS=3
 
+# Set PYTHONPATH to current directory to allow module imports from the root
+export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+
 # Process tracking
 BACKEND_PID=""
 FRONTEND_PID=""
