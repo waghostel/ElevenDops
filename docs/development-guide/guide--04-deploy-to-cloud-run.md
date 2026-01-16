@@ -221,6 +221,31 @@ Once you verify the manual deployment works, you can automate it so that every `
     gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=elevendops-service" --limit 20
     ```
 
+---
+
+## Monitoring and Stopping
+
+Cloud Run is "Pay-as-you-go" and scales to zero when not in use.
+
+- **Check Status**: Use the Google Cloud Console or `gcloud run services list`.
+- **Pause Access (Make Private)**:
+  ```bash
+  gcloud run services remove-iam-policy-binding elevendops-service \
+      --member="allUsers" --role="roles/run.invoker" --region=us-central1
+  ```
+- **Turn Back On (Make Public)**:
+  ```bash
+  gcloud run services add-iam-policy-binding elevendops-service \
+      --member="allUsers" --role="roles/run.invoker" --region=us-central1
+  ```
+- **Total Shutdown (Delete Service)**:
+
+```bash
+gcloud run services delete elevendops-service --region=us-central1
+```
+
+_Note: Deleting the service does NOT delete your Docker images in the Registry. You can redeploy anytime._
+
 ### Troubleshooting
 
 - **503 Service Unavailable**:

@@ -122,6 +122,62 @@ class AudioService:
                 "generation_error": generation_error
             }
 
+    async def generate_script_stream(
+        self, 
+        knowledge_id: str, 
+        model_name: str = "gemini-2.5-flash",
+        custom_prompt: Optional[str] = None,
+        template_config: Optional[TemplateConfig] = None
+    ) -> AsyncGenerator[dict, None]:
+        """Stream script generation with real-time token feedback.
+        
+        Args:
+            knowledge_id: ID of the knowledge document.
+            model_name: Gemini model to use.
+            custom_prompt: Optional custom prompt (legacy support).
+            template_config: Optional template configuration for building prompt.
+            
+        Yields:
+            dict events: {"type": "token", "content": "..."} 
+                         {"type": "complete", "script": "...", "model_used": "..."}
+                         {"type": "error", "message": "..."}
+        """
+        logging.info(f"Streaming script generation for knowledge_id: {knowledge_id}")
+        
+        # Fetch knowledge document
+        doc = await self.data_service.get_knowledge_document(knowledge_id)
+        if not doc:
+            logging.warning(f"Knowledge document not found: {knowledge_id}")
+            yield {"type": "error", "message": f"Knowledge document {knowledge_id} not found"}
+            return
+        
+        # Build prompt: prefer template_config > custom_prompt > default
+        if template_config:
+            template_service = get_prompt_template_service()
+            prompt = await template_service.build_prompt(
+                template_ids=template_config.template_ids,
+                quick_instructions=template_config.quick_instructions,
+                preferred_languages=template_config.preferred_languages,
+                speaker1_languages=template_config.speaker1_languages,
+                speaker2_languages=template_config.speaker2_languages,
+                target_duration_minutes=template_config.target_duration_minutes,
+                is_multi_speaker=template_config.is_multi_speaker,
+            )
+            logging.info(f"Using template config with {len(template_config.template_ids)} templates, multi_speaker={template_config.is_multi_speaker}")
+        else:
+            prompt = custom_prompt or get_default_script_prompt()
+        
+        # Map friendly name to API model name
+        api_model_name = GEMINI_MODELS.get(model_name, model_name)
+        
+        # Delegate to script service streaming
+        async for event in self.script_service.generate_script_stream(
+            knowledge_content=doc.raw_content,
+            model_name=api_model_name,
+            prompt=prompt
+        ):
+            yield event
+
     def stream_audio(self, audio_id: str):
         """Stream audio file content.
         
