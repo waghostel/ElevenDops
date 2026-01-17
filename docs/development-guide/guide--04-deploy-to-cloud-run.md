@@ -89,6 +89,11 @@ gcloud projects add-iam-policy-binding $PROJECT_ID `
 gcloud projects add-iam-policy-binding $PROJECT_ID `
     --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" `
     --role="roles/storage.objectAdmin"
+
+# Grant Service Account Token Creator role (REQUIRED for Signed URLs)
+gcloud projects add-iam-policy-binding $PROJECT_ID `
+    --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" `
+    --role="roles/iam.serviceAccountTokenCreator"
 ```
 
 ---
@@ -141,6 +146,9 @@ gcloud run deploy elevendops-demo `
     --set-env-vars "DEMO_MODE=true,GOOGLE_CLOUD_PROJECT=elevendops-dev,BACKEND_API_URL=http://localhost:8000,USE_FIRESTORE_EMULATOR=false,USE_GCS_EMULATOR=false,GCS_BUCKET_NAME=elevendops-bucket,FIRESTORE_DATABASE_ID=elevendops-db" `
     --set-secrets "ELEVENLABS_API_KEY=ELEVENLABS_API_KEY:latest,GOOGLE_API_KEY=GOOGLE_API_KEY:latest"
 ```
+
+> [!NOTE]
+> The application now uses **Signed GCS URLs** for audio playback. This is more secure and efficient as it allows the browser to download audio directly from GCS without routing through the backend.
 
 ### Demo Mode Restrictions
 
@@ -206,6 +214,7 @@ The commands in **Step 3** and **Step 3.5** grant just enough power for the app 
 - `secretAccessor`: Can read the necessary API keys.
 - `datastore.user`: Can read/write to the Firestore database.
 - `storage.objectAdmin`: Can manage audio files in the GCS bucket.
+- `iam.serviceAccountTokenCreator`: Can sign GCS URLs for browser playback.
 
 ---
 
@@ -402,3 +411,4 @@ _Note: Deleting the service does NOT delete your Docker images in the Registry. 
   - Check logs for "Backend failed to start".
 - **Permission Denied**:
   - Verify Step 3 permissions were applied to the correct `$PROJECT_NUMBER`.
+  - Specifically, ensure `iam.serviceAccountTokenCreator` is granted if audio is not playing.

@@ -41,6 +41,34 @@ DEFAULT_TIMEOUT = 10.0  # seconds
 LLM_TIMEOUT = 90.0  # Extended timeout for LLM generation (large documents can take 60+ seconds)
 
 
+def _resolve_audio_url(base_url: str, audio_url: str) -> str:
+    """Transform audio URLs for browser playback.
+    
+    The backend returns:
+    - Production: Signed GCS URLs (https://storage.googleapis.com/...)
+    - Emulator: Direct emulator URLs (http://localhost:4443/...)
+    
+    Both are already absolute URLs that browsers can access directly.
+    This function is kept for backward compatibility and edge cases.
+    
+    Args:
+        base_url: The backend API base URL (unused in production).
+        audio_url: The audio URL from the backend.
+        
+    Returns:
+        The audio URL, unchanged if already absolute.
+    """
+    # Signed GCS URLs and emulator URLs are already absolute
+    if audio_url.startswith("http://") or audio_url.startswith("https://"):
+        return audio_url
+    
+    # For any edge cases with relative paths, fall back to backend URL
+    if not audio_url.startswith("/"):
+        audio_url = "/" + audio_url
+    base = base_url.rstrip("/")
+    return f"{base}{audio_url}"
+
+
 class BackendAPIClient:
     """Client for communicating with the ElevenDops backend API.
 
@@ -538,7 +566,7 @@ class BackendAPIClient:
                 data = response.json()
                 return AudioResponse(
                     audio_id=data["audio_id"],
-                    audio_url=data["audio_url"],
+                    audio_url=_resolve_audio_url(self.base_url, data["audio_url"]),
                     knowledge_id=data["knowledge_id"],
                     voice_id=data["voice_id"],
                     duration_seconds=data.get("duration_seconds"),
@@ -582,7 +610,7 @@ class BackendAPIClient:
                 return [
                     AudioResponse(
                         audio_id=d["audio_id"],
-                        audio_url=d["audio_url"],
+                        audio_url=_resolve_audio_url(self.base_url, d["audio_url"]),
                         knowledge_id=d["knowledge_id"],
                         voice_id=d["voice_id"],
                         duration_seconds=d.get("duration_seconds"),
@@ -688,7 +716,7 @@ class BackendAPIClient:
                 data = response.json()
                 return AudioResponse(
                     audio_id=data["audio_id"],
-                    audio_url=data["audio_url"],
+                    audio_url=_resolve_audio_url(self.base_url, data["audio_url"]),
                     knowledge_id=data["knowledge_id"],
                     voice_id=data["voice_id"],
                     duration_seconds=data.get("duration_seconds"),

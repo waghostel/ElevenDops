@@ -209,6 +209,7 @@ If the script returns **Verification SUCCESS**, you are ready to proceed.
 ## Troubleshooting
 
 - **Permissions Error**: Ensure your Google Account (the one you logged in with) has `Editor` or `Owner` role on the GCP Project, or at least `Firestore Admin` and `Storage Admin`.
+- **Signed URL Error**: If audio files are not playable, ensure your account (for local ADC) or the Cloud Run service account has the **`Service Account Token Creator`** (`roles/iam.serviceAccountTokenCreator`) role. This is required to sign GCS URLs.
 - **"Credentials not found" in Docker**: If running in Docker, you must mount the ADC credentials file.
   - Linux/Mac: `~/.config/gcloud/application_default_credentials.json`
   - Windows: `%APPDATA%/gcloud/application_default_credentials.json`

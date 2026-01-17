@@ -311,11 +311,59 @@ def get_signed_url(
     # Production: generate signed URL
     try:
         blob = service._bucket.blob(storage_path)
-        signed_url = blob.generate_signed_url(
-            version="v4",
-            expiration=timedelta(seconds=expiration_seconds),
-            method="GET",
-        )
+        
+        # Get credentials to determine signing strategy
+        import google.auth
+        import google.auth.transport.requests
+        from google.auth import compute_engine
+        credentials, project_id = google.auth.default()
+        
+        # Check if we're running on Compute Engine (Cloud Run/GCE)
+        # These credentials can't sign locally and need IAM API
+        is_compute_credentials = isinstance(credentials, compute_engine.Credentials)
+        
+        if is_compute_credentials:
+            # Cloud Run: Use IAM signBlob API
+            service_account_email = credentials.service_account_email
+            
+            # Cloud Run sometimes returns 'default' instead of actual email
+            # Fetch the real email from metadata server
+            if service_account_email == "default" or not service_account_email:
+                try:
+                    import requests
+                    metadata_url = "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/email"
+                    response = requests.get(metadata_url, headers={"Metadata-Flavor": "Google"}, timeout=2)
+                    if response.status_code == 200:
+                        service_account_email = response.text.strip()
+                        logger.info(f"Fetched actual SA email from metadata: {service_account_email}")
+                except Exception as meta_err:
+                    logger.warning(f"Could not fetch SA email from metadata: {meta_err}")
+            
+            logger.info(f"Using IAM signing with Compute Engine SA: {service_account_email}")
+            
+            # Refresh to get access token for IAM API call
+            if not credentials.token:
+                logger.info("Refreshing Compute Engine credentials...")
+                request = google.auth.transport.requests.Request()
+                credentials.refresh(request)
+                logger.info("Credentials refreshed successfully.")
+            
+            signed_url = blob.generate_signed_url(
+                version="v4",
+                expiration=timedelta(seconds=expiration_seconds),
+                method="GET",
+                service_account_email=service_account_email,
+                access_token=credentials.token
+            )
+        else:
+            # Local development with SA key file: Sign locally (no IAM API needed)
+            logger.info("Using local credentials signing (service account key file)")
+            signed_url = blob.generate_signed_url(
+                version="v4",
+                expiration=timedelta(seconds=expiration_seconds),
+                method="GET",
+            )
+        
         logger.info(f"Generated signed URL for {storage_path} (expires in {expiration_seconds}s)")
         return signed_url
     except Exception as e:

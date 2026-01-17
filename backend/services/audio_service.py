@@ -254,31 +254,17 @@ class AudioService:
             
             await self.data_service.save_audio_metadata(metadata)
             
-            # 4. Return metadata with PROXY URL
-            # Instead of signing, we return a URL causing the frontend to call our stream endpoint
-            # We need the current host. Relative URL is safest for same-origin, 
-            # but Streamlit runs on different port.
-            # Ideally config should provide backend public URL.
-            # For now, we'll return a relative path and let frontend handle it? 
-            # Or absolute localhost URL.
-            
-            # Use Backend config for base URL if available, or assume localhost:8001
-            # Actually, let's return a special URL format the frontend client understands
-            # OR just return the full backend URL.
-            from backend.config import get_settings
-            settings = get_settings()
+            # 5. Return metadata with signed URL for immediate playback
             # If storage path is already a full URL (mock/emulator), use it.
-            # If it's a relative path (production), construct proxy URL.
-            
-            proxy_url = storage_path_or_url
+            # If it's a relative path (production), generate a signed URL.
+            playback_url = storage_path_or_url
             if not storage_path_or_url.startswith("http"):
-                 # It's a path like "audio/uuid.mp3". 
-                 # We want the audio ID.
-                 proxy_url = f"http://localhost:{settings.fastapi_port}/api/audio/stream/{audio_id}"
+                # It's a storage path like "audio/uuid.mp3", generate signed URL
+                playback_url = get_signed_url(storage_path_or_url)
 
             return AudioMetadata(
                 audio_id=metadata.audio_id,
-                audio_url=proxy_url,
+                audio_url=playback_url,
                 knowledge_id=metadata.knowledge_id,
                 voice_id=metadata.voice_id,
                 duration_seconds=metadata.duration_seconds,
@@ -314,6 +300,7 @@ class AudioService:
         )
         
         # Sign URLs for each audio file
+        # Signed GCS URLs are accessible directly by browsers without going through our backend
         signed_audio_files = []
         for audio in audio_files:
             signed_url = get_signed_url(audio.audio_url)
@@ -325,55 +312,12 @@ class AudioService:
                 duration_seconds=audio.duration_seconds,
                 script=audio.script,
                 created_at=audio.created_at,
-                doctor_id=audio.doctor_id
-            ))
-        
-        # return signed_audio_files (Removed for Proxy implementation)
-        
-        # PROXY Update:
-        # Instead of signing, convert to proxy URLs
-        from backend.config import get_settings
-        settings = get_settings()
-        
-        proxy_audio_files = []
-        for audio in audio_files:
-            # Check if it needs proxying
-            final_url = audio.audio_url
-            
-            # If it's a full GCS URL (legacy data), we need to extract ID and use proxy
-            if audio.audio_url.startswith("https://storage.googleapis.com/"):
-                # URL is https://storage.googleapis.com/BUCKET/audio/UUID.mp3
-                try:
-                    # Extract UUID.mp3
-                    parts = audio.audio_url.split("/")
-                    filename = parts[-1]
-                    audio_id_extracted = filename.replace(".mp3", "")
-                    final_url = f"http://localhost:{settings.fastapi_port}/api/audio/stream/{audio_id_extracted}"
-                except Exception:
-                    # Fallback to as-is if parsing fails
-                    pass
-            elif not audio.audio_url.startswith("http"):
-                 # It's a path "audio/uuid.mp3"
-                 filename = audio.audio_url.split("/")[-1]
-                 audio_id_extracted = filename.replace(".mp3", "")
-                 final_url = f"http://localhost:{settings.fastapi_port}/api/audio/stream/{audio_id_extracted}"
-            
-            # If it's already http (mock/emulator), leave it
-            
-            proxy_audio_files.append(AudioMetadata(
-                audio_id=audio.audio_id,
-                audio_url=final_url,
-                knowledge_id=audio.knowledge_id,
-                voice_id=audio.voice_id,
-                duration_seconds=audio.duration_seconds,
-                script=audio.script,
-                created_at=audio.created_at,
                 doctor_id=audio.doctor_id,
                 name=audio.name,
                 description=audio.description
             ))
-            
-        return proxy_audio_files
+        
+        return signed_audio_files
 
     async def delete_audio(self, audio_id: str) -> bool:
         """Delete an audio file.
